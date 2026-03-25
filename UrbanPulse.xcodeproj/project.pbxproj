@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		F9092BAD2F747F7900230E66 /* urbanpulse.icon in Resources */ = {isa = PBXBuildFile; fileRef = F9092BAC2F747F7900230E66 /* urbanpulse.icon */; };
+		F9092BB52F74891300230E66 /* launchscreen3.png in Resources */ = {isa = PBXBuildFile; fileRef = F9092BB42F74891300230E66 /* launchscreen3.png */; };
 		F9F07C2D2F567AE8009C7121 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = F9F07C2C2F567AE8009C7121 /* GoogleMaps */; };
 /* End PBXBuildFile section */
 
@@ -34,6 +35,7 @@
 		F2A1B300A0B14EAA9D700003 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		F2A1B300A0B14EAA9D700004 /* GoogleMaps.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = GoogleMaps.example.xcconfig; sourceTree = "<group>"; };
 		F9092BAC2F747F7900230E66 /* urbanpulse.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = urbanpulse.icon; sourceTree = "<group>"; };
+		F9092BB42F74891300230E66 /* launchscreen3.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = launchscreen3.png; sourceTree = "<group>"; };
 		F9F07BFF2F567A44009C7121 /* UrbanPulse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UrbanPulse.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9F07C0E2F567A45009C7121 /* UrbanPulseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UrbanPulseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9F07C182F567A45009C7121 /* UrbanPulseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UrbanPulseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -97,6 +99,7 @@
 		F9F07BF62F567A44009C7121 = {
 			isa = PBXGroup;
 			children = (
+				F9092BB42F74891300230E66 /* launchscreen3.png */,
 				F9092BAC2F747F7900230E66 /* urbanpulse.icon */,
 				F2A1B300A0B14EAA9D700010 /* Config */,
 				F9F07C012F567A44009C7121 /* UrbanPulse */,
@@ -241,6 +244,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F9092BB52F74891300230E66 /* launchscreen3.png in Resources */,
 				F9092BAD2F747F7900230E66 /* urbanpulse.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
