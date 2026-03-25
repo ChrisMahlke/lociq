@@ -93,6 +93,6 @@ Config/Secrets.xcconfig
 *.log
 
 .DS_Store
-*.vscode
+.vscode/
 
 docs/
