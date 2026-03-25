@@ -1,0 +1,98 @@
+# =========================
+# macOS
+# =========================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+
+# =========================
+# Xcode
+# =========================
+
+# User settings
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Xcode project user data
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Derived data
+DerivedData/
+build/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Package.resolved (keep if you want deterministic builds)
+# Comment out next line if you WANT to track Package.resolved
+# Package.resolved
+
+# =========================
+# CocoaPods
+# =========================
+Pods/
+*.xcworkspace
+
+# Keep Podfile.lock for reproducible builds
+!Podfile.lock
+
+# =========================
+# Carthage
+# =========================
+Carthage/Build/
+
+# =========================
+# Fastlane
+# =========================
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# =========================
+# Archives
+# =========================
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# =========================
+# Playgrounds
+# =========================
+timeline.xctimeline
+playground.xcworkspace
+
+# =========================
+# Environment
+# =========================
+.env
+.env.local
+Config/GoogleMaps.xcconfig
+Config/Secrets.xcconfig
+
+# =========================
+# Logs
+# =========================
+*.log
+
+.DS_Store
+*.vscode
+
+docs/
