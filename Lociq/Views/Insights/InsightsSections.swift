@@ -1,20 +1,24 @@
 import SwiftUI
 
 struct CollapsedInsightsHeaderRow: View {
+    let areaTitle: String
+    let areaSubtitle: String
     let zipLine: String
     @Binding var boundaryScale: BoundaryOverlayScale
     let hintVisible: Bool
+    let hasActiveSelection: Bool
 
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(zipLine)
-                    .font(.headline).bold()
+                Text(hasActiveSelection ? areaTitle : AppStrings.Labels.noSelectionTitle)
+                    .font(.headline)
+                    .bold()
                     .foregroundStyle(.primary)
-                Text(AppStrings.Labels.collapsedHint)
+                Text(hasActiveSelection ? areaSubtitle : AppStrings.Labels.collapsedHint)
                     .font(.caption)
                     .foregroundStyle(.primary.opacity(0.72))
-                Text("ZIP shows the broader area. Tract shows more local detail.")
+                Text(hasActiveSelection ? "ZIP reads broader. Tract reads more locally." : "Tap once, then expand for deeper context.")
                     .font(.caption2)
                     .foregroundStyle(.primary.opacity(0.68))
             }
@@ -64,27 +68,29 @@ struct CollapsedInsightsMetricsGrid: View {
 }
 
 struct ExpandedInsightsHeaderRow: View {
+    let areaTitle: String
+    let areaSubtitle: String
     let zipCode: String?
     let metricsSource: MetricsSource?
     @Binding var boundaryScale: BoundaryOverlayScale
 
     var body: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(zipCode ?? AppStrings.Symbols.emDash)
-                    .font(.title2)
-                    .bold()
-                    .foregroundStyle(.primary)
-                Text(AppStrings.Labels.profileSubtitle)
-                    .font(.footnote)
-                    .foregroundStyle(.primary.opacity(0.72))
-                Text("Use ZIP for the broader area or Tract for more local detail.")
-                    .font(.caption2)
-                    .foregroundStyle(.primary.opacity(0.68))
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 8) {
-                BoundaryScaleIconToggle(scale: $boundaryScale)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(areaTitle)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.primary)
+                    Text(areaSubtitle.isEmpty ? (zipCode ?? AppStrings.Symbols.emDash) : areaSubtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary.opacity(0.72))
+                    Text(AppStrings.Labels.profileSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(.primary.opacity(0.68))
+                }
+
+                Spacer()
+
                 if let src = metricsSource {
                     Text(InsightsFormatting.dataSourceText(src))
                         .font(.caption.bold())
@@ -98,6 +104,8 @@ struct ExpandedInsightsHeaderRow: View {
                         )
                 }
             }
+
+            ScaleStatusBanner(boundaryScale: $boundaryScale)
         }
     }
 }
@@ -109,7 +117,12 @@ struct HousingAffordabilitySection: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: 12) {
-                Text(AppStrings.Labels.housingAffordabilityTitle).font(.headline)
+                InsightSectionHeader(
+                    title: AppStrings.Labels.housingAffordabilityTitle,
+                    subtitle: "Home prices, rent, and how occupancy is split",
+                    icon: "house.and.flag.fill",
+                    tint: themeTint
+                )
 
                 HStack(spacing: 10) {
                     InfographicBadge(
@@ -144,7 +157,12 @@ struct WorkAndHouseholdSection: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: 12) {
-                Text(AppStrings.Labels.workAndHouseholdSnapshot).font(.headline)
+                InsightSectionHeader(
+                    title: AppStrings.Labels.workAndHouseholdSnapshot,
+                    subtitle: "Two quick signals for labor patterns and strain",
+                    icon: "waveform.path.ecg.rectangle.fill",
+                    tint: themeTint
+                )
 
                 HStack(spacing: 10) {
                     MiniRingStat(
@@ -174,7 +192,12 @@ struct DemographicCompositionSection: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: 12) {
-                Text(AppStrings.Labels.demographicCompositionVisual).font(.headline)
+                InsightSectionHeader(
+                    title: AppStrings.Labels.demographicCompositionVisual,
+                    subtitle: "Relative group sizes within the selected geography",
+                    icon: "person.3.sequence.fill",
+                    tint: themeTint
+                )
 
                 CompositionRow(
                     label: AppStrings.Labels.white,
@@ -215,13 +238,13 @@ struct GeneratedInsightsSection: View {
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(AppStrings.Labels.insights)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .allowsTightening(true)
-                    .minimumScaleFactor(0.9)
-                    .clipped()
+            VStack(alignment: .leading, spacing: 10) {
+                InsightSectionHeader(
+                    title: AppStrings.Labels.insights,
+                    subtitle: "Plain-English takeaways generated from the active profile",
+                    icon: "text.bubble.fill",
+                    tint: .indigo
+                )
                 if isLoading {
                     InsightLoadingPanel()
                 } else if visibleInsights.isEmpty {

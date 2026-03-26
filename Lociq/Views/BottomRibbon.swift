@@ -25,7 +25,9 @@ struct BottomRibbon: View {
     }
 
     private func ribbonButton(title: String, systemImage: String, tab: TabSelection) -> some View {
-        Button {
+        let isSelected = selection == tab
+
+        return Button {
             selection = tab
         } label: {
             VStack(spacing: 4) {
@@ -34,13 +36,19 @@ struct BottomRibbon: View {
                     .symbolRenderingMode(.hierarchical)
                 Text(title)
                     .font(.caption2)
-                Capsule()
-                    .fill(selection == tab ? Color.accentColor : Color.clear)
-                    .frame(height: 3)
-                    .padding(.top, 2)
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
-            .foregroundColor(selection == tab ? .accentColor : .secondary)
+            .foregroundColor(isSelected ? .accentColor : .secondary)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? Color.accentColor.opacity(0.18) : Color.clear, lineWidth: 0.9)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

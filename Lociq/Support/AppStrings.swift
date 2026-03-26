@@ -29,6 +29,11 @@ enum AppStrings {
     enum Labels {
         static let swipeUpForMoreData = "Swipe up for more data"
         static let insights = "Insights"
+        static let selectedArea = "Selected area"
+        static let noSelectionTitle = "Start with the map"
+        static let noSelectionBody = "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance."
+        static let loadingSelectionTitle = "Loading area profile"
+        static let loadingSelectionBody = "Fetching boundaries, Census context, and quick-read signals for your selected location."
         static let dataZip = "Data: ZIP"
         static let dataTract = "Data: Tract"
         static let dataSample = "Data: Sample"
@@ -66,6 +71,8 @@ enum AppStrings {
         static let onboardingNext = "Next"
         static let onboardingGetStarted = "Get Started"
         static let onboardingSkip = "Skip"
+        static let overview = "Overview"
+        static let currentScale = "Current scale"
     }
 
     enum Network {

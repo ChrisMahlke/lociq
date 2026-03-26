@@ -130,6 +130,159 @@ struct BoundaryScaleIconToggle: View {
     }
 }
 
+struct ScaleStatusBanner: View {
+    @Binding var boundaryScale: BoundaryOverlayScale
+
+    private var detail: String {
+        switch boundaryScale {
+        case .zip:
+            return "Broader neighborhood read"
+        case .tract:
+            return "Finer local context"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(AppStrings.Labels.currentScale)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.primary.opacity(0.62))
+                Text("\(boundaryScale.rawValue) view")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(boundaryScale.themeColor)
+            }
+
+            Spacer(minLength: 0)
+
+            Text(detail)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary.opacity(0.72))
+
+            BoundaryScaleIconToggle(scale: $boundaryScale)
+        }
+        .padding(12)
+        .background(
+            LinearGradient(
+                colors: [boundaryScale.themeColor.opacity(0.12), Color(.secondarySystemGroupedBackground)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(boundaryScale.themeColor.opacity(0.18), lineWidth: 0.9)
+        )
+    }
+}
+
+struct InsightSectionHeader: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(tint)
+                .frame(width: 26, height: 26)
+                .background(tint.opacity(0.14), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.primary.opacity(0.66))
+            }
+        }
+    }
+}
+
+struct CompactSheetPromptCard: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "hand.tap.fill")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.blue)
+                .frame(width: 28, height: 28)
+                .background(Color.blue.opacity(0.14), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(AppStrings.Labels.noSelectionTitle)
+                    .font(.subheadline.weight(.semibold))
+                Text("Tap the map to load ZIP and tract context.")
+                    .font(.caption)
+                    .foregroundStyle(.primary.opacity(0.68))
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.blue.opacity(0.14), lineWidth: 0.9)
+        )
+    }
+}
+
+struct SelectionStateCard: View {
+    let title: String
+    let message: String
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(tint)
+                        .frame(width: 38, height: 38)
+                        .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(.headline)
+                        Text(message)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary.opacity(0.72))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    PromptStepChip(text: "Tap a place", tint: .blue)
+                    PromptStepChip(text: "Compare scales", tint: .teal)
+                    PromptStepChip(text: "Read the profile", tint: .indigo)
+                }
+            }
+        }
+    }
+}
+
+private struct PromptStepChip: View {
+    let text: String
+    let tint: Color
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(tint.opacity(0.12), in: Capsule())
+    }
+}
+
 struct KeyMetricsGrid: View {
     let metrics: CensusMetrics?
 

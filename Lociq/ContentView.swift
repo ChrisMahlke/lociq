@@ -149,6 +149,8 @@ struct ContentView: View {
                         demographics: selectedDemographics,
                         zipBundle: selectedZipBundle,
                         metricsSource: metricsSource,
+                        hasActiveSelection: tappedCoordinate != nil,
+                        isLoadingSelection: tappedCoordinate != nil && (censusMetrics == nil || isBoundaryLoading),
                         boundaryScale: $boundaryScale,
                         sheetOffset: $sheetOffset
                     )
