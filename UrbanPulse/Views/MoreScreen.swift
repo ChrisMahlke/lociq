@@ -49,8 +49,8 @@ struct MoreScreen: View {
                     icon: "location.viewfinder",
                     tint: .teal,
                     rows: [
-                        DataDefinitionRow(label: "My Area icon", source: "location.fill", note: "Centers the map on your current location, or your latest tapped area if location is unavailable"),
-                        DataDefinitionRow(label: "Reset icon", source: "scope", note: "Returns to the default city overview so you can quickly start a new exploration")
+                        DataDefinitionRow(label: "My Area", source: "Map control", note: "Centers the map on your current location, or your latest tapped area if location is unavailable"),
+                        DataDefinitionRow(label: "Reset Map", source: "Map control", note: "Returns to the default city overview so you can quickly start a new exploration")
                     ]
                 )
 
