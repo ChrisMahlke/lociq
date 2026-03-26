@@ -2,19 +2,6 @@
 
 Lociq is a SwiftUI iOS app for exploring neighborhood context on an interactive map. Tap a location to load ZIP-level and Census tract-level demographic data, compare boundary scales, and review a compact neighborhood profile in a bottom sheet.
 
-<img width="311" height="672" alt="IMG_3371" src="https://github.com/user-attachments/assets/988a27c6-8dd3-45e7-82e9-306450a234e5" />
-
-
-<img width="311" height="672" alt="IMG_3372" src="https://github.com/user-attachments/assets/79a1c9b0-1088-45bb-b1ca-f1e7dc74e34a" />
-
-
-<img width="311" height="672" alt="IMG_3373" src="https://github.com/user-attachments/assets/5710af4e-a6f5-416c-9c94-078e5e180bc7" />
-
-
-<img width="311" height="672" alt="IMG_3374" src="https://github.com/user-attachments/assets/abf79dcd-6642-40da-9299-0d6538e5dc37" />
-
-
-
 ## Highlights
 
 - Interactive Google Maps experience with tap-to-explore behavior
