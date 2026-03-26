@@ -17,6 +17,13 @@ enum BoundaryOverlayScale: String, CaseIterable, Identifiable {
     case tract = "Tract"
 
     var id: String { rawValue }
+
+    var themeColor: Color {
+        switch self {
+        case .zip: return .blue
+        case .tract: return .teal
+        }
+    }
 }
 
 struct ContentView: View {
@@ -46,10 +53,7 @@ struct ContentView: View {
     }
 
     private var boundaryThemeTint: Color {
-        switch boundaryScale {
-        case .zip: return .blue
-        case .tract: return .orange
-        }
+        boundaryScale.themeColor
     }
 
     private var tappedBinding: Binding<CLLocationCoordinate2D?> {

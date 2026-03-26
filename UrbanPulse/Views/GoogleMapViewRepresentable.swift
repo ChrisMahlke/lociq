@@ -158,7 +158,7 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
                 let stroke = UIColor.systemBlue
                 return (stroke, stroke.withAlphaComponent(0.09))
             case .tract:
-                let stroke = UIColor.systemOrange
+                let stroke = UIColor.systemTeal
                 return (stroke, stroke.withAlphaComponent(0.18))
             }
         }

@@ -28,10 +28,7 @@ struct InsightsSheetContent: View {
     }
 
     private var themeTint: Color {
-        switch boundaryScale {
-        case .zip: return .blue
-        case .tract: return .orange
-        }
+        boundaryScale.themeColor
     }
 
     var body: some View {

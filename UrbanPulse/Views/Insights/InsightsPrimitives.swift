@@ -86,10 +86,7 @@ struct BoundaryScaleIconToggle: View {
     }
 
     private func activeColor(for option: BoundaryOverlayScale) -> Color {
-        switch option {
-        case .zip: return .blue
-        case .tract: return .orange
-        }
+        option.themeColor
     }
 
     var body: some View {
