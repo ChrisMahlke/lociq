@@ -594,6 +594,7 @@ private struct InsightVisualCard: View {
                 .foregroundStyle(.primary.opacity(0.72))
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, 26)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
