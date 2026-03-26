@@ -15,6 +15,8 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
 
     /// Shared map instance to preserve camera and avoid recreating expensive map resources.
     private static var sharedMapView: GMSMapView = makeMapView()
+    private static var sharedBoundaryOverlays: [GMSPolygon] = []
+    private static var hasAutoSelectedUserLocation = false
 
     @Binding var tappedCoordinate: CLLocationCoordinate2D?
     let selectedBoundary: GeoJSONFeatureCollection?
@@ -79,13 +81,13 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: GMSMapView, context: Context) {
         uiView.delegate = context.coordinator
         uiView.padding = UIEdgeInsets(top: 0, left: 0, bottom: contentInsetBottom, right: 0)
+        context.coordinator.parent = self
         context.coordinator.updateBoundaryOverlay(on: uiView, with: selectedBoundary, scale: selectedScale)
     }
 
     /// Handles `GMSMapViewDelegate` callbacks and boundary overlay lifecycle.
     class Coordinator: NSObject, GMSMapViewDelegate {
         var parent: GoogleMapViewRepresentable
-        private var boundaryOverlays: [GMSPolygon] = []
         private let locationManager = CLLocationManager()
         private weak var mapView: GMSMapView?
         private var hasCenteredOnUserLocation = false
@@ -116,13 +118,13 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
 
             for feature in featureCollection.features {
                 guard let geometry = feature.geometry else { continue }
-                boundaryOverlays.append(contentsOf: makePolygons(from: geometry, mapView: mapView, scale: scale))
+                GoogleMapViewRepresentable.sharedBoundaryOverlays.append(contentsOf: makePolygons(from: geometry, mapView: mapView, scale: scale))
             }
         }
 
         private func clearBoundaryOverlays() {
-            boundaryOverlays.forEach { $0.map = nil }
-            boundaryOverlays.removeAll()
+            GoogleMapViewRepresentable.sharedBoundaryOverlays.forEach { $0.map = nil }
+            GoogleMapViewRepresentable.sharedBoundaryOverlays.removeAll()
         }
 
         /// Converts GeoJSON geometry values into Google Maps polygons.
@@ -203,6 +205,8 @@ extension GoogleMapViewRepresentable.Coordinator: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard
             !hasCenteredOnUserLocation,
+            !GoogleMapViewRepresentable.hasAutoSelectedUserLocation,
+            parent.tappedCoordinate == nil,
             let location = locations.last,
             let mapView
         else {
@@ -210,6 +214,7 @@ extension GoogleMapViewRepresentable.Coordinator: CLLocationManagerDelegate {
         }
 
         hasCenteredOnUserLocation = true
+        GoogleMapViewRepresentable.hasAutoSelectedUserLocation = true
         let coordinate = location.coordinate
         parent.tappedCoordinate = coordinate
         mapView.animate(toLocation: coordinate)
