@@ -61,11 +61,6 @@ struct ContentView: View {
         max(defaultSheetPeekHeight, sheetOffset) + 12
     }
 
-    // Keeps floating controls above the ribbon and visible when the sheet is at peek height.
-    private var mapControlsBottomPadding: CGFloat {
-        mapBottomInset + 28
-    }
-
     private var boundaryThemeTint: Color {
         boundaryScale.themeColor
     }
@@ -124,33 +119,23 @@ struct ContentView: View {
                             }
                     }
 
-                    if AppConfig.hasGoogleMapsAPIKey {
+                    if AppConfig.hasGoogleMapsAPIKey && shouldShowMapQuickTip {
                         VStack {
                             Spacer()
                             HStack {
-                                if shouldShowMapQuickTip {
-                                    MapQuickTipCard {
-                                        withAnimation(.easeOut(duration: 0.2)) {
-                                            hasSeenMapQuickTip = true
-                                        }
+                                MapQuickTipCard {
+                                    withAnimation(.easeOut(duration: 0.2)) {
+                                        hasSeenMapQuickTip = true
                                     }
-                                    .transition(.move(edge: .leading).combined(with: .opacity))
                                 }
+                                .transition(.move(edge: .leading).combined(with: .opacity))
 
                                 Spacer()
-                                MapCameraPresetsPanel(
-                                    onFocusArea: {
-                                        GoogleMapViewRepresentable.focusOnUserOrSelection(selection: tappedCoordinate)
-                                    },
-                                    onReset: {
-                                        GoogleMapViewRepresentable.resetCamera()
-                                    }
-                                )
                             }
                         }
-                        .padding(.trailing, 12)
-                        .padding(.bottom, mapControlsBottomPadding)
-                        .animation(.easeInOut(duration: 0.2), value: mapControlsBottomPadding)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, mapBottomInset + 28)
+                        .animation(.easeInOut(duration: 0.2), value: mapBottomInset)
                     }
 
                 }
@@ -505,55 +490,6 @@ private struct MapNoticeBanner: View {
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
         .shadow(color: Color.black.opacity(0.18), radius: 10, y: 3)
-    }
-}
-
-private struct MapCameraPresetsPanel: View {
-    let onFocusArea: () -> Void
-    let onReset: () -> Void
-
-    var body: some View {
-        VStack(spacing: 8) {
-            iconButton(
-                systemImage: "location.fill",
-                accessibilityLabel: "My Area",
-                action: onFocusArea
-            )
-            iconButton(
-                systemImage: "scope",
-                accessibilityLabel: "Reset Map",
-                action: onReset
-            )
-        }
-        .padding(8)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground).opacity(0.88))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 0.9)
-        )
-    }
-
-    private func iconButton(systemImage: String, accessibilityLabel: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 46, height: 46)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color(.systemBackground).opacity(0.94))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.9)
-                )
-        }
-        .buttonStyle(.plain)
-        .shadow(color: .black.opacity(0.14), radius: 6, y: 2)
-        .accessibilityLabel(accessibilityLabel)
     }
 }
 

@@ -85,16 +85,10 @@ struct ExpandedInsightsHeaderRow: View {
     @Binding var boundaryScale: BoundaryOverlayScale
 
     private var contextItems: [String] {
-        let base = areaSubtitle.isEmpty ? (zipCode.map { ["ZIP \($0)"] } ?? []) : areaSubtitle
+        areaSubtitle.isEmpty ? (zipCode.map { ["ZIP \($0)"] } ?? []) : areaSubtitle
             .split(separator: "·")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-
-        if let src = metricsSource {
-            return base + [InsightsFormatting.dataSourceText(src)]
-        }
-
-        return base
     }
 
     var body: some View {
