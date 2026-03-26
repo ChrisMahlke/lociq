@@ -13,6 +13,9 @@ struct CollapsedInsightsHeaderRow: View {
                 Text(AppStrings.Labels.collapsedHint)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text("ZIP shows the broader area. Tract shows more local detail.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
@@ -71,7 +74,7 @@ struct ExpandedInsightsHeaderRow: View {
                 Text(AppStrings.Labels.profileSubtitle)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                Text("Switch ZIP or Tract to compare this area.")
+                Text("Use ZIP for the broader area or Tract for more local detail.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

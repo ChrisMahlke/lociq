@@ -81,8 +81,8 @@ private struct InsightSkeletonCard: View {
 struct BoundaryScaleIconToggle: View {
     @Binding var scale: BoundaryOverlayScale
 
-    private var options: [(scale: BoundaryOverlayScale, size: CGFloat)] {
-        [(.zip, 15), (.tract, 11)]
+    private var options: [BoundaryOverlayScale] {
+        [.zip, .tract]
     }
 
     private func activeColor(for option: BoundaryOverlayScale) -> Color {
@@ -91,22 +91,31 @@ struct BoundaryScaleIconToggle: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            ForEach(options, id: \.scale) { option in
+            ForEach(options, id: \.self) { option in
                 Button {
-                    scale = option.scale
+                    scale = option
                 } label: {
-                    let isSelected = scale == option.scale
-                    let color = activeColor(for: option.scale)
+                    let isSelected = scale == option
+                    let color = activeColor(for: option)
 
-                    RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(isSelected ? color : Color.secondary)
-                        .frame(width: option.size, height: option.size)
-                        .frame(width: 30, height: 30)
-                        .background(isSelected ? color.opacity(0.2) : Color.clear)
-                        .clipShape(Circle())
+                    Text(option.rawValue)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(isSelected ? color : .secondary)
+                        .frame(minWidth: 54)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(isSelected ? color.opacity(0.16) : Color.clear)
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(isSelected ? color.opacity(0.45) : Color.secondary.opacity(0.18), lineWidth: 0.9)
+                        )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(option.scale.rawValue)
+                .accessibilityLabel(option.rawValue)
+                .accessibilityAddTraits(scale == option ? .isSelected : [])
             }
         }
         .padding(6)

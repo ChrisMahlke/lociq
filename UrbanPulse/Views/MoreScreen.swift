@@ -16,7 +16,22 @@ struct MoreScreen: View {
             .padding()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemGroupedBackground))
+        .background(
+            ZStack(alignment: .top) {
+                Color(.systemGroupedBackground)
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.90, green: 0.96, blue: 0.98),
+                        Color(red: 0.95, green: 0.97, blue: 0.95),
+                        Color(.systemGroupedBackground)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .frame(height: 260)
+                .blur(radius: 10)
+            }
+        )
     }
 }
 
@@ -47,10 +62,9 @@ private struct MoreHeroCard: View {
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.93))
 
-            HStack(spacing: 8) {
-                PillTag(text: "Map-first", tint: .white.opacity(0.16), foreground: .white)
-                PillTag(text: "ZIP + Tract", tint: .white.opacity(0.16), foreground: .white)
-                PillTag(text: "Census-backed", tint: .white.opacity(0.16), foreground: .white)
+            HStack(spacing: 10) {
+                HeroSignalPill(title: "Broad scan", subtitle: "ZIP")
+                HeroSignalPill(title: "Local detail", subtitle: "Tract")
             }
         }
         .padding(16)
@@ -78,7 +92,7 @@ private struct QuickStartCard: View {
     ]
 
     var body: some View {
-        Card {
+        SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
                     title: "Start here",
@@ -104,7 +118,7 @@ private struct QuickStartCard: View {
 
 private struct ScaleComparisonCard: View {
     var body: some View {
-        Card {
+        SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
                     title: "ZIP vs Tract",
@@ -118,22 +132,22 @@ private struct ScaleComparisonCard: View {
                         title: "ZIP",
                         tint: .blue,
                         icon: "square.fill",
-                        detail: "Best for broad neighborhood comparison and faster orientation.",
-                        emphasis: "Wider area"
+                        detail: "Best for a broader neighborhood read and faster comparison across larger areas.",
+                        emphasis: "Broader view"
                     )
 
                     ScaleSummaryCard(
                         title: "Tract",
                         tint: .teal,
                         icon: "square.fill",
-                        detail: "Best for seeing finer local shifts that can be hidden at ZIP level.",
-                        emphasis: "More local"
+                        detail: "Best for finer local context when nearby blocks may differ within the same ZIP.",
+                        emphasis: "Closer view"
                     )
                 }
 
                 CalloutStrip(
                     title: "Tip",
-                    detail: "If two nearby places feel similar in ZIP view, switch to tract to see whether the local pattern changes.",
+                    detail: "If two nearby places look similar in ZIP view, switch to tract to check for more local variation.",
                     tint: .teal
                 )
             }
@@ -154,7 +168,7 @@ private struct WhatYouSeeCard: View {
     ]
 
     var body: some View {
-        Card {
+        SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
                     title: "What you’re seeing",
@@ -163,7 +177,7 @@ private struct WhatYouSeeCard: View {
                     tint: .orange
                 )
 
-                VStack(spacing: 8) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                     ForEach(items, id: \.label) { item in
                         InsightMeaningRow(
                             label: item.label,
@@ -179,7 +193,7 @@ private struct WhatYouSeeCard: View {
 
 private struct MapControlsCard: View {
     var body: some View {
-        Card {
+        SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
                     title: "Map controls",
@@ -190,12 +204,14 @@ private struct MapControlsCard: View {
 
                 VStack(spacing: 8) {
                     ControlExplanationRow(
+                        icon: "location.fill",
                         title: "My Area",
                         detail: "Centers the map on your current location, or your latest selected area if location is unavailable.",
                         tint: .blue
                     )
 
                     ControlExplanationRow(
+                        icon: "scope",
                         title: "Reset Map",
                         detail: "Returns to the default city overview so you can quickly start a new comparison.",
                         tint: .teal
@@ -208,7 +224,7 @@ private struct MapControlsCard: View {
 
 private struct PrivacyAndTrustCard: View {
     var body: some View {
-        Card {
+        SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
                     title: "Privacy and data trust",
@@ -278,7 +294,7 @@ private struct QuickStartRow: View {
             Text("\(index)")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(tint)
-                .frame(width: 24, height: 24)
+                .frame(width: 26, height: 26)
                 .background(tint.opacity(0.14), in: Circle())
 
             VStack(alignment: .leading, spacing: 2) {
@@ -290,9 +306,20 @@ private struct QuickStartRow: View {
             }
 
             Spacer(minLength: 0)
+
+            Image(systemName: "arrow.up.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(tint.opacity(0.8))
         }
-        .padding(10)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(12)
+        .background(
+            LinearGradient(
+                colors: [tint.opacity(0.10), Color.primary.opacity(0.03)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
     }
 }
 
@@ -324,12 +351,21 @@ private struct ScaleSummaryCard: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
         }
         .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .frame(maxWidth: .infinity, minHeight: 126, alignment: .topLeading)
+        .background(
+            LinearGradient(
+                colors: [tint.opacity(0.12), tint.opacity(0.04)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(tint.opacity(0.18), lineWidth: 0.9)
         )
     }
@@ -356,7 +392,14 @@ private struct CalloutStrip: View {
             }
         }
         .padding(10)
-        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(
+            LinearGradient(
+                colors: [tint.opacity(0.12), tint.opacity(0.04)],
+                startPoint: .leading,
+                endPoint: .trailing
+            ),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
     }
 }
 
@@ -382,23 +425,28 @@ private struct InsightMeaningRow: View {
 
             Spacer(minLength: 0)
         }
-        .padding(10)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(12)
+        .background(Color.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(tint.opacity(0.12), lineWidth: 0.8)
+        )
     }
 }
 
 private struct ControlExplanationRow: View {
+    let icon: String
     let title: String
     let detail: String
     let tint: Color
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "location.fill")
+            Image(systemName: icon)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(tint)
-                .frame(width: 24, height: 24)
-                .background(tint.opacity(0.14), in: Circle())
+                .frame(width: 28, height: 28)
+                .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -410,8 +458,8 @@ private struct ControlExplanationRow: View {
 
             Spacer(minLength: 0)
         }
-        .padding(10)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(12)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
@@ -424,7 +472,7 @@ private struct SourceBadgeGrid: View {
     ]
 
     var body: some View {
-        Card {
+        SectionPanel {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeading(
                     title: "Primary sources",
@@ -457,7 +505,7 @@ private struct SourceBadgeGrid: View {
 
 private struct DataQualityFootnoteCard: View {
     var body: some View {
-        Card {
+        SectionPanel {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeading(
                     title: "Data quality notes",
@@ -472,6 +520,40 @@ private struct DataQualityFootnoteCard: View {
                 InfoLine(icon: "clock", title: "Refresh behavior", detail: "Profiles update each time you tap a new location")
             }
         }
+    }
+}
+
+private struct SectionPanel<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        Card {
+            content
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.65))
+        )
+    }
+}
+
+private struct HeroSignalPill: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.74))
+            Text(subtitle)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
