@@ -148,9 +148,13 @@ struct ScaleStatusBanner: View {
                 Text(AppStrings.Labels.currentScale)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.primary.opacity(0.62))
-                Text("\(boundaryScale.rawValue) view")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(boundaryScale.themeColor)
+                HStack(spacing: 6) {
+                    Image(systemName: boundaryScale == .zip ? "square.3.layers.3d.top.filled" : "scope")
+                        .font(.caption.weight(.bold))
+                    Text("\(boundaryScale.rawValue) view")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundStyle(boundaryScale.themeColor)
             }
 
             Spacer(minLength: 0)
@@ -174,6 +178,17 @@ struct ScaleStatusBanner: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(boundaryScale.themeColor.opacity(0.18), lineWidth: 0.9)
         )
+    }
+}
+
+struct ContextPillRow: View {
+    let items: [String]
+    let tint: Color
+
+    var body: some View {
+        if !items.isEmpty {
+            FlexiblePillStack(items: items, tint: tint)
+        }
     }
 }
 
@@ -443,6 +458,45 @@ struct SwipeUpHint: View {
     }
 }
 
+private struct FlexiblePillStack: View {
+    let items: [String]
+    let tint: Color
+
+    var body: some View {
+        ViewThatFits(in: .vertical) {
+            HStack(spacing: 8) {
+                ForEach(items, id: \.self) { item in
+                    ContextPill(text: item, tint: tint)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(items, id: \.self) { item in
+                    ContextPill(text: item, tint: tint)
+                }
+            }
+        }
+    }
+}
+
+private struct ContextPill: View {
+    let text: String
+    let tint: Color
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(tint.opacity(0.12), in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(tint.opacity(0.20), lineWidth: 0.8)
+            )
+    }
+}
+
 struct Card<Content: View>: View {
     @ViewBuilder var content: Content
 
@@ -476,7 +530,7 @@ struct InsightRedesignPanel: View {
     @State private var animateCards = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(insights.enumerated()), id: \.offset) { index, insight in
                 InsightVisualCard(insight: insight)
                     .opacity(animateCards ? 1 : 0)
@@ -496,7 +550,7 @@ private struct InsightVisualCard: View {
     let insight: Insight
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 6) {
                 Image(systemName: symbol(for: insight.category))
                     .font(.caption2.weight(.semibold))
@@ -513,25 +567,21 @@ private struct InsightVisualCard: View {
                         .minimumScaleFactor(0.9)
                         .clipped()
                     Text(insight.title)
-                        .font(.caption.weight(.semibold))
-                        .lineLimit(1)
-                        .allowsTightening(true)
-                        .minimumScaleFactor(0.8)
-                        .clipped()
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer(minLength: 0)
             }
 
             Text(insight.detail)
-                .font(.system(size: 11))
+                .font(.caption)
                 .foregroundStyle(.primary.opacity(0.72))
-                .lineLimit(1)
-                .allowsTightening(true)
-                .minimumScaleFactor(0.75)
-                .clipped()
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(8)
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             LinearGradient(
@@ -618,7 +668,8 @@ struct InfographicBadge: View {
 
             Spacer(minLength: 0)
         }
-        .padding(10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
@@ -634,7 +685,7 @@ struct OccupancySplitBar: View {
     let ownerShare: Double
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(AppStrings.Labels.occupancyMix)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -696,7 +747,8 @@ struct MiniRingStat: View {
 
             Spacer(minLength: 0)
         }
-        .padding(10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .animation(.easeInOut(duration: 0.35), value: progress)
@@ -711,7 +763,7 @@ struct CompositionRow: View {
     let tint: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             HStack {
                 Text(label)
                     .font(.subheadline)

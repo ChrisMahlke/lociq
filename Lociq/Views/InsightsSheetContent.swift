@@ -54,7 +54,8 @@ struct InsightsSheetContent: View {
         let pop = metrics?.population ?? -1
         let income = demographics?.medianHouseholdIncome ?? -1
         let age = demographics?.medianAge ?? -1
-        return "\(boundaryScale.rawValue)-\(pop)-\(income)-\(age)"
+        let area = zipBundle?.place?.name ?? zipBundle?.tract?.geoid ?? zipCode ?? "none"
+        return "\(boundaryScale.rawValue)-\(area)-\(pop)-\(income)-\(age)"
     }
 
     private var themeTint: Color {
@@ -107,12 +108,16 @@ struct InsightsSheetContent: View {
                                 metricsSource: metricsSource,
                                 boundaryScale: $boundaryScale
                             )
+                            .id("header-\(refreshAnimationKey)")
+                            .transition(.opacity.combined(with: .move(edge: .top)))
 
                             KeyMetricsGrid(metrics: metrics)
+                                .id("metrics-\(refreshAnimationKey)")
+                                .transition(.opacity.combined(with: .scale(scale: 0.98)))
 
                             if let demographics {
+                                QuickSignalsSection(demographics: demographics, themeTint: themeTint)
                                 HousingAffordabilitySection(demographics: demographics, themeTint: themeTint)
-                                WorkAndHouseholdSection(demographics: demographics, themeTint: themeTint)
                                 DemographicCompositionSection(
                                     demographics: demographics,
                                     totalPopulation: metrics?.population,

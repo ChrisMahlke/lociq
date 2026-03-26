@@ -8,19 +8,28 @@ struct CollapsedInsightsHeaderRow: View {
     let hintVisible: Bool
     let hasActiveSelection: Bool
 
+    private var contextItems: [String] {
+        if hasActiveSelection {
+            return areaSubtitle
+                .split(separator: "·")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+        }
+
+        return ["Tap the map", "Expand for more"]
+    }
+
     var body: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(hasActiveSelection ? areaTitle : AppStrings.Labels.noSelectionTitle)
                     .font(.headline)
                     .bold()
                     .foregroundStyle(.primary)
-                Text(hasActiveSelection ? areaSubtitle : AppStrings.Labels.collapsedHint)
-                    .font(.caption)
+                Text(hasActiveSelection ? AppStrings.Labels.neighborhoodProfile : AppStrings.Labels.collapsedHint)
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.primary.opacity(0.72))
-                Text(hasActiveSelection ? "ZIP reads broader. Tract reads more locally." : "Tap once, then expand for deeper context.")
-                    .font(.caption2)
-                    .foregroundStyle(.primary.opacity(0.68))
+                ContextPillRow(items: contextItems, tint: hasActiveSelection ? boundaryScale.themeColor : .blue)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
@@ -74,6 +83,19 @@ struct ExpandedInsightsHeaderRow: View {
     let metricsSource: MetricsSource?
     @Binding var boundaryScale: BoundaryOverlayScale
 
+    private var contextItems: [String] {
+        let base = areaSubtitle.isEmpty ? (zipCode.map { ["ZIP \($0)"] } ?? []) : areaSubtitle
+            .split(separator: "·")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        if let src = metricsSource {
+            return base + [InsightsFormatting.dataSourceText(src)]
+        }
+
+        return base
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
@@ -81,30 +103,15 @@ struct ExpandedInsightsHeaderRow: View {
                     Text(areaTitle)
                         .font(.title3.weight(.bold))
                         .foregroundStyle(.primary)
-                    Text(areaSubtitle.isEmpty ? (zipCode ?? AppStrings.Symbols.emDash) : areaSubtitle)
+                    Text(AppStrings.Labels.profileSubtitle)
                         .font(.subheadline)
                         .foregroundStyle(.primary.opacity(0.72))
-                    Text(AppStrings.Labels.profileSubtitle)
-                        .font(.caption)
-                        .foregroundStyle(.primary.opacity(0.68))
                 }
 
                 Spacer()
-
-                if let src = metricsSource {
-                    Text(InsightsFormatting.dataSourceText(src))
-                        .font(.caption.bold())
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(Color.accentColor.opacity(0.14)))
-                        .foregroundStyle(Color.accentColor)
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.accentColor.opacity(0.18), lineWidth: 0.9)
-                        )
-                }
             }
 
+            ContextPillRow(items: contextItems, tint: boundaryScale.themeColor)
             ScaleStatusBanner(boundaryScale: $boundaryScale)
         }
     }
@@ -116,7 +123,7 @@ struct HousingAffordabilitySection: View {
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.housingAffordabilityTitle,
                     subtitle: "Home prices, rent, and how occupancy is split",
@@ -150,16 +157,16 @@ struct HousingAffordabilitySection: View {
     }
 }
 
-struct WorkAndHouseholdSection: View {
+struct QuickSignalsSection: View {
     let demographics: Demographics
     let themeTint: Color
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 InsightSectionHeader(
-                    title: AppStrings.Labels.workAndHouseholdSnapshot,
-                    subtitle: "Two quick signals for labor patterns and strain",
+                    title: AppStrings.Labels.quickSignals,
+                    subtitle: "Fast read on work patterns and economic pressure",
                     icon: "waveform.path.ecg.rectangle.fill",
                     tint: themeTint
                 )
@@ -191,7 +198,7 @@ struct DemographicCompositionSection: View {
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.demographicCompositionVisual,
                     subtitle: "Relative group sizes within the selected geography",
@@ -238,7 +245,7 @@ struct GeneratedInsightsSection: View {
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.insights,
                     subtitle: "Plain-English takeaways generated from the active profile",

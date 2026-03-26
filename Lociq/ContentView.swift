@@ -366,18 +366,23 @@ private struct BoundaryLoadingBadge: View {
             ProgressView()
                 .progressViewStyle(.circular)
                 .tint(.blue)
-            Text("Loading boundary...")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Loading boundary")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text("Updating neighborhood outline")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(
-            Capsule()
-                .fill(Color(.systemBackground).opacity(0.94))
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemBackground).opacity(0.95))
         )
         .overlay(
-            Capsule()
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(Color.blue.opacity(0.16), lineWidth: 0.9)
         )
         .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
@@ -400,6 +405,7 @@ private struct MapNoticeBanner: View {
                 Text(message)
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.95))
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
@@ -424,25 +430,55 @@ private struct MapCameraPresetsPanel: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            iconButton(systemImage: "location.fill", accessibilityLabel: "My Area", action: onFocusArea)
-            iconButton(systemImage: "scope", accessibilityLabel: "Reset Map", action: onReset)
+            iconButton(
+                systemImage: "location.fill",
+                title: AppStrings.Labels.mapControlsLocate,
+                accessibilityLabel: "My Area",
+                action: onFocusArea
+            )
+            iconButton(
+                systemImage: "scope",
+                title: AppStrings.Labels.mapControlsReset,
+                accessibilityLabel: "Reset Map",
+                action: onReset
+            )
         }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground).opacity(0.88))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 0.9)
+        )
     }
 
-    private func iconButton(systemImage: String, accessibilityLabel: String, action: @escaping () -> Void) -> some View {
+    private func iconButton(systemImage: String, title: String, accessibilityLabel: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 38, height: 38)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color(.systemBackground).opacity(0.94))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.9)
-                )
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(.systemBackground).opacity(0.94))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.9)
+                    )
+
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary.opacity(0.78))
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .frame(width: 112, alignment: .leading)
         }
         .buttonStyle(.plain)
         .shadow(color: .black.opacity(0.14), radius: 6, y: 2)

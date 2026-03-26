@@ -43,10 +43,12 @@ enum AppStrings {
         static let mapInstructionThree = "3. Compare how boundaries and context shift between ZIP and tract levels."
         static let collapsedHint = "Tap on map · swipe up for neighborhood profile"
         static let profileSubtitle = "Real census profile and quick-read insights"
+        static let neighborhoodProfile = "Neighborhood profile"
         static let housingAffordabilityTitle = "Housing and affordability"
         static let homeValue = "Home value"
         static let grossRent = "Gross rent"
         static let workAndHouseholdSnapshot = "Work and household snapshot"
+        static let quickSignals = "Quick signals"
         static let remoteWork = "Remote work"
         static let poverty = "Poverty"
         static let demographicCompositionVisual = "Demographic composition"
@@ -73,6 +75,8 @@ enum AppStrings {
         static let onboardingSkip = "Skip"
         static let overview = "Overview"
         static let currentScale = "Current scale"
+        static let mapControlsLocate = "Locate"
+        static let mapControlsReset = "Reset"
     }
 
     enum Network {
