@@ -32,11 +32,11 @@ Lociq is a SwiftUI iOS app for exploring neighborhood context on an interactive 
 
 ## Project Structure
 
-- [`Lociq`](/Users/chrismahlke/ios/UrbanPulse/Lociq): App source
-- [`Config`](/Users/chrismahlke/ios/UrbanPulse/Config): Build configuration and local setup files
-- [`docs/release`](/Users/chrismahlke/ios/UrbanPulse/docs/release): Release notes and checklist documents
-- [`LociqTests`](/Users/chrismahlke/ios/UrbanPulse/LociqTests): Unit tests
-- [`LociqUITests`](/Users/chrismahlke/ios/UrbanPulse/LociqUITests): UI tests
+- [`Lociq`](/Users/chrismahlke/ios/lociq/Lociq): App source
+- [`Config`](/Users/chrismahlke/ios/lociq/Config): Build configuration and local setup files
+- [`docs/release`](/Users/chrismahlke/ios/lociq/docs/release): Release notes and checklist documents
+- [`LociqTests`](/Users/chrismahlke/ios/lociq/LociqTests): Unit tests
+- [`LociqUITests`](/Users/chrismahlke/ios/lociq/LociqUITests): UI tests
 
 ## Requirements
 
@@ -46,8 +46,8 @@ Lociq is a SwiftUI iOS app for exploring neighborhood context on an interactive 
 
 ## Getting Started
 
-1. Open [`Lociq.xcodeproj`](/Users/chrismahlke/ios/UrbanPulse/Lociq.xcodeproj) in Xcode.
-2. Copy [`Config/GoogleMaps.example.xcconfig`](/Users/chrismahlke/ios/UrbanPulse/Config/GoogleMaps.example.xcconfig) to `Config/GoogleMaps.xcconfig`.
+1. Open [`Lociq.xcodeproj`](/Users/chrismahlke/ios/lociq/Lociq.xcodeproj) in Xcode.
+2. Copy [`Config/GoogleMaps.example.xcconfig`](/Users/chrismahlke/ios/lociq/Config/GoogleMaps.example.xcconfig) to `Config/GoogleMaps.xcconfig`.
 3. Add your real Google Maps SDK for iOS key to `Config/GoogleMaps.xcconfig`.
 4. Select an iPhone or simulator target in Xcode.
 5. Build and run.
@@ -63,11 +63,11 @@ GOOGLE_MAPS_API_KEY = YOUR_GOOGLE_MAPS_API_KEY
 
 The project uses local configuration files so the real Google Maps key is not hardcoded in Swift source and should not be committed.
 
-- Committed example: [`Config/GoogleMaps.example.xcconfig`](/Users/chrismahlke/ios/UrbanPulse/Config/GoogleMaps.example.xcconfig)
+- Committed example: [`Config/GoogleMaps.example.xcconfig`](/Users/chrismahlke/ios/lociq/Config/GoogleMaps.example.xcconfig)
 - Local file for your real key: `Config/GoogleMaps.xcconfig`
 - Optional legacy/local secrets file: `Config/Secrets.xcconfig`
 
-The app reads configuration through [`AppConfig.swift`](/Users/chrismahlke/ios/UrbanPulse/Lociq/AppConfig.swift), and Google Maps is initialized at startup in [`LociqApp.swift`](/Users/chrismahlke/ios/UrbanPulse/Lociq/LociqApp.swift).
+The app reads configuration through [`AppConfig.swift`](/Users/chrismahlke/ios/lociq/Lociq/AppConfig.swift), and Google Maps is initialized at startup in [`LociqApp.swift`](/Users/chrismahlke/ios/lociq/Lociq/LociqApp.swift).
 
 ## Google Maps Setup
 
@@ -95,7 +95,7 @@ io.chrismahlke.lociq
 
 - Google Maps initialization is performed at app startup.
 - If the Google Maps key is missing, the app logs a clear message and falls back to a missing-key state instead of silently failing.
-- Release notes live in [`docs/release/v1.0.0-release-notes.md`](/Users/chrismahlke/ios/UrbanPulse/docs/release/v1.0.0-release-notes.md).
+- Release notes live in [`docs/release/v1.0.0-release-notes.md`](/Users/chrismahlke/ios/lociq/docs/release/v1.0.0-release-notes.md).
 
 ## Testing
 
