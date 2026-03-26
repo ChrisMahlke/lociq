@@ -1,6 +1,24 @@
 import SwiftUI
 
 struct MoreScreen: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var backgroundWashColors: [Color] {
+        if colorScheme == .dark {
+            return [
+                Color(red: 0.08, green: 0.13, blue: 0.20),
+                Color(red: 0.07, green: 0.19, blue: 0.18),
+                Color(.systemGroupedBackground)
+            ]
+        }
+
+        return [
+            Color(red: 0.90, green: 0.96, blue: 0.98),
+            Color(red: 0.95, green: 0.97, blue: 0.95),
+            Color(.systemGroupedBackground)
+        ]
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -20,11 +38,7 @@ struct MoreScreen: View {
             ZStack(alignment: .top) {
                 Color(.systemGroupedBackground)
                 LinearGradient(
-                    colors: [
-                        Color(red: 0.90, green: 0.96, blue: 0.98),
-                        Color(red: 0.95, green: 0.97, blue: 0.95),
-                        Color(.systemGroupedBackground)
-                    ],
+                    colors: backgroundWashColors,
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
