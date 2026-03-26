@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F9092BAD2F747F7900230E66 /* lociq.icon in Resources */ = {isa = PBXBuildFile; fileRef = F9092BAC2F747F7900230E66 /* lociq.icon */; };
 		F9092BB52F74891300230E66 /* launchscreen3.png in Resources */ = {isa = PBXBuildFile; fileRef = F9092BB42F74891300230E66 /* launchscreen3.png */; };
+		F96708A02F758CFC006D11C2 /* lociq.icon in Resources */ = {isa = PBXBuildFile; fileRef = F967089F2F758CFC006D11C2 /* lociq.icon */; };
 		F9F07C2D2F567AE8009C7121 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = F9F07C2C2F567AE8009C7121 /* GoogleMaps */; };
 /* End PBXBuildFile section */
 
@@ -34,8 +34,8 @@
 		F2A1B300A0B14EAA9D700002 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		F2A1B300A0B14EAA9D700003 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		F2A1B300A0B14EAA9D700004 /* GoogleMaps.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = GoogleMaps.example.xcconfig; sourceTree = "<group>"; };
-		F9092BAC2F747F7900230E66 /* lociq.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = lociq.icon; sourceTree = "<group>"; };
 		F9092BB42F74891300230E66 /* launchscreen3.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = launchscreen3.png; sourceTree = "<group>"; };
+		F967089F2F758CFC006D11C2 /* lociq.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = lociq.icon; sourceTree = "<group>"; };
 		F9F07BFF2F567A44009C7121 /* Lociq.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lociq.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9F07C0E2F567A45009C7121 /* LociqTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LociqTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9F07C182F567A45009C7121 /* LociqUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LociqUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -99,8 +99,8 @@
 		F9F07BF62F567A44009C7121 = {
 			isa = PBXGroup;
 			children = (
+				F967089F2F758CFC006D11C2 /* lociq.icon */,
 				F9092BB42F74891300230E66 /* launchscreen3.png */,
-				F9092BAC2F747F7900230E66 /* lociq.icon */,
 				F2A1B300A0B14EAA9D700010 /* Config */,
 				F9F07C012F567A44009C7121 /* Lociq */,
 				F9F07C112F567A45009C7121 /* LociqTests */,
@@ -244,8 +244,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F96708A02F758CFC006D11C2 /* lociq.icon in Resources */,
 				F9092BB52F74891300230E66 /* launchscreen3.png in Resources */,
-				F9092BAD2F747F7900230E66 /* lociq.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
