@@ -1,6 +1,6 @@
 //
 //  CensusModels.swift
-//  UrbanPulse
+//  Lociq
 //
 //  Shared domain models for census metrics, geographic boundaries, and lookup responses.
 //

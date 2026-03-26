@@ -1,6 +1,6 @@
 //
-//  UrbanPulseUITestsLaunchTests.swift
-//  UrbanPulseUITests
+//  LociqUITestsLaunchTests.swift
+//  LociqUITests
 //
 //  Created by Chris Mahlke on 3/2/26.
 //
@@ -11,7 +11,7 @@ private enum UITestStrings {
     static let launchScreenName = "Launch Screen"
 }
 
-final class UrbanPulseUITestsLaunchTests: XCTestCase {
+final class LociqUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

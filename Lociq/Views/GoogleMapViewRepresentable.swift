@@ -1,6 +1,6 @@
 //
 //  GoogleMapViewRepresentable.swift
-//  UrbanPulse
+//  Lociq
 //
 //  SwiftUI wrapper around `GMSMapView` that handles taps and boundary polygon rendering.
 //

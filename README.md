@@ -1,6 +1,6 @@
-# UrbanPulse
+# Lociq
 
-UrbanPulse is a SwiftUI iOS app for exploring neighborhood context on an interactive map. Tap a location to load ZIP-level and Census tract-level demographic data, compare boundary scales, and review a compact neighborhood profile in a bottom sheet.
+Lociq is a SwiftUI iOS app for exploring neighborhood context on an interactive map. Tap a location to load ZIP-level and Census tract-level demographic data, compare boundary scales, and review a compact neighborhood profile in a bottom sheet.
 
 <img width="311" height="672" alt="IMG_3371" src="https://github.com/user-attachments/assets/988a27c6-8dd3-45e7-82e9-306450a234e5" />
 
@@ -32,11 +32,11 @@ UrbanPulse is a SwiftUI iOS app for exploring neighborhood context on an interac
 
 ## Project Structure
 
-- [`UrbanPulse`](/Users/chrismahlke/ios/UrbanPulse/UrbanPulse): App source
+- [`Lociq`](/Users/chrismahlke/ios/UrbanPulse/Lociq): App source
 - [`Config`](/Users/chrismahlke/ios/UrbanPulse/Config): Build configuration and local setup files
 - [`docs/release`](/Users/chrismahlke/ios/UrbanPulse/docs/release): Release notes and checklist documents
-- [`UrbanPulseTests`](/Users/chrismahlke/ios/UrbanPulse/UrbanPulseTests): Unit tests
-- [`UrbanPulseUITests`](/Users/chrismahlke/ios/UrbanPulse/UrbanPulseUITests): UI tests
+- [`LociqTests`](/Users/chrismahlke/ios/UrbanPulse/LociqTests): Unit tests
+- [`LociqUITests`](/Users/chrismahlke/ios/UrbanPulse/LociqUITests): UI tests
 
 ## Requirements
 
@@ -46,7 +46,7 @@ UrbanPulse is a SwiftUI iOS app for exploring neighborhood context on an interac
 
 ## Getting Started
 
-1. Open [`UrbanPulse.xcodeproj`](/Users/chrismahlke/ios/UrbanPulse/UrbanPulse.xcodeproj) in Xcode.
+1. Open [`Lociq.xcodeproj`](/Users/chrismahlke/ios/UrbanPulse/Lociq.xcodeproj) in Xcode.
 2. Copy [`Config/GoogleMaps.example.xcconfig`](/Users/chrismahlke/ios/UrbanPulse/Config/GoogleMaps.example.xcconfig) to `Config/GoogleMaps.xcconfig`.
 3. Add your real Google Maps SDK for iOS key to `Config/GoogleMaps.xcconfig`.
 4. Select an iPhone or simulator target in Xcode.
@@ -67,7 +67,7 @@ The project uses local configuration files so the real Google Maps key is not ha
 - Local file for your real key: `Config/GoogleMaps.xcconfig`
 - Optional legacy/local secrets file: `Config/Secrets.xcconfig`
 
-The app reads configuration through [`UrbanPulse/AppConfig.swift`](/Users/chrismahlke/ios/UrbanPulse/UrbanPulse/AppConfig.swift), and Google Maps is initialized at startup in [`UrbanPulse/UrbanPulseApp.swift`](/Users/chrismahlke/ios/UrbanPulse/UrbanPulse/UrbanPulseApp.swift).
+The app reads configuration through [`AppConfig.swift`](/Users/chrismahlke/ios/UrbanPulse/Lociq/AppConfig.swift), and Google Maps is initialized at startup in [`LociqApp.swift`](/Users/chrismahlke/ios/UrbanPulse/Lociq/LociqApp.swift).
 
 ## Google Maps Setup
 
@@ -82,7 +82,7 @@ In Google Cloud:
 Current bundle identifier:
 
 ```text
-io.chrismahlke.UrbanPulse
+io.chrismahlke.lociq
 ```
 
 ## Data Sources
@@ -102,7 +102,7 @@ io.chrismahlke.UrbanPulse
 Run tests from Xcode or with:
 
 ```bash
-xcodebuild test -project UrbanPulse.xcodeproj -scheme UrbanPulse -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild test -project Lociq.xcodeproj -scheme Lociq -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 
 ## Security Notes

@@ -63,7 +63,7 @@ private struct MoreHeroCard: View {
                 .frame(width: 34, height: 34)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("How UrbanPulse works")
+                    Text("How Lociq works")
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.white)
                     Text("A quick guide to reading the map and profile cards.")
@@ -250,7 +250,7 @@ private struct PrivacyAndTrustCard: View {
                 InfoLine(
                     icon: "location.circle",
                     title: "Location is optional",
-                    detail: "UrbanPulse uses location to center the map and help you explore nearby areas more quickly."
+                    detail: "Lociq uses location to center the map and help you explore nearby areas more quickly."
                 )
                 InfoLine(
                     icon: "person.crop.circle.badge.checkmark",
@@ -490,7 +490,7 @@ private struct SourceBadgeGrid: View {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeading(
                     title: "Primary sources",
-                    subtitle: "The public datasets behind UrbanPulse",
+                    subtitle: "The public datasets behind Lociq",
                     icon: "doc.text.magnifyingglass",
                     tint: .indigo
                 )

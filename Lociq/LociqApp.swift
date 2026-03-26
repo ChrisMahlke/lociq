@@ -1,6 +1,6 @@
 //
-//  UrbanPulseApp.swift
-//  UrbanPulse
+//  LociqApp.swift
+//  Lociq
 //
 //  App entry point that configures third-party SDKs and boots the root SwiftUI scene.
 //
@@ -9,7 +9,7 @@ import SwiftUI
 import GoogleMaps
 
 @main
-struct UrbanPulseApp: App {
+struct LociqApp: App {
     /// Initializes app-level SDK configuration before the first view appears.
     init() {
         configureGoogleMaps()

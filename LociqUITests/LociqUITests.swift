@@ -1,13 +1,13 @@
 //
-//  UrbanPulseUITests.swift
-//  UrbanPulseUITests
+//  LociqUITests.swift
+//  LociqUITests
 //
 //  Created by Chris Mahlke on 3/2/26.
 //
 
 import XCTest
 
-final class UrbanPulseUITests: XCTestCase {
+final class LociqUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

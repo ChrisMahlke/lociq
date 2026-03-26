@@ -1,6 +1,6 @@
 //
 //  AppConfig.swift
-//  UrbanPulse
+//  Lociq
 //
 //  Centralized runtime configuration values used across services and SDK setup.
 //

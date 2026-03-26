@@ -1,6 +1,6 @@
 //
 //  SampleMetricsFactory.swift
-//  UrbanPulse
+//  Lociq
 //
 //  Deterministic fallback metric generation used when live census lookups are unavailable.
 //

@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  UrbanPulse
+//  Lociq
 //
 //  Created by Chris Mahlke on 3/6/26.
 //
