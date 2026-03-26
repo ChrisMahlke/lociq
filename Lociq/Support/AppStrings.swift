@@ -75,8 +75,11 @@ enum AppStrings {
         static let onboardingSkip = "Skip"
         static let overview = "Overview"
         static let currentScale = "Current scale"
-        static let mapControlsLocate = "Locate"
-        static let mapControlsReset = "Reset"
+        static let tractFallbackTitle = "ZIP fallback active"
+        static let tractFallbackBody = "Tract data is unavailable for this selection, so the profile is showing ZIP-level Census data."
+        static let mapTipTitle = "Tap to explore"
+        static let mapTipBody = "Select any point on the map to load a neighborhood profile, then switch between ZIP and tract."
+        static let dismiss = "Dismiss"
     }
 
     enum Network {

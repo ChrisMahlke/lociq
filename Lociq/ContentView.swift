@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CoreLocation
+import UIKit
 
 enum TabSelection {
     case map, more
@@ -28,6 +29,7 @@ enum BoundaryOverlayScale: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
+    @AppStorage("hasSeenMapQuickTip") private var hasSeenMapQuickTip: Bool = false
 
     @State private var selection: TabSelection = .map
     @State private var tappedCoordinate: CLLocationCoordinate2D?
@@ -68,12 +70,18 @@ struct ContentView: View {
         boundaryScale.themeColor
     }
 
+    private var shouldShowMapQuickTip: Bool {
+        selection == .map && !showOnboarding && !hasSeenMapQuickTip && tappedCoordinate == nil
+    }
+
     private var tappedBinding: Binding<CLLocationCoordinate2D?> {
         Binding(
             get: { tappedCoordinate },
             set: { newValue in
                 tappedCoordinate = newValue
                 if let coord = newValue {
+                    hasSeenMapQuickTip = true
+                    Haptics.selectionChanged()
                     refreshData(for: coord)
                 }
             }
@@ -120,6 +128,15 @@ struct ContentView: View {
                         VStack {
                             Spacer()
                             HStack {
+                                if shouldShowMapQuickTip {
+                                    MapQuickTipCard {
+                                        withAnimation(.easeOut(duration: 0.2)) {
+                                            hasSeenMapQuickTip = true
+                                        }
+                                    }
+                                    .transition(.move(edge: .leading).combined(with: .opacity))
+                                }
+
                                 Spacer()
                                 MapCameraPresetsPanel(
                                     onFocusArea: {
@@ -178,6 +195,7 @@ struct ContentView: View {
             .allowsHitTesting(true)
         }
         .onChange(of: boundaryScale) { newScale in
+            Haptics.softImpact()
             let requestID = activeSelectionRequestID
             activeScaleTask?.cancel()
             activeScaleTask = Task {
@@ -341,6 +359,20 @@ struct ContentView: View {
     }
 }
 
+private enum Haptics {
+    static func selectionChanged() {
+        let generator = UISelectionFeedbackGenerator()
+        generator.prepare()
+        generator.selectionChanged()
+    }
+
+    static func softImpact() {
+        let generator = UIImpactFeedbackGenerator(style: .soft)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.8)
+    }
+}
+
 private struct MissingGoogleMapsKeyView: View {
     var body: some View {
         ZStack {
@@ -365,6 +397,50 @@ private struct MissingGoogleMapsKeyView: View {
                     .padding(.horizontal, 28)
             }
         }
+    }
+}
+
+private struct MapQuickTipCard: View {
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "hand.tap.fill")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.blue)
+                .frame(width: 30, height: 30)
+                .background(Color.blue.opacity(0.14), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(AppStrings.Labels.mapTipTitle)
+                    .font(.subheadline.weight(.semibold))
+                Text(AppStrings.Labels.mapTipBody)
+                    .font(.caption)
+                    .foregroundStyle(.primary.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22, height: 22)
+                    .background(Color(.systemBackground).opacity(0.7), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(AppStrings.Labels.dismiss)
+        }
+        .padding(12)
+        .frame(maxWidth: 250, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemBackground).opacity(0.95))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.blue.opacity(0.15), lineWidth: 0.9)
+        )
+        .shadow(color: .black.opacity(0.12), radius: 10, y: 3)
     }
 }
 
@@ -440,13 +516,11 @@ private struct MapCameraPresetsPanel: View {
         VStack(spacing: 8) {
             iconButton(
                 systemImage: "location.fill",
-                title: AppStrings.Labels.mapControlsLocate,
                 accessibilityLabel: "My Area",
                 action: onFocusArea
             )
             iconButton(
                 systemImage: "scope",
-                title: AppStrings.Labels.mapControlsReset,
                 accessibilityLabel: "Reset Map",
                 action: onReset
             )
@@ -462,31 +536,20 @@ private struct MapCameraPresetsPanel: View {
         )
     }
 
-    private func iconButton(systemImage: String, title: String, accessibilityLabel: String, action: @escaping () -> Void) -> some View {
+    private func iconButton(systemImage: String, accessibilityLabel: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color(.systemBackground).opacity(0.94))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.9)
-                    )
-
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary.opacity(0.78))
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .frame(width: 112, alignment: .leading)
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 46, height: 46)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(.systemBackground).opacity(0.94))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.9)
+                )
         }
         .buttonStyle(.plain)
         .shadow(color: .black.opacity(0.14), radius: 6, y: 2)

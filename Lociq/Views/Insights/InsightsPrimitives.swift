@@ -132,8 +132,13 @@ struct BoundaryScaleIconToggle: View {
 
 struct ScaleStatusBanner: View {
     @Binding var boundaryScale: BoundaryOverlayScale
+    let isFallbackToZIP: Bool
 
     private var detail: String {
+        if isFallbackToZIP {
+            return "Using broader ZIP context"
+        }
+
         switch boundaryScale {
         case .zip:
             return "Broader neighborhood read"
@@ -143,27 +148,36 @@ struct ScaleStatusBanner: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AppStrings.Labels.currentScale)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.primary.opacity(0.62))
-                HStack(spacing: 6) {
-                    Image(systemName: boundaryScale == .zip ? "square.3.layers.3d.top.filled" : "scope")
-                        .font(.caption.weight(.bold))
-                    Text("\(boundaryScale.rawValue) view")
-                        .font(.subheadline.weight(.semibold))
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(AppStrings.Labels.currentScale)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.primary.opacity(0.62))
+                    HStack(spacing: 6) {
+                        Image(systemName: boundaryScale == .zip ? "square.3.layers.3d.top.filled" : "scope")
+                            .font(.caption.weight(.bold))
+                        Text("\(boundaryScale.rawValue) view")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(boundaryScale.themeColor)
                 }
-                .foregroundStyle(boundaryScale.themeColor)
+
+                Spacer(minLength: 0)
+
+                Text(detail)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary.opacity(0.72))
+
+                BoundaryScaleIconToggle(scale: $boundaryScale)
             }
 
-            Spacer(minLength: 0)
-
-            Text(detail)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.primary.opacity(0.72))
-
-            BoundaryScaleIconToggle(scale: $boundaryScale)
+            if isFallbackToZIP {
+                Label(AppStrings.Labels.tractFallbackBody, systemImage: "arrow.triangle.branch")
+                    .font(.caption)
+                    .foregroundStyle(.primary.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(12)
         .background(

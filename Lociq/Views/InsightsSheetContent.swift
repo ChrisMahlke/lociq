@@ -62,6 +62,10 @@ struct InsightsSheetContent: View {
         boundaryScale.themeColor
     }
 
+    private var isFallbackToZIP: Bool {
+        boundaryScale == .tract && metricsSource == .zcta
+    }
+
     var body: some View {
         Group {
             if isCollapsed {
@@ -106,6 +110,7 @@ struct InsightsSheetContent: View {
                                 areaSubtitle: areaSubtitle,
                                 zipCode: zipCode,
                                 metricsSource: metricsSource,
+                                isFallbackToZIP: isFallbackToZIP,
                                 boundaryScale: $boundaryScale
                             )
                             .id("header-\(refreshAnimationKey)")

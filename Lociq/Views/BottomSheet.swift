@@ -10,7 +10,7 @@ struct BottomSheet<Content: View>: View {
     // Snap points relative to available height.
     private func snapPoints(in height: CGFloat) -> (peek: CGFloat, mid: CGFloat, full: CGFloat) {
         let peek: CGFloat = max(140, min(220, height * 0.25))
-        let mid: CGFloat = height * 0.50
+        let mid: CGFloat = height * 0.54
         let full: CGFloat = height * 0.92
         return (peek, mid, full)
     }
@@ -62,20 +62,17 @@ struct BottomSheet<Content: View>: View {
                     .onChanged { value in
                         if dragStartHeight == nil { dragStartHeight = sheetOffset }
                         let proposed = (dragStartHeight ?? sheetOffset) - value.translation.height
-                        let clamped = max(snaps.peek, min(snaps.full, proposed))
+                        let clamped = clampedSheetHeight(for: proposed, snaps: snaps)
                         translation = clamped - (dragStartHeight ?? sheetOffset)
                     }
                     .onEnded { value in
-                        let velocity = -value.velocity.height
-                        let proposed = (dragStartHeight ?? sheetOffset) - value.translation.height
-                        let currentHeight = max(snaps.peek, min(snaps.full, proposed))
+                        let projected = (dragStartHeight ?? sheetOffset) - value.predictedEndTranslation.height
+                        let currentHeight = clampedSheetHeight(for: projected, snaps: snaps)
                         let targets = [snaps.peek, snaps.mid, snaps.full]
                         let target: CGFloat
-                        if velocity > 500 { target = targets.last! }
-                        else if velocity < -500 { target = targets.first! }
-                        else { target = targets.min(by: { abs($0 - currentHeight) < abs($1 - currentHeight) }) ?? snaps.mid }
+                        target = targets.min(by: { abs($0 - currentHeight) < abs($1 - currentHeight) }) ?? snaps.mid
 
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        withAnimation(.interactiveSpring(response: 0.34, dampingFraction: 0.86, blendDuration: 0.15)) {
                             sheetOffset = target
                             translation = 0
                         }
@@ -88,5 +85,19 @@ struct BottomSheet<Content: View>: View {
             .allowsHitTesting(true)
             .accessibilityElement(children: .contain)
         }
+    }
+
+    private func clampedSheetHeight(for proposed: CGFloat, snaps: (peek: CGFloat, mid: CGFloat, full: CGFloat)) -> CGFloat {
+        if proposed < snaps.peek {
+            let overshoot = snaps.peek - proposed
+            return snaps.peek - min(overshoot * 0.18, 18)
+        }
+
+        if proposed > snaps.full {
+            let overshoot = proposed - snaps.full
+            return snaps.full + min(overshoot * 0.18, 18)
+        }
+
+        return proposed
     }
 }

@@ -81,6 +81,7 @@ struct ExpandedInsightsHeaderRow: View {
     let areaSubtitle: String
     let zipCode: String?
     let metricsSource: MetricsSource?
+    let isFallbackToZIP: Bool
     @Binding var boundaryScale: BoundaryOverlayScale
 
     private var contextItems: [String] {
@@ -112,7 +113,7 @@ struct ExpandedInsightsHeaderRow: View {
             }
 
             ContextPillRow(items: contextItems, tint: boundaryScale.themeColor)
-            ScaleStatusBanner(boundaryScale: $boundaryScale)
+            ScaleStatusBanner(boundaryScale: $boundaryScale, isFallbackToZIP: isFallbackToZIP)
         }
     }
 }
