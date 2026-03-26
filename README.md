@@ -21,14 +21,13 @@ Lociq is a SwiftUI iOS app for exploring neighborhood context on an interactive 
 
 - [`Lociq`](/Users/chrismahlke/ios/lociq/Lociq): App source
 - [`Config`](/Users/chrismahlke/ios/lociq/Config): Build configuration and local setup files
-- [`docs/release`](/Users/chrismahlke/ios/lociq/docs/release): Release notes and checklist documents
 - [`LociqTests`](/Users/chrismahlke/ios/lociq/LociqTests): Unit tests
 - [`LociqUITests`](/Users/chrismahlke/ios/lociq/LociqUITests): UI tests
 
 ## Requirements
 
 - Xcode 16 or newer
-- iOS deployment target configured in the project
+- iOS 16.0 or newer
 - A Google Maps SDK for iOS API key
 
 ## Getting Started
@@ -82,7 +81,6 @@ io.chrismahlke.lociq
 
 - Google Maps initialization is performed at app startup.
 - If the Google Maps key is missing, the app logs a clear message and falls back to a missing-key state instead of silently failing.
-- Release notes live in [`docs/release/v1.0.0-release-notes.md`](/Users/chrismahlke/ios/lociq/docs/release/v1.0.0-release-notes.md).
 
 ## Testing
 

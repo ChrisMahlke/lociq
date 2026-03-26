@@ -538,7 +538,7 @@ private struct DataQualityFootnoteCard: View {
                     tint: .green
                 )
 
-                InfoLine(icon: "calendar", title: "Latest ACS dataset", detail: "2022 ACS 5-Year release")
+                InfoLine(icon: "calendar", title: "Latest ACS dataset", detail: AppStrings.Release.latestACS5YearDataset)
                 InfoLine(icon: "waveform.path.ecg", title: "Values are estimates", detail: "Census values include statistical uncertainty")
                 InfoLine(icon: "location", title: "Boundary geometry", detail: "ZIP and tract polygons are generalized for map display")
                 InfoLine(icon: "clock", title: "Refresh behavior", detail: "Profiles update each time you tap a new location")

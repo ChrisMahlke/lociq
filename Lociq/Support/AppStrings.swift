@@ -83,6 +83,10 @@ enum AppStrings {
     enum Debug {
         static let acsZipFailed = "ACS ZCTA fetch failed:"
     }
+
+    enum Release {
+        static let latestACS5YearDataset = "2022 ACS 5-Year release"
+    }
 }
 
 enum SampleData {

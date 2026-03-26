@@ -9,6 +9,14 @@ import XCTest
 
 final class LociqUITests: XCTestCase {
 
+    private func makeApp(skippingOnboarding: Bool = true) -> XCUIApplication {
+        let app = XCUIApplication()
+        if skippingOnboarding {
+            app.launchArguments += ["UITEST_SKIP_ONBOARDING"]
+        }
+        return app
+    }
+
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.
 
@@ -23,19 +31,25 @@ final class LociqUITests: XCTestCase {
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
+    func testTabSwitchingShowsMoreScreenContent() throws {
+        let app = makeApp()
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        XCTAssertTrue(app.buttons["Map"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["More"].waitForExistence(timeout: 5))
+
+        app.buttons["More"].tap()
+        XCTAssertTrue(app.staticTexts["How Lociq works"].waitForExistence(timeout: 5))
+
+        app.buttons["Map"].tap()
+        XCTAssertTrue(app.buttons["More"].waitForExistence(timeout: 5))
     }
 
     @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
+            makeApp().launch()
         }
     }
 }

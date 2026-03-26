@@ -7,9 +7,12 @@
 
 import SwiftUI
 import GoogleMaps
+import os
 
 @main
 struct LociqApp: App {
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "io.chrismahlke.lociq", category: "App")
+
     /// Initializes app-level SDK configuration before the first view appears.
     init() {
         configureGoogleMaps()
@@ -25,17 +28,15 @@ struct LociqApp: App {
         let apiKey = AppConfig.googleMapsAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !apiKey.isEmpty else {
             let diagnostics = AppConfig.googleMapsDiagnostics.summary
-            let message = """
+            #if DEBUG
+            Self.logger.error("""
             Missing GOOGLE_MAPS_API_KEY. Copy Config/GoogleMaps.example.xcconfig \
             to Config/GoogleMaps.xcconfig and add your real key locally.
 
             \(diagnostics)
-            """
-
-            #if DEBUG
-            print(message)
+            """)
             #else
-            print(message)
+            Self.logger.error("Missing Google Maps API key. The app will show the missing-key fallback view.")
             #endif
 
             return

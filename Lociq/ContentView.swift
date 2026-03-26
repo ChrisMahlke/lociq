@@ -47,6 +47,10 @@ struct ContentView: View {
     @State private var mapNotice: String? = nil
     @State private var showOnboarding: Bool = false
 
+    private var isUITestSkippingOnboarding: Bool {
+        ProcessInfo.processInfo.arguments.contains("UITEST_SKIP_ONBOARDING")
+    }
+
     // Keeps floating controls above the ribbon and visible when the sheet is at peek height.
     private var mapControlsBottomPadding: CGFloat {
         max(214, sheetOffset + 54)
@@ -163,7 +167,7 @@ struct ContentView: View {
             .padding(.bottom, 0)
             .allowsHitTesting(true)
         }
-        .onChange(of: boundaryScale) { _, newScale in
+        .onChange(of: boundaryScale) { newScale in
             let requestID = activeSelectionRequestID
             activeScaleTask?.cancel()
             activeScaleTask = Task {
@@ -171,6 +175,9 @@ struct ContentView: View {
             }
         }
         .onAppear {
+            if isUITestSkippingOnboarding {
+                hasSeenOnboarding = true
+            }
             if !hasSeenOnboarding {
                 showOnboarding = true
             }
