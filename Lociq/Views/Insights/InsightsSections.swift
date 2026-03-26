@@ -10,12 +10,13 @@ struct CollapsedInsightsHeaderRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(zipLine)
                     .font(.headline).bold()
+                    .foregroundStyle(.primary)
                 Text(AppStrings.Labels.collapsedHint)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary.opacity(0.72))
                 Text("ZIP shows the broader area. Tract shows more local detail.")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary.opacity(0.68))
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
@@ -70,23 +71,32 @@ struct ExpandedInsightsHeaderRow: View {
     var body: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(zipCode ?? AppStrings.Symbols.emDash).font(.title2).bold()
+                Text(zipCode ?? AppStrings.Symbols.emDash)
+                    .font(.title2)
+                    .bold()
+                    .foregroundStyle(.primary)
                 Text(AppStrings.Labels.profileSubtitle)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary.opacity(0.72))
                 Text("Use ZIP for the broader area or Tract for more local detail.")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary.opacity(0.68))
             }
             Spacer()
-            BoundaryScaleIconToggle(scale: $boundaryScale)
-            if let src = metricsSource {
-                Text(InsightsFormatting.dataSourceText(src))
-                    .font(.caption.bold())
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(Color.accentColor.opacity(0.15)))
-                    .foregroundColor(.accentColor)
+            VStack(alignment: .trailing, spacing: 8) {
+                BoundaryScaleIconToggle(scale: $boundaryScale)
+                if let src = metricsSource {
+                    Text(InsightsFormatting.dataSourceText(src))
+                        .font(.caption.bold())
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Color.accentColor.opacity(0.14)))
+                        .foregroundStyle(Color.accentColor)
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.accentColor.opacity(0.18), lineWidth: 0.9)
+                        )
+                }
             }
         }
     }

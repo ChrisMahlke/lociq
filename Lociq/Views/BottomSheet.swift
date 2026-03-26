@@ -28,7 +28,7 @@ struct BottomSheet<Content: View>: View {
 
             VStack(spacing: 0) {
                 Capsule()
-                    .fill(Color.secondary.opacity(0.35))
+                    .fill(Color.secondary.opacity(0.32))
                     .frame(width: 36, height: 5)
                     .padding(.top, 8)
                     .padding(.bottom, 6)
@@ -40,11 +40,21 @@ struct BottomSheet<Content: View>: View {
             }
             .frame(width: geo.size.width)
             .frame(height: sheetHeight, alignment: .top)
-                .background(.regularMaterial)
-            .shadow(color: .black.opacity(0.16), radius: 10, y: 2)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(.systemBackground).opacity(0.97),
+                        Color(.secondarySystemGroupedBackground).opacity(0.96)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: .black.opacity(0.14), radius: 14, y: 3)
             .overlay(
-                Rectangle()
-                    .strokeBorder(Color.primary.opacity(0.10), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
             )
             .offset(y: totalHeight - sheetHeight - bottomOffset)
             .gesture(

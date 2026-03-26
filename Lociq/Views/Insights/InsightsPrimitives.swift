@@ -100,17 +100,17 @@ struct BoundaryScaleIconToggle: View {
 
                     Text(option.rawValue)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(isSelected ? color : .secondary)
+                        .foregroundStyle(isSelected ? color : .primary.opacity(0.72))
                         .frame(minWidth: 54)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(
                             Capsule()
-                                .fill(isSelected ? color.opacity(0.16) : Color.clear)
+                                .fill(isSelected ? color.opacity(0.16) : Color(.secondarySystemGroupedBackground))
                         )
                         .overlay(
                             Capsule()
-                                .stroke(isSelected ? color.opacity(0.45) : Color.secondary.opacity(0.18), lineWidth: 0.9)
+                                .stroke(isSelected ? color.opacity(0.42) : Color.primary.opacity(0.10), lineWidth: 0.9)
                         )
                 }
                 .buttonStyle(.plain)
@@ -119,8 +119,14 @@ struct BoundaryScaleIconToggle: View {
             }
         }
         .padding(6)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule())
+        .background(
+            Capsule()
+                .fill(Color(.systemBackground).opacity(0.94))
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
     }
 }
 
@@ -171,7 +177,7 @@ struct MetricTile: View {
         HStack(spacing: 10) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    .fill(Color.accentColor.opacity(0.14))
                 Image(systemName: systemImage)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(.tint)
@@ -199,9 +205,19 @@ struct MetricTile: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
+        .background(
+            LinearGradient(
+                colors: [Color.accentColor.opacity(0.12), Color(.secondarySystemGroupedBackground)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.accentColor.opacity(0.18), lineWidth: 0.9)
+        )
+        .shadow(color: .black.opacity(0.05), radius: 8, y: 3)
         .animation(.easeInOut(duration: 0.22), value: value)
         .animation(.easeInOut(duration: 0.22), value: loading)
     }
@@ -237,15 +253,21 @@ struct CollapsedMetricChip: View {
                 } else {
                     Text(AppStrings.Symbols.emDash)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary.opacity(0.7))
                 }
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule())
+        .background(
+            Capsule()
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color.accentColor.opacity(0.14), lineWidth: 0.9)
+        )
         .shadow(color: .black.opacity(0.05), radius: 3, y: 1)
         .animation(.easeInOut(duration: 0.2), value: value)
     }
@@ -259,7 +281,7 @@ struct SwipeUpHint: View {
             .font(.caption2.bold())
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(Capsule().fill(Color.primary.opacity(0.06)))
+            .background(Capsule().fill(Color(.secondarySystemGroupedBackground)))
             .opacity(0.9)
             .offset(y: bounce ? -1 : 1)
             .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: bounce)
@@ -277,11 +299,20 @@ struct Card<Content: View>: View {
                 .padding(14)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(.systemBackground).opacity(0.98),
+                    Color(.secondarySystemGroupedBackground).opacity(0.96)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.accentColor.opacity(0.22), lineWidth: 1)
+                .stroke(Color.accentColor.opacity(0.20), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
     }
@@ -341,7 +372,7 @@ private struct InsightVisualCard: View {
 
             Text(insight.detail)
                 .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary.opacity(0.72))
                 .lineLimit(1)
                 .allowsTightening(true)
                 .minimumScaleFactor(0.75)
@@ -349,10 +380,17 @@ private struct InsightVisualCard: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(
+            LinearGradient(
+                colors: [color(for: insight.category).opacity(0.14), Color(.secondarySystemGroupedBackground)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(severityColor(for: insight.severity).opacity(0.22), lineWidth: 0.9)
+                .stroke(severityColor(for: insight.severity).opacity(0.24), lineWidth: 0.9)
         )
     }
 

@@ -356,14 +356,22 @@ private struct BoundaryLoadingBadge: View {
         HStack(spacing: 10) {
             ProgressView()
                 .progressViewStyle(.circular)
-                .tint(.white)
+                .tint(.blue)
             Text("Loading boundary...")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(Color.black.opacity(0.78), in: Capsule())
+        .background(
+            Capsule()
+                .fill(Color(.systemBackground).opacity(0.94))
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color.blue.opacity(0.16), lineWidth: 0.9)
+        )
+        .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
     }
 }
 
@@ -416,12 +424,19 @@ private struct MapCameraPresetsPanel: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .frame(width: 38, height: 38)
-                .background(Color.black.opacity(0.72), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(.systemBackground).opacity(0.94))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.9)
+                )
         }
         .buttonStyle(.plain)
-        .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+        .shadow(color: .black.opacity(0.14), radius: 6, y: 2)
         .accessibilityLabel(accessibilityLabel)
     }
 }
