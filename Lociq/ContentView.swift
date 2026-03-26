@@ -51,9 +51,17 @@ struct ContentView: View {
         ProcessInfo.processInfo.arguments.contains("UITEST_SKIP_ONBOARDING")
     }
 
+    private var defaultSheetPeekHeight: CGFloat {
+        max(140, min(220, UIScreen.main.bounds.height * 0.25))
+    }
+
+    private var mapBottomInset: CGFloat {
+        max(defaultSheetPeekHeight, sheetOffset) + 12
+    }
+
     // Keeps floating controls above the ribbon and visible when the sheet is at peek height.
     private var mapControlsBottomPadding: CGFloat {
-        max(214, sheetOffset + 54)
+        mapBottomInset + 28
     }
 
     private var boundaryThemeTint: Color {
@@ -81,7 +89,8 @@ struct ContentView: View {
                         GoogleMapViewRepresentable(
                             tappedCoordinate: tappedBinding,
                             selectedBoundary: selectedBoundary,
-                            selectedScale: boundaryScale
+                            selectedScale: boundaryScale,
+                            contentInsetBottom: mapBottomInset
                         )
                         .ignoresSafeArea(edges: .top)
                     } else {
@@ -166,7 +175,6 @@ struct ContentView: View {
                 BottomRibbon(selection: $selection)
             }
             .zIndex(2)
-            .padding(.bottom, 0)
             .allowsHitTesting(true)
         }
         .onChange(of: boundaryScale) { newScale in

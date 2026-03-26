@@ -12,18 +12,13 @@ struct BottomRibbon: View {
         .padding(.top, 10)
         .padding(.bottom, 8)
         .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(.secondarySystemBackground).opacity(0.97))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.primary.opacity(0.10), lineWidth: 0.9)
-                )
-                .shadow(color: .black.opacity(0.12), radius: 14, y: -2)
-                .padding(.horizontal, 10)
-                .padding(.bottom, 4),
-            alignment: .bottom
-        )
+        .background(Color(.secondarySystemBackground).opacity(0.97))
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.primary.opacity(0.12))
+                .frame(height: 1)
+        }
+        .shadow(color: .black.opacity(0.10), radius: 10, y: -1)
         .ignoresSafeArea(edges: .bottom)
     }
 

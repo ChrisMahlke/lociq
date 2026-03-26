@@ -19,15 +19,18 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
     @Binding var tappedCoordinate: CLLocationCoordinate2D?
     let selectedBoundary: GeoJSONFeatureCollection?
     let selectedScale: BoundaryOverlayScale
+    let contentInsetBottom: CGFloat
 
     init(
         tappedCoordinate: Binding<CLLocationCoordinate2D?>,
         selectedBoundary: GeoJSONFeatureCollection?,
-        selectedScale: BoundaryOverlayScale = .zip
+        selectedScale: BoundaryOverlayScale = .zip,
+        contentInsetBottom: CGFloat = 0
     ) {
         self._tappedCoordinate = tappedCoordinate
         self.selectedBoundary = selectedBoundary
         self.selectedScale = selectedScale
+        self.contentInsetBottom = contentInsetBottom
     }
 
     /// Builds the base Google map configuration used for the shared map instance.
@@ -75,6 +78,7 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
 
     func updateUIView(_ uiView: GMSMapView, context: Context) {
         uiView.delegate = context.coordinator
+        uiView.padding = UIEdgeInsets(top: 0, left: 0, bottom: contentInsetBottom, right: 0)
         context.coordinator.updateBoundaryOverlay(on: uiView, with: selectedBoundary, scale: selectedScale)
     }
 
