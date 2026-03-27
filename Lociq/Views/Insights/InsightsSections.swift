@@ -26,7 +26,7 @@ struct CollapsedInsightsHeaderRow: View {
                     .font(.headline)
                     .bold()
                     .foregroundStyle(.primary)
-                Text(hasActiveSelection ? AppStrings.Labels.neighborhoodProfile : AppStrings.Labels.collapsedHint)
+                Text(AppStrings.Labels.collapsedHint)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.primary.opacity(0.72))
                 ContextPillRow(items: contextItems, tint: hasActiveSelection ? boundaryScale.themeColor : .blue)
