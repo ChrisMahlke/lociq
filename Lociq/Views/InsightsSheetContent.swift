@@ -13,8 +13,6 @@ struct InsightsSheetContent: View {
 
     @State private var hintVisible: Bool = true
 
-    private var insights: [Insight] { zipBundle?.insights ?? [] }
-
     private var isCollapsed: Bool { sheetOffset < 300 }
 
     private var zipLine: String {
@@ -44,7 +42,7 @@ struct InsightsSheetContent: View {
         }
 
         if boundaryScale == .tract, let tractCode = zipBundle?.tract?.tractCode, !tractCode.isEmpty {
-            parts.append("Tract \(tractCode)")
+            parts.append("Neighborhood \(tractCode)")
         }
 
         return parts.joined(separator: " · ")
@@ -103,7 +101,6 @@ struct InsightsSheetContent: View {
                                 tint: themeTint
                             )
                             KeyMetricsGrid(metrics: metrics)
-                            GeneratedInsightsSection(insights: [], isLoading: true)
                         } else {
                             ExpandedInsightsHeaderRow(
                                 areaTitle: areaTitle,
@@ -128,12 +125,6 @@ struct InsightsSheetContent: View {
                                     totalPopulation: metrics?.population,
                                     themeTint: themeTint
                                 )
-                            }
-
-                            if zipBundle != nil {
-                                GeneratedInsightsSection(insights: insights, isLoading: false)
-                            } else if metrics == nil {
-                                GeneratedInsightsSection(insights: [], isLoading: true)
                             }
                         }
                     }

@@ -72,13 +72,13 @@ private struct MoreHeroCard: View {
                 }
             }
 
-            Text("Tap a place, compare ZIP and tract views, and use the sheet to understand the area without digging through raw Census tables.")
+            Text("Tap a place, compare ZIP and neighborhood views, and use the sheet to understand the area without digging through raw data tables.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.93))
 
             HStack(spacing: 10) {
                 HeroSignalPill(title: "Broad scan", subtitle: "ZIP")
-                HeroSignalPill(title: "Local detail", subtitle: "Tract")
+                HeroSignalPill(title: "Local detail", subtitle: "Neighborhood")
             }
         }
         .padding(16)
@@ -101,7 +101,7 @@ private struct MoreHeroCard: View {
 private struct QuickStartCard: View {
     private let steps: [(title: String, detail: String, tint: Color)] = [
         ("Tap any spot", "Select a location and load a neighborhood profile for that area.", .blue),
-        ("Switch scale", "Use ZIP for a broader read and tract for more local variation.", .teal),
+        ("Switch view", "Use ZIP for a broader read and neighborhood for more local variation.", .teal),
         ("Read the profile", "Swipe up to compare population, income, age, housing, and context.", .indigo)
     ]
 
@@ -135,7 +135,7 @@ private struct ScaleComparisonCard: View {
         SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
-                    title: "ZIP vs Tract",
+                    title: "ZIP vs Neighborhood",
                     subtitle: "Use each scale for a different kind of question",
                     icon: "square.stack.3d.up.fill",
                     tint: .mint
@@ -151,17 +151,17 @@ private struct ScaleComparisonCard: View {
                     )
 
                     ScaleSummaryCard(
-                        title: "Tract",
+                        title: "Neighborhood",
                         tint: .teal,
                         icon: "square.fill",
-                        detail: "Best for finer local context when nearby blocks may differ within the same ZIP.",
+                        detail: "Best for a closer local read when nearby parts of the same ZIP feel different.",
                         emphasis: "Closer view"
                     )
                 }
 
                 CalloutStrip(
                     title: "Tip",
-                    detail: "If two nearby places look similar in ZIP view, switch to tract to check for more local variation.",
+                    detail: "If two nearby places look similar in ZIP view, switch to neighborhood view to check for more local variation.",
                     tint: .teal
                 )
             }
@@ -260,12 +260,12 @@ private struct PrivacyAndTrustCard: View {
                 InfoLine(
                     icon: "building.columns",
                     title: "Official public data",
-                    detail: "Profiles are built from U.S. Census ACS estimates and public geography services."
+                    detail: "Profiles are built from official public data sources and map boundary services."
                 )
                 InfoLine(
                     icon: "waveform.path.ecg",
                     title: "These are estimates",
-                    detail: "Census values are statistical estimates and should be treated as directional context, not exact counts."
+                    detail: "These values should be treated as directional context, not exact counts."
                 )
             }
         }
@@ -539,8 +539,8 @@ private struct DataQualityFootnoteCard: View {
                 )
 
                 InfoLine(icon: "calendar", title: "Latest ACS dataset", detail: AppStrings.Release.latestACS5YearDataset)
-                InfoLine(icon: "waveform.path.ecg", title: "Values are estimates", detail: "Census values include statistical uncertainty")
-                InfoLine(icon: "location", title: "Boundary geometry", detail: "ZIP and tract polygons are generalized for map display")
+                InfoLine(icon: "waveform.path.ecg", title: "Values are estimates", detail: "The numbers include some statistical uncertainty")
+                InfoLine(icon: "location", title: "Map outlines", detail: "ZIP and neighborhood outlines are simplified for map display")
                 InfoLine(icon: "clock", title: "Refresh behavior", detail: "Profiles update each time you tap a new location")
             }
         }

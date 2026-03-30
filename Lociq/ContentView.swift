@@ -15,7 +15,7 @@ enum TabSelection {
 
 enum BoundaryOverlayScale: String, CaseIterable, Identifiable {
     case zip = "ZIP"
-    case tract = "Tract"
+    case tract = "Neighborhood"
 
     var id: String { rawValue }
 
@@ -28,7 +28,6 @@ enum BoundaryOverlayScale: String, CaseIterable, Identifiable {
 }
 
 struct ContentView: View {
-    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
     @AppStorage("hasSeenMapQuickTip") private var hasSeenMapQuickTip: Bool = false
 
     @State private var selection: TabSelection = .map
@@ -47,11 +46,6 @@ struct ContentView: View {
     @State private var activeScaleTask: Task<Void, Never>? = nil
     @State private var isBoundaryLoading: Bool = false
     @State private var mapNotice: String? = nil
-    @State private var showOnboarding: Bool = false
-
-    private var isUITestSkippingOnboarding: Bool {
-        ProcessInfo.processInfo.arguments.contains("UITEST_SKIP_ONBOARDING")
-    }
 
     private var defaultSheetPeekHeight: CGFloat {
         max(140, min(220, UIScreen.main.bounds.height * 0.25))
@@ -66,7 +60,7 @@ struct ContentView: View {
     }
 
     private var shouldShowMapQuickTip: Bool {
-        selection == .map && !showOnboarding && !hasSeenMapQuickTip && tappedCoordinate == nil
+        selection == .map && !hasSeenMapQuickTip && tappedCoordinate == nil
     }
 
     private var tappedBinding: Binding<CLLocationCoordinate2D?> {
@@ -185,20 +179,6 @@ struct ContentView: View {
             activeScaleTask?.cancel()
             activeScaleTask = Task {
                 await updateBoundaryAndDataForScale(newScale, requestID: requestID)
-            }
-        }
-        .onAppear {
-            if isUITestSkippingOnboarding {
-                hasSeenOnboarding = true
-            }
-            if !hasSeenOnboarding {
-                showOnboarding = true
-            }
-        }
-        .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingExperienceView {
-                hasSeenOnboarding = true
-                showOnboarding = false
             }
         }
     }
@@ -436,10 +416,10 @@ private struct BoundaryLoadingBadge: View {
                 .progressViewStyle(.circular)
                 .tint(.blue)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Loading boundary")
+                Text("Loading area")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                Text("Updating neighborhood outline")
+                Text("Updating area outline")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
             }

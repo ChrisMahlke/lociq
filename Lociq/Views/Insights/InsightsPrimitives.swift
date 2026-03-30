@@ -78,55 +78,50 @@ private struct InsightSkeletonCard: View {
     }
 }
 
-struct BoundaryScaleIconToggle: View {
+struct BoundaryScaleSwitch: View {
     @Binding var scale: BoundaryOverlayScale
 
-    private var options: [BoundaryOverlayScale] {
-        [.zip, .tract]
+    private var isNeighborhood: Bool {
+        scale == .tract
     }
 
-    private func activeColor(for option: BoundaryOverlayScale) -> Color {
-        option.themeColor
+    private var currentLabel: String {
+        isNeighborhood ? "Neighborhood" : "Zip Code"
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(options, id: \.self) { option in
-                Button {
-                    scale = option
-                } label: {
-                    let isSelected = scale == option
-                    let color = activeColor(for: option)
+        Button {
+            scale = isNeighborhood ? .zip : .tract
+        } label: {
+            HStack(spacing: 10) {
+                Text(currentLabel)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
 
-                    Text(option.rawValue)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(isSelected ? color : .primary.opacity(0.72))
-                        .frame(minWidth: 54)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(isSelected ? color.opacity(0.16) : Color(.secondarySystemGroupedBackground))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(isSelected ? color.opacity(0.42) : Color.primary.opacity(0.10), lineWidth: 0.9)
-                        )
+                ZStack(alignment: isNeighborhood ? .trailing : .leading) {
+                    Capsule()
+                        .fill((isNeighborhood ? Color.teal : Color.blue).opacity(0.20))
+                        .frame(width: 42, height: 24)
+
+                    Circle()
+                        .fill(isNeighborhood ? Color.teal : Color.blue)
+                        .frame(width: 18, height: 18)
+                        .padding(3)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(option.rawValue)
-                .accessibilityAddTraits(scale == option ? .isSelected : [])
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
-        .padding(6)
+        .buttonStyle(.plain)
         .background(
-            Capsule()
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(.systemBackground).opacity(0.94))
         )
         .overlay(
-            Capsule()
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
+        .accessibilityLabel(currentLabel)
     }
 }
 
@@ -143,7 +138,7 @@ struct ScaleStatusBanner: View {
         case .zip:
             return "Broader neighborhood read"
         case .tract:
-            return "Finer local context"
+            return "Closer neighborhood view"
         }
     }
 
@@ -156,7 +151,7 @@ struct ScaleStatusBanner: View {
 
                 Spacer(minLength: 0)
 
-                BoundaryScaleIconToggle(scale: $boundaryScale)
+                BoundaryScaleSwitch(scale: $boundaryScale)
             }
 
             if isFallbackToZIP {
@@ -230,7 +225,7 @@ struct CompactSheetPromptCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(AppStrings.Labels.noSelectionTitle)
                     .font(.subheadline.weight(.semibold))
-                Text("Tap the map to load ZIP and tract context.")
+                Text("Tap the map to load ZIP and neighborhood context.")
                     .font(.caption)
                     .foregroundStyle(.primary.opacity(0.68))
             }

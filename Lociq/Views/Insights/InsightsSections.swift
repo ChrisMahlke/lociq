@@ -33,7 +33,7 @@ struct CollapsedInsightsHeaderRow: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
-                BoundaryScaleIconToggle(scale: $boundaryScale)
+                BoundaryScaleSwitch(scale: $boundaryScale)
                 SwipeUpHint()
                     .opacity(hintVisible ? 1 : 0)
                     .allowsHitTesting(false)
@@ -98,9 +98,6 @@ struct ExpandedInsightsHeaderRow: View {
                     Text(areaTitle)
                         .font(.title3.weight(.bold))
                         .foregroundStyle(.primary)
-                    Text(AppStrings.Labels.profileSubtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary.opacity(0.72))
                 }
 
                 Spacer()
@@ -196,7 +193,7 @@ struct DemographicCompositionSection: View {
             VStack(alignment: .leading, spacing: 10) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.demographicCompositionVisual,
-                    subtitle: "Relative group sizes within the selected geography",
+                    subtitle: "Relative group sizes within the selected area",
                     icon: "person.3.sequence.fill",
                     tint: themeTint
                 )
@@ -243,7 +240,7 @@ struct GeneratedInsightsSection: View {
             VStack(alignment: .leading, spacing: 8) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.insights,
-                    subtitle: "Plain-English takeaways generated from the active profile",
+                    subtitle: "Plain-English takeaways generated from the active area profile",
                     icon: "text.bubble.fill",
                     tint: .indigo
                 )
