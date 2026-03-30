@@ -16,6 +16,7 @@ enum AppStrings {
 
     enum Tabs {
         static let map = "Map"
+        static let aiLab = "AI"
         static let more = "More"
     }
 
@@ -113,6 +114,8 @@ enum SampleData {
 enum IconNames {
     static let map = "map"
     static let mapFilled = "map.fill"
+    static let ai = "sparkles.rectangle.stack"
+    static let aiFilled = "sparkles.rectangle.stack.fill"
     static let more = "ellipsis.circle"
     static let moreFilled = "ellipsis.circle.fill"
     static let person = "person.3"

@@ -12,6 +12,7 @@ import os
 @main
 struct LociqApp: App {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "io.chrismahlke.lociq", category: "App")
+    @StateObject private var schoolAccessController = SchoolAccessController()
 
     /// Initializes app-level SDK configuration before the first view appears.
     init() {
@@ -21,6 +22,10 @@ struct LociqApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(schoolAccessController)
+                .task {
+                    await schoolAccessController.prepare()
+                }
         }
     }
 

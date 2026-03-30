@@ -6,6 +6,7 @@ struct BottomRibbon: View {
     var body: some View {
         HStack(spacing: 10) {
             ribbonButton(title: AppStrings.Tabs.map, systemImage: selection == .map ? IconNames.mapFilled : IconNames.map, tab: .map)
+            ribbonButton(title: AppStrings.Tabs.aiLab, systemImage: selection == .aiLab ? IconNames.aiFilled : IconNames.ai, tab: .aiLab)
             ribbonButton(title: AppStrings.Tabs.more, systemImage: selection == .more ? IconNames.moreFilled : IconNames.more, tab: .more)
         }
         .padding(.horizontal, 12)

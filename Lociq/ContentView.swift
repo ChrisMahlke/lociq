@@ -10,7 +10,7 @@ import CoreLocation
 import UIKit
 
 enum TabSelection {
-    case map, more
+    case map, aiLab, more
 }
 
 enum BoundaryOverlayScale: String, CaseIterable, Identifiable {
@@ -133,6 +133,8 @@ struct ContentView: View {
                     }
 
                 }
+            case .aiLab:
+                AIFeatureLabScreen()
             case .more:
                 MoreScreen()
             }
@@ -321,6 +323,59 @@ struct ContentView: View {
         case .tract:
             return boundaries.tract
         }
+    }
+}
+
+struct AIFeatureLabScreen: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("AI Lab", systemImage: IconNames.aiFilled)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
+
+                    Text("This screen is reserved for upcoming AI features.")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.16, green: 0.24, blue: 0.48),
+                            Color(red: 0.09, green: 0.50, blue: 0.55)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+                )
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Planned use")
+                        .font(.headline)
+
+                    Text("We will use this space to test AI-generated neighborhood summaries, answers, and guided exploration.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color(.secondarySystemBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                )
+            }
+            .padding()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
     }
 }
 

@@ -125,6 +125,9 @@ struct InsightsSheetContent: View {
                                     totalPopulation: metrics?.population,
                                     themeTint: themeTint
                                 )
+                                if let zipCode {
+                                    SchoolsPreviewSection(zipCode: zipCode, themeTint: themeTint)
+                                }
                             }
                         }
                     }
