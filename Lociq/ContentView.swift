@@ -46,6 +46,12 @@ struct ContentView: View {
     @State private var activeScaleTask: Task<Void, Never>? = nil
     @State private var isBoundaryLoading: Bool = false
     @State private var mapNotice: String? = nil
+    @State private var searchText: String = ""
+    @State private var isSearchingLocation: Bool = false
+    @State private var activeSearchTask: Task<Void, Never>? = nil
+    @State private var searchResults: [LocationSearchResult] = []
+    @State private var isShowingSearchResults: Bool = false
+    @FocusState private var isSearchFieldFocused: Bool
 
     private var defaultSheetPeekHeight: CGFloat {
         max(140, min(220, UIScreen.main.bounds.height * 0.25))
@@ -63,10 +69,43 @@ struct ContentView: View {
         selection == .map && !hasSeenMapQuickTip && tappedCoordinate == nil
     }
 
+    private var mapTopOverlay: some View {
+        VStack(spacing: 10) {
+            if AppConfig.hasGoogleMapsAPIKey {
+                MapSearchBar(
+                    text: $searchText,
+                    isFocused: $isSearchFieldFocused,
+                    isActive: isSearchFieldFocused || isShowingSearchResults || isSearchingLocation,
+                    isSearching: isSearchingLocation,
+                    onSubmit: performLocationSearch,
+                    onCancel: cancelSearchInteraction
+                )
+            }
+
+            if isBoundaryLoading {
+                BoundaryLoadingBadge()
+            }
+
+            if let mapNotice {
+                MapNoticeBanner(message: mapNotice)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task(id: mapNotice) {
+                        try? await Task.sleep(nanoseconds: 4_500_000_000)
+                        if self.mapNotice == mapNotice {
+                            self.mapNotice = nil
+                        }
+                    }
+            }
+        }
+        .padding(.top, 14)
+        .padding(.horizontal, 12)
+    }
+
     private var tappedBinding: Binding<CLLocationCoordinate2D?> {
         Binding(
             get: { tappedCoordinate },
             set: { newValue in
+                cancelSearchInteraction()
                 tappedCoordinate = newValue
                 if let coord = newValue {
                     hasSeenMapQuickTip = true
@@ -95,23 +134,7 @@ struct ContentView: View {
                             .ignoresSafeArea(edges: .top)
                     }
 
-                    if isBoundaryLoading {
-                        BoundaryLoadingBadge()
-                            .padding(.top, 14)
-                    }
-
-                    if let mapNotice {
-                        MapNoticeBanner(message: mapNotice)
-                            .padding(.top, isBoundaryLoading ? 62 : 14)
-                            .padding(.horizontal, 12)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                            .task(id: mapNotice) {
-                                try? await Task.sleep(nanoseconds: 4_500_000_000)
-                                if self.mapNotice == mapNotice {
-                                    self.mapNotice = nil
-                                }
-                            }
-                    }
+                    mapTopOverlay
 
                     if AppConfig.hasGoogleMapsAPIKey && shouldShowMapQuickTip {
                         VStack {
@@ -147,6 +170,16 @@ struct ContentView: View {
             // Main content behind the sheet
             activeScreen
 
+            if selection == .map && isShowingSearchResults {
+                MapSearchResultsPopup(
+                    query: searchText.trimmingCharacters(in: .whitespacesAndNewlines),
+                    results: searchResults,
+                    onSelect: applySearchResult(_:),
+                    onDismiss: dismissSearchResults
+                )
+                .zIndex(3)
+            }
+
             // Bottom sheet is only visible while exploring the map.
             if selection == .map {
                 BottomSheet(sheetOffset: $sheetOffset) {
@@ -175,6 +208,18 @@ struct ContentView: View {
             .zIndex(2)
             .allowsHitTesting(true)
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done", action: cancelSearchInteraction)
+            }
+        }
+        .onChange(of: selection) { newSelection in
+            if newSelection != .map {
+                cancelSearchInteraction()
+            }
+        }
         .onChange(of: boundaryScale) { newScale in
             Haptics.softImpact()
             let requestID = activeSelectionRequestID
@@ -183,6 +228,75 @@ struct ContentView: View {
                 await updateBoundaryAndDataForScale(newScale, requestID: requestID)
             }
         }
+    }
+
+    private func performLocationSearch() {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+
+        isSearchFieldFocused = false
+        dismissSearchResults()
+        activeSearchTask?.cancel()
+        isSearchingLocation = true
+
+        activeSearchTask = Task { @MainActor in
+            defer { isSearchingLocation = false }
+
+            do {
+                let service = LocationSearchService()
+                let results = try await service.searchLocations(for: query)
+                guard !Task.isCancelled else { return }
+
+                if results.isEmpty {
+                    mapNotice = "No results found for \"\(query)\". Try a city, ZIP code, or a more specific place name."
+                } else if results.count == 1, let result = results.first {
+                    applySearchResult(result)
+                } else {
+                    mapNotice = nil
+                    searchResults = results
+                    isShowingSearchResults = true
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                mapNotice = "Search failed. Try again in a moment."
+            }
+        }
+    }
+
+    private func applySearchResult(_ result: LocationSearchResult) {
+        cancelSearchInteraction()
+        hasSeenMapQuickTip = true
+        mapNotice = nil
+        searchText = result.displayQuery
+
+        let seededZipCode: String?
+        switch result.matchKind {
+        case .zip:
+            seededZipCode = result.zipCode ?? searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        case .place:
+            seededZipCode = nil
+        }
+
+        selectedZipCode = seededZipCode
+        tappedCoordinate = result.coordinate
+        Haptics.selectionChanged()
+        GoogleMapViewRepresentable.focusOnCoordinate(result.coordinate)
+        refreshData(for: result.coordinate)
+    }
+
+    private func dismissSearchResults() {
+        searchResults = []
+        isShowingSearchResults = false
+    }
+
+    private func cancelSearchInteraction() {
+        isSearchFieldFocused = false
+        dismissSearchResults()
+        activeSearchTask?.cancel()
+        activeSearchTask = nil
+        isSearchingLocation = false
     }
 
     private func refreshData(for coordinate: CLLocationCoordinate2D) {

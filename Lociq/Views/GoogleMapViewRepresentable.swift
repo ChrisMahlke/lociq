@@ -68,6 +68,16 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
         sharedMapView.animate(to: defaultCamera)
     }
 
+    /// Centers on an explicit coordinate, typically from search-driven navigation.
+    static func focusOnCoordinate(_ coordinate: CLLocationCoordinate2D, zoom: Float = 12.5) {
+        let camera = GMSCameraPosition(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            zoom: zoom
+        )
+        sharedMapView.animate(to: camera)
+    }
+
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
