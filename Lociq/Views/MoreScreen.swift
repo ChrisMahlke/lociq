@@ -18,6 +18,7 @@ struct MoreScreen: View {
                 #endif
             }
             .padding()
+            .padding(.bottom, BottomRibbonLayout.contentClearance)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemGroupedBackground))

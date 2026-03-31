@@ -1,5 +1,9 @@
 import SwiftUI
 
+enum BottomRibbonLayout {
+    static let contentClearance: CGFloat = 96
+}
+
 struct BottomRibbon: View {
     @Binding var selection: TabSelection
 

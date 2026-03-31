@@ -487,6 +487,7 @@ struct AIFeatureLabScreen: View {
                 )
             }
             .padding()
+            .padding(.bottom, BottomRibbonLayout.contentClearance)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemGroupedBackground))

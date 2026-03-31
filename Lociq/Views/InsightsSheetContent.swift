@@ -130,7 +130,7 @@ struct InsightsSheetContent: View {
                             }
                         }
                     }
-                    .padding(.bottom, 16)
+                    .padding(.bottom, BottomRibbonLayout.contentClearance)
                 }
             }
         }
