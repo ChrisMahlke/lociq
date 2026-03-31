@@ -131,73 +131,15 @@ struct ExpandedInsightsHeaderRow: View {
 
 struct HousingAffordabilitySection: View {
     let demographics: Demographics
-    let themeTint: Color
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 10) {
-                InsightSectionHeader(
-                    title: AppStrings.Labels.housingAffordabilityTitle,
-                    subtitle: "Home prices, rent, and how occupancy is split",
-                    icon: "house.and.flag.fill",
-                    tint: themeTint
-                )
-
-                HStack(spacing: 10) {
-                    InfographicBadge(
-                        icon: IconNames.houseFilled,
-                        title: AppStrings.Labels.homeValue,
-                        value: InsightsFormatting.currency(demographics.medianHomeValue),
-                        tint: themeTint
-                    )
-
-                    InfographicBadge(
-                        icon: IconNames.keyFilled,
-                        title: AppStrings.Labels.grossRent,
-                        value: InsightsFormatting.currency(demographics.medianGrossRent),
-                        tint: themeTint.opacity(0.78)
-                    )
-                }
-
+            VStack(alignment: .leading, spacing: 12) {
                 OccupancySplitBar(
                     ownerText: InsightsFormatting.percent(demographics.ownerOccupiedPct, suffixCount: demographics.ownerOccupied),
                     renterText: InsightsFormatting.percent(demographics.renterOccupiedPct, suffixCount: demographics.renterOccupied),
                     ownerShare: InsightsFormatting.normalizedPercent(demographics.ownerOccupiedPct)
                 )
-            }
-        }
-    }
-}
-
-struct QuickSignalsSection: View {
-    let demographics: Demographics
-    let themeTint: Color
-
-    var body: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 10) {
-                InsightSectionHeader(
-                    title: AppStrings.Labels.quickSignals,
-                    subtitle: "Fast read on work patterns and economic pressure",
-                    icon: "waveform.path.ecg.rectangle.fill",
-                    tint: themeTint
-                )
-
-                HStack(spacing: 10) {
-                    MiniRingStat(
-                        label: AppStrings.Labels.remoteWork,
-                        value: InsightsFormatting.percent(demographics.workersWfhPct, suffixCount: demographics.workersWfh),
-                        progress: InsightsFormatting.normalizedPercent(demographics.workersWfhPct),
-                        tint: themeTint
-                    )
-
-                    MiniRingStat(
-                        label: AppStrings.Labels.poverty,
-                        value: InsightsFormatting.percent(demographics.povertyRatePct, suffixCount: demographics.povertyBelow),
-                        progress: InsightsFormatting.normalizedPercent(demographics.povertyRatePct),
-                        tint: themeTint.opacity(0.72)
-                    )
-                }
             }
         }
     }

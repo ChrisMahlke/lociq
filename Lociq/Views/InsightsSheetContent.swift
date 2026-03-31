@@ -100,7 +100,7 @@ struct InsightsSheetContent: View {
                                 systemImage: "point.3.connected.trianglepath.dotted",
                                 tint: themeTint
                             )
-                            KeyMetricsGrid(metrics: metrics)
+                            KeyMetricsGrid(metrics: metrics, demographics: demographics)
                         } else {
                             ExpandedInsightsHeaderRow(
                                 areaTitle: areaTitle,
@@ -113,13 +113,12 @@ struct InsightsSheetContent: View {
                             .id("header-\(refreshAnimationKey)")
                             .transition(.opacity.combined(with: .move(edge: .top)))
 
-                            KeyMetricsGrid(metrics: metrics)
+                            KeyMetricsGrid(metrics: metrics, demographics: demographics)
                                 .id("metrics-\(refreshAnimationKey)")
                                 .transition(.opacity.combined(with: .scale(scale: 0.98)))
 
                             if let demographics {
-                                QuickSignalsSection(demographics: demographics, themeTint: themeTint)
-                                HousingAffordabilitySection(demographics: demographics, themeTint: themeTint)
+                                HousingAffordabilitySection(demographics: demographics)
                                 DemographicCompositionSection(
                                     demographics: demographics,
                                     totalPopulation: metrics?.population,

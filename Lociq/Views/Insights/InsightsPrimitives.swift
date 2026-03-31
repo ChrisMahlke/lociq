@@ -296,6 +296,7 @@ private struct PromptStepChip: View {
 
 struct KeyMetricsGrid: View {
     let metrics: CensusMetrics?
+    let demographics: Demographics?
 
     private var isLoading: Bool { metrics == nil }
 
@@ -325,6 +326,34 @@ struct KeyMetricsGrid: View {
                 title: AppStrings.Metrics.households,
                 value: metrics.map { InsightsFormatting.number($0.households) },
                 systemImage: IconNames.house,
+                loading: isLoading
+            )
+            MetricTile(
+                title: AppStrings.Labels.remoteWork,
+                value: demographics.map {
+                    InsightsFormatting.percent($0.workersWfhPct, suffixCount: $0.workersWfh)
+                },
+                systemImage: "laptopcomputer",
+                loading: isLoading
+            )
+            MetricTile(
+                title: AppStrings.Labels.poverty,
+                value: demographics.map {
+                    InsightsFormatting.percent($0.povertyRatePct, suffixCount: $0.povertyBelow)
+                },
+                systemImage: "chart.line.downtrend.xyaxis",
+                loading: isLoading
+            )
+            MetricTile(
+                title: AppStrings.Labels.homeValue,
+                value: demographics.map { InsightsFormatting.currency($0.medianHomeValue) },
+                systemImage: IconNames.houseFilled,
+                loading: isLoading
+            )
+            MetricTile(
+                title: AppStrings.Labels.grossRent,
+                value: demographics.map { InsightsFormatting.currency($0.medianGrossRent) },
+                systemImage: IconNames.keyFilled,
                 loading: isLoading
             )
         }
