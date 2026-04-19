@@ -1,0 +1,8 @@
+// Shared app configuration.
+//
+// Google Maps local setup:
+// 1) Copy Config/GoogleMaps.example.xcconfig to Config/GoogleMaps.xcconfig
+// 2) Paste your real Google Maps SDK for iOS key into Config/GoogleMaps.xcconfig
+// 3) Keep Config/GoogleMaps.xcconfig out of git
+GOOGLE_MAPS_API_KEY = 
+CENSUS_API_KEY =
