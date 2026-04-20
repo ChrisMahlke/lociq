@@ -702,11 +702,6 @@
 			package = F2A1B300A0B14EAA9D700026 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAppCheck;
 		};
-		F2A1B300A0B14EAA9D700028 /* FirebaseAuth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F2A1B300A0B14EAA9D700026 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAuth;
-		};
 		F2A1B300A0B14EAA9D700024 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = F2A1B300A0B14EAA9D700026 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -716,6 +711,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F2A1B300A0B14EAA9D700026 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFunctions;
+		};
+		F2A1B300A0B14EAA9D700028 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F2A1B300A0B14EAA9D700026 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
 		};
 		F2A1B300A0B14EAA9D70002A /* GoogleSignIn */ = {
 			isa = XCSwiftPackageProductDependency;

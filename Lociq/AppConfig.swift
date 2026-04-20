@@ -70,9 +70,15 @@ enum AppConfig {
         value(forAnyOf: ["FIREBASE_FUNCTIONS_REGION", "FirebaseFunctionsRegion"]).ifEmpty("us-central1")
     }
 
-    /// Email address allowed to use the shared Firebase backend.
-    static var allowedGoogleEmail: String {
-        value(forAnyOf: ["ALLOWED_GOOGLE_EMAIL", "AllowedGoogleEmail"]).ifEmpty("cmahlke@gmail.com")
+    /// StoreKit product identifiers that unlock premium AI features.
+    static var lociqPremiumProductIDs: [String] {
+        let rawValue = value(forAnyOf: ["LOCIQ_PREMIUM_PRODUCT_IDS", "LociqPremiumProductIDs"])
+            .ifEmpty("io.chrismahlke.lociq.ai.monthly")
+
+        return rawValue
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
     }
 
     private static func value(forAnyOf keys: [String]) -> String {
@@ -118,8 +124,8 @@ enum AppConfig {
             "CensusAPIKey": [("Secrets", "CENSUS_API_KEY")],
             "USE_FIREBASE_LOCIQ_BACKEND": [("Secrets", "USE_FIREBASE_LOCIQ_BACKEND")],
             "UseFirebaseLociqBackend": [("Secrets", "USE_FIREBASE_LOCIQ_BACKEND")],
-            "ALLOWED_GOOGLE_EMAIL": [("Secrets", "ALLOWED_GOOGLE_EMAIL")],
-            "AllowedGoogleEmail": [("Secrets", "ALLOWED_GOOGLE_EMAIL")],
+            "LOCIQ_PREMIUM_PRODUCT_IDS": [("Secrets", "LOCIQ_PREMIUM_PRODUCT_IDS")],
+            "LociqPremiumProductIDs": [("Secrets", "LOCIQ_PREMIUM_PRODUCT_IDS")],
             "FIREBASE_FUNCTIONS_REGION": [("Secrets", "FIREBASE_FUNCTIONS_REGION")],
             "FirebaseFunctionsRegion": [("Secrets", "FIREBASE_FUNCTIONS_REGION")]
         ]

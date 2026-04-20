@@ -29,6 +29,7 @@ enum BoundaryOverlayScale: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @ObservedObject var authSession: LociqAuthSession
+    @ObservedObject var subscriptionManager: LociqSubscriptionManager
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
     @AppStorage("hasSeenMapQuickTip") private var hasSeenMapQuickTip: Bool = false
 
@@ -141,7 +142,7 @@ struct ContentView: View {
 
                 }
             case .more:
-                MoreScreen(authSession: authSession)
+                MoreScreen(authSession: authSession, subscriptionManager: subscriptionManager)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -156,6 +157,7 @@ struct ContentView: View {
             if selection == .map {
                 BottomSheet(sheetOffset: $sheetOffset) {
                     InsightsSheetContent(
+                        authSession: authSession,
                         zipCode: selectedZipCode,
                         metrics: censusMetrics,
                         demographics: selectedDemographics,
@@ -163,6 +165,7 @@ struct ContentView: View {
                         metricsSource: metricsSource,
                         hasActiveSelection: tappedCoordinate != nil,
                         isLoadingSelection: tappedCoordinate != nil && (censusMetrics == nil || isBoundaryLoading),
+                        subscriptionManager: subscriptionManager,
                         boundaryScale: $boundaryScale,
                         sheetOffset: $sheetOffset
                     )
@@ -194,6 +197,11 @@ struct ContentView: View {
             }
             if !hasSeenOnboarding {
                 showOnboarding = true
+            }
+        }
+        .task(id: authSession.currentUserID) {
+            if AppConfig.useFirebaseLociqBackend, authSession.isSignedIn {
+                await subscriptionManager.refresh()
             }
         }
         .fullScreenCover(isPresented: $showOnboarding) {
@@ -593,5 +601,8 @@ extension ContentView {
 }
 
 #Preview {
-    ContentView(authSession: LociqAuthSession())
+    ContentView(
+        authSession: LociqAuthSession(),
+        subscriptionManager: LociqSubscriptionManager()
+    )
 }
