@@ -70,17 +70,6 @@ enum AppConfig {
         value(forAnyOf: ["FIREBASE_FUNCTIONS_REGION", "FirebaseFunctionsRegion"]).ifEmpty("us-central1")
     }
 
-    /// StoreKit product identifiers that unlock premium AI features.
-    static var lociqPremiumProductIDs: [String] {
-        let rawValue = value(forAnyOf: ["LOCIQ_PREMIUM_PRODUCT_IDS", "LociqPremiumProductIDs"])
-            .ifEmpty("io.chrismahlke.lociq.ai.monthly")
-
-        return rawValue
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-    }
-
     private static func value(forAnyOf keys: [String]) -> String {
         for key in keys {
             let resolved = value(for: key)
@@ -124,8 +113,6 @@ enum AppConfig {
             "CensusAPIKey": [("Secrets", "CENSUS_API_KEY")],
             "USE_FIREBASE_LOCIQ_BACKEND": [("Secrets", "USE_FIREBASE_LOCIQ_BACKEND")],
             "UseFirebaseLociqBackend": [("Secrets", "USE_FIREBASE_LOCIQ_BACKEND")],
-            "LOCIQ_PREMIUM_PRODUCT_IDS": [("Secrets", "LOCIQ_PREMIUM_PRODUCT_IDS")],
-            "LociqPremiumProductIDs": [("Secrets", "LOCIQ_PREMIUM_PRODUCT_IDS")],
             "FIREBASE_FUNCTIONS_REGION": [("Secrets", "FIREBASE_FUNCTIONS_REGION")],
             "FirebaseFunctionsRegion": [("Secrets", "FIREBASE_FUNCTIONS_REGION")]
         ]

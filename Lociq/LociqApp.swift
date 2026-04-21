@@ -13,7 +13,6 @@ import os
 struct LociqApp: App {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "io.chrismahlke.lociq", category: "App")
     @StateObject private var authSession = LociqAuthSession()
-    @StateObject private var subscriptionManager = LociqSubscriptionManager()
 
     /// Initializes app-level SDK configuration before the first view appears.
     init() {
@@ -23,11 +22,9 @@ struct LociqApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(authSession: authSession, subscriptionManager: subscriptionManager)
+            ContentView(authSession: authSession)
                 .task {
                     await authSession.restoreIfPossible()
-                    subscriptionManager.configure(authSession: authSession)
-                    await subscriptionManager.refresh()
                 }
                 .onOpenURL { url in
                     _ = authSession.handleOpenURL(url)

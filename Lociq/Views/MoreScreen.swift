@@ -2,7 +2,6 @@ import SwiftUI
 
 struct MoreScreen: View {
     @ObservedObject var authSession: LociqAuthSession
-    @ObservedObject var subscriptionManager: LociqSubscriptionManager
     @Environment(\.colorScheme) private var colorScheme
 
     private var backgroundWashColors: [Color] {
@@ -26,7 +25,6 @@ struct MoreScreen: View {
             VStack(alignment: .leading, spacing: 14) {
                 MoreHeroCard()
                 FirebaseAccessCard(authSession: authSession)
-                PremiumSubscriptionCard(authSession: authSession, subscriptionManager: subscriptionManager)
                 QuickStartCard()
                 ScaleComparisonCard()
                 WhatYouSeeCard()
@@ -62,7 +60,7 @@ private struct FirebaseAccessCard: View {
         }
 
         if authSession.isSignedIn {
-            return authSession.isAnonymous ? "Anonymous Firebase session active" : "Account linked with Apple"
+            return "Anonymous Firebase session active"
         }
 
         if authSession.isBusy {
@@ -78,10 +76,7 @@ private struct FirebaseAccessCard: View {
         }
 
         if authSession.isSignedIn {
-            let identityLine = authSession.isAnonymous
-                ? "The app silently uses anonymous Firebase auth for shared backend access."
-                : "This device is linked to Sign in with Apple for durable account recovery."
-            return "\(identityLine) App Check still protects the callable backend from unauthorized clients."
+            return "The app silently uses anonymous Firebase auth for shared backend access. App Check still protects the callable backend from unauthorized clients."
         }
 
         return "Lociq signs into Firebase automatically in the background so users can use the shared Census backend without an account wall."
@@ -111,131 +106,19 @@ private struct FirebaseAccessCard: View {
                         .foregroundStyle(.red)
                 }
 
-                HStack(spacing: 10) {
-                    Button {
-                        Task {
-                            await authSession.linkWithApple()
-                        }
-                    } label: {
-                        Label(
-                            authSession.isBusy
-                                ? "Working…"
-                                : (authSession.isLinkedAppleAccount ? "Linked to Apple" : "Link Sign in with Apple"),
-                            systemImage: "apple.logo"
-                        )
-                            .frame(maxWidth: .infinity)
+                Button("Reset Session") {
+                    Task {
+                        await authSession.resetSession()
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(authSession.isBusy || !AppConfig.useFirebaseLociqBackend || authSession.isLinkedAppleAccount)
-
-                    Button("Reset Session") {
-                        Task {
-                            await authSession.resetSession()
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(authSession.isBusy || !authSession.isSignedIn)
                 }
+                .buttonStyle(.bordered)
+                .disabled(authSession.isBusy || !authSession.isSignedIn)
 
                 InfoLine(
                     icon: "lock.shield",
                     title: "Session mode",
-                    detail: authSession.isLinkedAppleAccount ? "Linked Apple account" : "Anonymous Firebase user"
+                    detail: authSession.isAnonymous ? "Anonymous Firebase user" : "Authenticated Firebase user"
                 )
-            }
-        }
-    }
-}
-
-private struct PremiumSubscriptionCard: View {
-    @ObservedObject var authSession: LociqAuthSession
-    @ObservedObject var subscriptionManager: LociqSubscriptionManager
-
-    private var subscriptionTitle: String {
-        if !AppConfig.useFirebaseLociqBackend {
-            return "Premium backend unavailable"
-        }
-
-        if subscriptionManager.hasActivePremium {
-            return "Premium AI is unlocked"
-        }
-
-        if subscriptionManager.isBusy {
-            return "Checking subscription"
-        }
-
-        return "Premium AI requires a subscription"
-    }
-
-    private var subscriptionDetail: String {
-        if !AppConfig.useFirebaseLociqBackend {
-            return "Enable the shared Firebase backend before using server-enforced premium entitlements."
-        }
-
-        if let premiumStatus = subscriptionManager.premiumStatus, premiumStatus.active {
-            let expiry = premiumStatus.expiresAt ?? "unknown"
-            return "Your subscription is active through \(expiry). AI features stay server-gated even though the core map remains open to everyone."
-        }
-
-        return "Non-AI map and Census features remain available to every installed user. Premium AI summaries are unlocked only after StoreKit verifies an active subscription and Firebase confirms the entitlement."
-    }
-
-    var body: some View {
-        SectionPanel {
-            VStack(alignment: .leading, spacing: 12) {
-                SectionHeading(
-                    title: "Premium access",
-                    subtitle: "StoreKit + Firebase entitlements",
-                    icon: "sparkles",
-                    tint: .orange
-                )
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(subscriptionTitle)
-                        .font(.subheadline.weight(.semibold))
-                    Text(subscriptionDetail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                if let purchaseError = subscriptionManager.purchaseError, !purchaseError.isEmpty {
-                    Text(purchaseError)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-
-                HStack(spacing: 10) {
-                    Button(subscriptionManager.hasActivePremium ? "Refresh Access" : "Subscribe to Premium AI") {
-                        Task {
-                            if subscriptionManager.hasActivePremium {
-                                await subscriptionManager.refresh()
-                            } else {
-                                await authSession.ensureSignedIn()
-                                await subscriptionManager.purchasePremium()
-                            }
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity)
-                    .disabled(subscriptionManager.isBusy)
-
-                    Button("Restore Purchases") {
-                        Task {
-                            await authSession.ensureSignedIn()
-                            await subscriptionManager.restorePurchases()
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(subscriptionManager.isBusy)
-                }
-
-                if let premiumStatus = subscriptionManager.premiumStatus {
-                    InfoLine(
-                        icon: "checkmark.shield",
-                        title: "Entitlement status",
-                        detail: premiumStatus.status
-                    )
-                }
             }
         }
     }
