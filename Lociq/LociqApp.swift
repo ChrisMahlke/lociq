@@ -12,6 +12,7 @@ import os
 @main
 struct LociqApp: App {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "io.chrismahlke.lociq", category: "App")
+    private let dependencies = AppDependencies.live
 
     /// Initializes app-level SDK configuration before the first view appears.
     init() {
@@ -21,7 +22,7 @@ struct LociqApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(dependencies: dependencies)
                 .task {
                     await LociqAuthSession.restoreIfPossible()
                 }

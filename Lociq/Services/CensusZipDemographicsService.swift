@@ -324,7 +324,24 @@ public enum GeoJSONGeometry: Codable, Sendable {
 
 // MARK: - Service
 
-public final class CensusZipDemographicsService: @unchecked Sendable {
+protocol CensusNeighborhoodServing: Sendable {
+    func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult
+    func fetchNeighborhoodBoundaries(
+        latitude: Double,
+        longitude: Double,
+        tractGeoid: String?,
+        zipBoundary: GeoJSONFeatureCollection
+    ) async -> NeighborhoodBoundarySet
+    func fetchDemographics(
+        for scale: NeighborhoodScale,
+        zcta: String,
+        tractGeoid: String?,
+        latitude: Double,
+        longitude: Double
+    ) async throws -> Demographics
+}
+
+public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeighborhoodServing {
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "io.chrismahlke.lociq",
         category: "CensusZipDemographicsService"

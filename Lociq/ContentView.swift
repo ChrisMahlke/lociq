@@ -41,23 +41,16 @@ struct ContentView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
     @AppStorage("hasSeenMapQuickTip") private var hasSeenMapQuickTip: Bool = false
 
+    @StateObject private var selectionModel: MapSelectionModel
     @State private var selection: TabSelection = .map
-    @State private var tappedCoordinate: CLLocationCoordinate2D?
-    @State private var selectedZipCode: String? = nil
-    @State private var censusMetrics: CensusMetrics? = nil
-    @State private var selectedDemographics: Demographics? = nil
     @State private var sheetOffset: CGFloat = 0
-    @State private var metricsSource: MetricsSource? = nil
-    @State private var selectedBoundary: GeoJSONFeatureCollection? = nil
-    @State private var neighborhoodBoundaries: NeighborhoodBoundarySet? = nil
-    @State private var boundaryScale: BoundaryOverlayScale = .zip
-    @State private var selectedZipBundle: ZipLookupResult? = nil
-    @State private var activeSelectionRequestID: UUID = UUID()
-    @State private var activeFetchTask: Task<Void, Never>? = nil
-    @State private var activeScaleTask: Task<Void, Never>? = nil
-    @State private var isBoundaryLoading: Bool = false
-    @State private var mapNotice: String? = nil
     @State private var showOnboarding: Bool = false
+
+    init(dependencies: AppDependencies = .live) {
+        _selectionModel = StateObject(
+            wrappedValue: MapSelectionModel(service: dependencies.makeCensusLookupService())
+        )
+    }
 
     private var isUITestSkippingOnboarding: Bool {
         ProcessInfo.processInfo.arguments.contains("UITEST_SKIP_ONBOARDING")
@@ -80,26 +73,36 @@ struct ContentView: View {
     }
 
     private var boundaryThemeTint: Color {
-        boundaryScale.themeColor
+        selectionModel.boundaryScale.themeColor
     }
 
     private var shouldShowMapQuickTip: Bool {
-        selection == .map && !showOnboarding && !hasSeenMapQuickTip && tappedCoordinate == nil
+        selection == .map && !showOnboarding && !hasSeenMapQuickTip && selectionModel.tappedCoordinate == nil
+    }
+
+    private var boundaryScaleBinding: Binding<BoundaryOverlayScale> {
+        Binding(
+            get: { selectionModel.boundaryScale },
+            set: { newValue in
+                guard newValue != selectionModel.boundaryScale else { return }
+                Haptics.softImpact()
+                selectionModel.selectBoundaryScale(newValue)
+            }
+        )
     }
 
     private var tappedBinding: Binding<CLLocationCoordinate2D?> {
         Binding(
-            get: { tappedCoordinate },
+            get: { selectionModel.tappedCoordinate },
             set: { newValue in
-                tappedCoordinate = newValue
                 if let coord = newValue {
                     hasSeenMapQuickTip = true
                     if usesSidebarLayout {
                         selection = .map
                     }
                     Haptics.selectionChanged()
-                    refreshData(for: coord)
                 }
+                selectionModel.handleMapSelection(newValue)
             }
         )
     }
@@ -110,8 +113,8 @@ struct ContentView: View {
             if AppConfig.hasGoogleMapsAPIKey {
                 GoogleMapViewRepresentable(
                     tappedCoordinate: tappedBinding,
-                    selectedBoundary: selectedBoundary,
-                    selectedScale: boundaryScale,
+                    selectedBoundary: selectionModel.selectedBoundary,
+                    selectedScale: selectionModel.boundaryScale,
                     contentInsetBottom: mapBottomInset
                 )
                 .modifier(OptionalTopSafeAreaIgnoring(enabled: ignoresSafeAreaTop))
@@ -120,21 +123,19 @@ struct ContentView: View {
                     .modifier(OptionalTopSafeAreaIgnoring(enabled: ignoresSafeAreaTop))
             }
 
-            if isBoundaryLoading {
+            if selectionModel.isBoundaryLoading {
                 BoundaryLoadingBadge()
                     .padding(.top, 14)
             }
 
-            if let mapNotice {
+            if let mapNotice = selectionModel.mapNotice {
                 MapNoticeBanner(message: mapNotice)
-                    .padding(.top, isBoundaryLoading ? 62 : 14)
+                    .padding(.top, selectionModel.isBoundaryLoading ? 62 : 14)
                     .padding(.horizontal, 12)
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .task(id: mapNotice) {
                         try? await Task.sleep(nanoseconds: 4_500_000_000)
-                        if self.mapNotice == mapNotice {
-                            self.mapNotice = nil
-                        }
+                        selectionModel.clearMapNotice(ifMatches: mapNotice)
                     }
             }
 
@@ -178,14 +179,14 @@ struct ContentView: View {
             switch selection {
             case .map:
                 InsightsSheetContent(
-                    zipCode: selectedZipCode,
-                    metrics: censusMetrics,
-                    demographics: selectedDemographics,
-                    zipBundle: selectedZipBundle,
-                    metricsSource: metricsSource,
-                    hasActiveSelection: tappedCoordinate != nil,
-                    isLoadingSelection: tappedCoordinate != nil && (censusMetrics == nil || isBoundaryLoading),
-                    boundaryScale: $boundaryScale,
+                    zipCode: selectionModel.selectedZipCode,
+                    metrics: selectionModel.censusMetrics,
+                    demographics: selectionModel.selectedDemographics,
+                    zipBundle: selectionModel.selectedZipBundle,
+                    metricsSource: selectionModel.metricsSource,
+                    hasActiveSelection: selectionModel.hasActiveSelection,
+                    isLoadingSelection: selectionModel.isLoadingSelection,
+                    boundaryScale: boundaryScaleBinding,
                     sheetOffset: .constant(1000)
                 )
                 .padding(.horizontal, 20)
@@ -233,19 +234,19 @@ struct ContentView: View {
                     if selection == .map {
                         BottomSheet(sheetOffset: $sheetOffset) {
                             InsightsSheetContent(
-                                zipCode: selectedZipCode,
-                                metrics: censusMetrics,
-                                demographics: selectedDemographics,
-                                zipBundle: selectedZipBundle,
-                                metricsSource: metricsSource,
-                                hasActiveSelection: tappedCoordinate != nil,
-                                isLoadingSelection: tappedCoordinate != nil && (censusMetrics == nil || isBoundaryLoading),
-                                boundaryScale: $boundaryScale,
+                                zipCode: selectionModel.selectedZipCode,
+                                metrics: selectionModel.censusMetrics,
+                                demographics: selectionModel.selectedDemographics,
+                                zipBundle: selectionModel.selectedZipBundle,
+                                metricsSource: selectionModel.metricsSource,
+                                hasActiveSelection: selectionModel.hasActiveSelection,
+                                isLoadingSelection: selectionModel.isLoadingSelection,
+                                boundaryScale: boundaryScaleBinding,
                                 sheetOffset: $sheetOffset
                             )
                         }
                         .tint(boundaryThemeTint)
-                        .animation(.easeInOut(duration: 0.25), value: boundaryScale)
+                        .animation(.easeInOut(duration: 0.25), value: selectionModel.boundaryScale)
                         .accessibilitySortPriority(1)
                         .zIndex(1)
                     }
@@ -256,14 +257,6 @@ struct ContentView: View {
                     .zIndex(2)
                     .allowsHitTesting(true)
                 }
-            }
-        }
-        .onChange(of: boundaryScale) { newScale in
-            Haptics.softImpact()
-            let requestID = activeSelectionRequestID
-            activeScaleTask?.cancel()
-            activeScaleTask = Task {
-                await updateBoundaryAndDataForScale(newScale, requestID: requestID)
             }
         }
         .onAppear {
@@ -282,145 +275,6 @@ struct ContentView: View {
         }
     }
 
-    private func refreshData(for coordinate: CLLocationCoordinate2D) {
-        let requestID = UUID()
-        activeSelectionRequestID = requestID
-        activeFetchTask?.cancel()
-        activeScaleTask?.cancel()
-        isBoundaryLoading = true
-        mapNotice = nil
-
-        // Reset metrics first so the sheet can immediately show a loading state for
-        // the newly selected coordinate.
-        Task { @MainActor in
-            censusMetrics = nil
-            selectedDemographics = nil
-            metricsSource = nil
-            selectedZipBundle = nil
-            selectedBoundary = nil
-            neighborhoodBoundaries = nil
-        }
-
-        activeFetchTask = Task {
-            await fetchZipBundleMetrics(for: coordinate, requestID: requestID)
-        }
-    }
-
-    // MARK: - ZIP bundle service (ZCTA + boundary + demographics)
-    private func fetchZipBundleMetrics(for coordinate: CLLocationCoordinate2D, requestID: UUID) async {
-        let service = CensusZipDemographicsService(censusApiKey: AppConfig.censusAPIKey)
-
-        do {
-            let bundle = try await service.fetchZipBundle(
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-
-            guard await isSelectionRequestCurrent(requestID) else { return }
-
-            let metrics = mapDemographicsToMetrics(bundle.demographics)
-            await MainActor.run {
-                withAnimation(.easeInOut(duration: 0.28)) {
-                    self.selectedZipCode = bundle.zcta
-                    self.censusMetrics = metrics
-                    self.selectedDemographics = bundle.demographics
-                    self.metricsSource = .zcta
-                    self.selectedBoundary = bundle.boundary
-                    self.selectedZipBundle = bundle
-                }
-            }
-
-            let boundaries = await service.fetchNeighborhoodBoundaries(
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude,
-                tractGeoid: bundle.tract?.geoid,
-                zipBoundary: bundle.boundary
-            )
-
-            guard await isSelectionRequestCurrent(requestID) else { return }
-
-            await MainActor.run {
-                self.neighborhoodBoundaries = boundaries
-                self.selectedBoundary = boundaryOverlay(for: boundaries, scale: boundaryScale)
-                self.isBoundaryLoading = false
-            }
-
-            if boundaryScale != .zip {
-                await updateBoundaryAndDataForScale(boundaryScale, requestID: requestID)
-            }
-        } catch is CancellationError {
-            return
-        } catch let serviceError as CensusZipDemographicsService.ServiceError {
-            guard await isSelectionRequestCurrent(requestID) else { return }
-
-            if case .noZCTAFound = serviceError {
-                await MainActor.run {
-                    self.selectedZipCode = nil
-                    self.censusMetrics = nil
-                    self.metricsSource = nil
-                    self.selectedBoundary = nil
-                    self.neighborhoodBoundaries = nil
-                    self.selectedZipBundle = nil
-                    self.isBoundaryLoading = false
-                    self.mapNotice = AppStrings.Labels.noZipAvailableNotice
-                }
-                return
-            }
-
-            let fallback = SampleMetricsFactory.make(seedString: AppStrings.Network.defaultSeed)
-            await MainActor.run {
-                self.selectedZipCode = nil
-                self.censusMetrics = fallback
-                self.selectedDemographics = nil
-                self.metricsSource = .sample
-                self.selectedBoundary = nil
-                self.neighborhoodBoundaries = nil
-                self.selectedZipBundle = nil
-                self.isBoundaryLoading = false
-            }
-            #if DEBUG
-            print(AppStrings.Debug.acsZipFailed, serviceError)
-            #endif
-        } catch {
-            guard await isSelectionRequestCurrent(requestID) else { return }
-            let fallback = SampleMetricsFactory.make(seedString: AppStrings.Network.defaultSeed)
-            await MainActor.run {
-                self.selectedZipCode = nil
-                self.censusMetrics = fallback
-                self.selectedDemographics = nil
-                self.metricsSource = .sample
-                self.selectedBoundary = nil
-                self.neighborhoodBoundaries = nil
-                self.selectedZipBundle = nil
-                self.isBoundaryLoading = false
-            }
-            #if DEBUG
-            print(AppStrings.Debug.acsZipFailed, error)
-            #endif
-        }
-    }
-
-    private func mapDemographicsToMetrics(_ demographics: Demographics) -> CensusMetrics {
-        return CensusMetrics(
-            population: demographics.population,
-            medianIncome: demographics.medianHouseholdIncome,
-            medianAge: demographics.medianAge,
-            households: demographics.housingUnits,
-            populationTrend: nil,
-            ageBuckets: nil,
-            educationLevels: nil,
-            householdIncome: nil
-        )
-    }
-
-    private func boundaryOverlay(for boundaries: NeighborhoodBoundarySet, scale: BoundaryOverlayScale) -> GeoJSONFeatureCollection? {
-        switch scale {
-        case .zip:
-            return boundaries.zip
-        case .tract:
-            return boundaries.tract
-        }
-    }
 }
 
 private enum Haptics {
@@ -569,104 +423,6 @@ private struct MapNoticeBanner: View {
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
         .shadow(color: Color.black.opacity(0.18), radius: 10, y: 3)
-    }
-}
-
-extension ContentView {
-    private func updateBoundaryAndDataForScale(_ scale: BoundaryOverlayScale, requestID: UUID) async {
-        guard await isSelectionRequestCurrent(requestID) else { return }
-
-        guard
-            let boundaries = neighborhoodBoundaries,
-            let coordinate = tappedCoordinate,
-            let bundle = selectedZipBundle
-        else {
-            selectedBoundary = nil
-            return
-        }
-
-        await MainActor.run {
-            selectedBoundary = boundaryOverlay(for: boundaries, scale: scale)
-        }
-
-        let service = CensusZipDemographicsService(censusApiKey: AppConfig.censusAPIKey)
-        let requestedScale: NeighborhoodScale = {
-            switch scale {
-            case .zip: return .zip
-            case .tract: return .tract
-            }
-        }()
-
-        do {
-            let (demographics, source) = try await fetchScaleDemographicsWithFallback(
-                for: requestedScale,
-                service: service,
-                bundle: bundle,
-                coordinate: coordinate
-            )
-
-            guard await isSelectionRequestCurrent(requestID) else { return }
-            let metrics = mapDemographicsToMetrics(demographics)
-            await MainActor.run {
-                withAnimation(.spring(response: 0.38, dampingFraction: 0.9)) {
-                    censusMetrics = metrics
-                    selectedDemographics = demographics
-                    metricsSource = source
-                }
-            }
-        } catch is CancellationError {
-            return
-        } catch {
-            guard await isSelectionRequestCurrent(requestID) else { return }
-            await MainActor.run {
-                metricsSource = .zcta
-                censusMetrics = mapDemographicsToMetrics(bundle.demographics)
-                selectedDemographics = bundle.demographics
-            }
-        }
-    }
-
-    private func isSelectionRequestCurrent(_ requestID: UUID) async -> Bool {
-        await MainActor.run {
-            activeSelectionRequestID == requestID
-        }
-    }
-
-    private func fetchScaleDemographicsWithFallback(
-        for scale: NeighborhoodScale,
-        service: CensusZipDemographicsService,
-        bundle: ZipLookupResult,
-        coordinate: CLLocationCoordinate2D
-    ) async throws -> (Demographics, MetricsSource) {
-        switch scale {
-        case .zip:
-            let demographics = try await service.fetchDemographics(
-                for: .zip,
-                zcta: bundle.zcta,
-                tractGeoid: bundle.tract?.geoid,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-            return (demographics, .zcta)
-        case .tract:
-            if let demographics = try? await service.fetchDemographics(
-                for: .tract,
-                zcta: bundle.zcta,
-                tractGeoid: bundle.tract?.geoid,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            ) {
-                return (demographics, .tract)
-            }
-            let fallback = try await service.fetchDemographics(
-                for: .zip,
-                zcta: bundle.zcta,
-                tractGeoid: bundle.tract?.geoid,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-            return (fallback, .zcta)
-        }
     }
 }
 
