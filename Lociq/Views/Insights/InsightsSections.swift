@@ -84,7 +84,7 @@ struct ExpandedInsightsHeaderRow: View {
     let isFallbackToZIP: Bool
     let isCurrentPlaceSaved: Bool
     let onToggleSaved: () -> Void
-    let shareSummary: String?
+    let shareAsset: NeighborhoodShareCardAsset?
     @Binding var boundaryScale: BoundaryOverlayScale
 
     private var contextItems: [String] {
@@ -126,11 +126,11 @@ struct ExpandedInsightsHeaderRow: View {
                 .accessibilityIdentifier("insights.save")
                 .accessibilityLabel(isCurrentPlaceSaved ? AppStrings.Labels.removeSavedPlace : AppStrings.Labels.savePlace)
 
-                if let shareSummary {
+                if let shareAsset {
                     ShareLink(
-                        item: shareSummary,
+                        item: shareAsset,
                         subject: Text(areaTitle),
-                        preview: SharePreview(areaTitle, image: Image(systemName: "square.and.arrow.up"))
+                        preview: SharePreview(areaTitle, image: shareAsset.previewImage)
                     ) {
                         ViewThatFits(in: .horizontal) {
                             Label(AppStrings.Labels.share, systemImage: "square.and.arrow.up")

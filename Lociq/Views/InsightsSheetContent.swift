@@ -17,6 +17,7 @@ struct InsightsSheetContent: View {
     @Binding var sheetOffset: CGFloat
 
     @State private var hintVisible: Bool = true
+    @State private var shareAsset: NeighborhoodShareCardAsset?
 
     private var insights: [Insight] { zipBundle?.insights ?? [] }
 
@@ -67,20 +68,37 @@ struct InsightsSheetContent: View {
         boundaryScale.themeColor
     }
 
-    private var shareSummary: String? {
-        guard hasActiveSelection else { return nil }
-        guard !showsNoCoverageState && !showsSampleFallbackState else { return nil }
-        guard metrics != nil || demographics != nil else { return nil }
+    private var canShareSelection: Bool {
+        hasActiveSelection &&
+        !showsNoCoverageState &&
+        !showsSampleFallbackState &&
+        (metrics != nil || demographics != nil)
+    }
 
-        return NeighborhoodShareSummaryFormatter.makeSummary(
-            areaTitle: areaTitle,
-            areaSubtitle: areaSubtitle,
-            boundaryScale: boundaryScale,
-            metricsSource: metricsSource,
-            metrics: metrics,
-            demographics: demographics,
-            insights: insights
-        )
+    private var shareExportIdentity: String {
+        let visibleInsightTitles = insights
+            .filter { $0.category != .housing }
+            .prefix(2)
+            .map(\.title)
+            .joined(separator: "|")
+        let sourceText = metricsSource.map(InsightsFormatting.dataSourceText) ?? "none"
+        let populationValue = String(metrics?.population ?? demographics?.population ?? -1)
+        let incomeValue = String(metrics?.medianIncome ?? demographics?.medianHouseholdIncome ?? -1)
+        let householdsValue = String(metrics?.households ?? -1)
+        let ageValue = String(demographics?.medianAge ?? metrics?.medianAge ?? -1)
+
+        return [
+            canShareSelection ? "ready" : "disabled",
+            areaTitle,
+            areaSubtitle,
+            boundaryScale.rawValue,
+            sourceText,
+            populationValue,
+            incomeValue,
+            householdsValue,
+            ageValue,
+            visibleInsightTitles
+        ].joined(separator: "::")
     }
 
     private var isFallbackToZIP: Bool {
@@ -184,7 +202,7 @@ struct InsightsSheetContent: View {
                                 isFallbackToZIP: isFallbackToZIP,
                                 isCurrentPlaceSaved: isCurrentPlaceSaved,
                                 onToggleSaved: onToggleSaved,
-                                shareSummary: shareSummary,
+                                shareAsset: shareAsset,
                                 boundaryScale: $boundaryScale
                             )
                             .id("header-\(refreshAnimationKey)")
@@ -219,6 +237,22 @@ struct InsightsSheetContent: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                 withAnimation(.easeOut(duration: 0.25)) { hintVisible = false }
             }
+        }
+        .task(id: shareExportIdentity) {
+            guard canShareSelection else {
+                shareAsset = nil
+                return
+            }
+
+            shareAsset = NeighborhoodShareCardExporter.makeAsset(
+                areaTitle: areaTitle,
+                areaSubtitle: areaSubtitle,
+                boundaryScale: boundaryScale,
+                metricsSource: metricsSource,
+                metrics: metrics,
+                demographics: demographics,
+                insights: insights
+            )
         }
         .animation(.easeInOut(duration: 0.3), value: refreshAnimationKey)
     }
