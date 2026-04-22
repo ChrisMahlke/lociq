@@ -350,8 +350,110 @@ public final class CensusZipDemographicsService: @unchecked Sendable {
         }
     }
 
-    private let censusApiKey: String
+    private let directClient: DirectCensusZipDemographicsClient
     private let firebaseClient: FirebaseLociqCallableClient?
+
+    public init(
+        censusApiKey: String,
+        acsYear: Int = 2024,
+        session: URLSession = .shared,
+        firebaseClient: FirebaseLociqCallableClient? = nil
+    ) {
+        self.directClient = DirectCensusZipDemographicsClient(
+            censusApiKey: censusApiKey,
+            acsYear: acsYear,
+            session: session
+        )
+        self.firebaseClient = firebaseClient ?? FirebaseLociqCallableClient.makeDefaultIfAvailable()
+    }
+
+    // MARK: - Public API
+
+    /// Main entry point:
+    /// lat/lon -> ZCTA + county + tract + place/incorporation -> boundary + ACS -> insights
+    public func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
+        if let firebaseClient {
+            do {
+                return try await firebaseClient.fetchZipBundle(latitude: latitude, longitude: longitude)
+            } catch {
+                Self.logger.error("Firebase zip bundle lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
+            }
+        }
+
+        return try await directClient.fetchZipBundle(latitude: latitude, longitude: longitude)
+    }
+
+    public func fetchNeighborhoodBoundaries(
+        latitude: Double,
+        longitude: Double,
+        tractGeoid: String?,
+        zipBoundary: GeoJSONFeatureCollection
+    ) async -> NeighborhoodBoundarySet {
+        if let firebaseClient {
+            do {
+                return try await firebaseClient.fetchNeighborhoodBoundaries(
+                    latitude: latitude,
+                    longitude: longitude,
+                    tractGeoid: tractGeoid,
+                    zcta: Self.extractZCTA(from: zipBoundary)
+                )
+            } catch {
+                Self.logger.error("Firebase boundary lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
+            }
+        }
+
+        return await directClient.fetchNeighborhoodBoundaries(
+            latitude: latitude,
+            longitude: longitude,
+            tractGeoid: tractGeoid,
+            zipBoundary: zipBoundary
+        )
+    }
+
+    public func fetchDemographics(
+        for scale: NeighborhoodScale,
+        zcta: String,
+        tractGeoid: String?,
+        latitude: Double,
+        longitude: Double
+    ) async throws -> Demographics {
+        if let firebaseClient {
+            do {
+                return try await firebaseClient.fetchDemographics(
+                    scale: scale,
+                    zcta: zcta,
+                    tractGeoid: tractGeoid,
+                    latitude: latitude,
+                    longitude: longitude
+                )
+            } catch {
+                Self.logger.error("Firebase demographics lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
+            }
+        }
+
+        return try await directClient.fetchDemographics(
+            for: scale,
+            zcta: zcta,
+            tractGeoid: tractGeoid,
+            latitude: latitude,
+            longitude: longitude
+        )
+    }
+
+    private static func extractZCTA(from boundary: GeoJSONFeatureCollection) -> String? {
+        for feature in boundary.features {
+            if let zcta = feature.properties?["ZCTA5"] ?? feature.properties?["GEOID"] {
+                return zcta
+            }
+        }
+
+        return nil
+    }
+}
+
+private final class DirectCensusZipDemographicsClient: @unchecked Sendable {
+    private typealias ServiceError = CensusZipDemographicsService.ServiceError
+    private let censusApiKey: String
     private let session: URLSession
 
     /// ACS 5-year endpoints follow: https://api.census.gov/data/{YEAR}/acs/acs5
@@ -379,31 +481,17 @@ public final class CensusZipDemographicsService: @unchecked Sendable {
     private let geocoderCoordinatesURL = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
     private let tigerwebMapServerBaseURL = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer"
 
-    public init(
+    init(
         censusApiKey: String,
         acsYear: Int = 2024,
-        session: URLSession = .shared,
-        firebaseClient: FirebaseLociqCallableClient? = nil
+        session: URLSession = .shared
     ) {
         self.censusApiKey = censusApiKey
         self.acsYear = acsYear
         self.session = session
-        self.firebaseClient = firebaseClient ?? FirebaseLociqCallableClient.makeDefaultIfAvailable()
     }
 
-    // MARK: - Public API
-
-    /// Main entry point:
-    /// lat/lon -> ZCTA + county + tract + place/incorporation -> boundary + ACS -> insights
-    public func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
-        if let firebaseClient {
-            do {
-                return try await firebaseClient.fetchZipBundle(latitude: latitude, longitude: longitude)
-            } catch {
-                Self.logger.error("Firebase zip bundle lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
-            }
-        }
-
+    func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
         let geo = try await fetchGeographiesFromCoordinate(latitude: latitude, longitude: longitude)
 
         async let boundaryTask = fetchZCTABoundaryGeoJSON(zcta: geo.zcta)
@@ -436,25 +524,12 @@ public final class CensusZipDemographicsService: @unchecked Sendable {
         )
     }
 
-    public func fetchNeighborhoodBoundaries(
+    func fetchNeighborhoodBoundaries(
         latitude: Double,
         longitude: Double,
         tractGeoid: String?,
         zipBoundary: GeoJSONFeatureCollection
     ) async -> NeighborhoodBoundarySet {
-        if let firebaseClient {
-            do {
-                return try await firebaseClient.fetchNeighborhoodBoundaries(
-                    latitude: latitude,
-                    longitude: longitude,
-                    tractGeoid: tractGeoid,
-                    zcta: extractZCTA(from: zipBoundary)
-                )
-            } catch {
-                Self.logger.error("Firebase boundary lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
-            }
-        }
-
         let blockFIPS = try? await fetchBlockFIPS(latitude: latitude, longitude: longitude)
 
         let tractGeoidFromBlock: String?
@@ -475,27 +550,13 @@ public final class CensusZipDemographicsService: @unchecked Sendable {
         )
     }
 
-    public func fetchDemographics(
+    func fetchDemographics(
         for scale: NeighborhoodScale,
         zcta: String,
         tractGeoid: String?,
         latitude: Double,
         longitude: Double
     ) async throws -> Demographics {
-        if let firebaseClient {
-            do {
-                return try await firebaseClient.fetchDemographics(
-                    scale: scale,
-                    zcta: zcta,
-                    tractGeoid: tractGeoid,
-                    latitude: latitude,
-                    longitude: longitude
-                )
-            } catch {
-                Self.logger.error("Firebase demographics lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
-            }
-        }
-
         switch scale {
         case .zip:
             return try await fetchACSDemographics(zcta: zcta)
@@ -508,7 +569,7 @@ public final class CensusZipDemographicsService: @unchecked Sendable {
                 tractFromBlock = nil
             }
             guard let tract = tractFromBlock ?? tractGeoid, tract.count >= 11 else {
-                throw ServiceError.noDemographicsFound
+                throw CensusZipDemographicsService.ServiceError.noDemographicsFound
             }
             return try await fetchACSDemographics(tractGeoid: tract)
         }
@@ -1190,7 +1251,7 @@ private enum BoundaryAnalyzer {
     }
 }
 
-private extension CensusZipDemographicsService {
+private extension DirectCensusZipDemographicsClient {
     /// Validates identifier inputs before interpolation into API query clauses.
     func isValid(value: String, regex: String) -> Bool {
         value.range(of: regex, options: .regularExpression) != nil
