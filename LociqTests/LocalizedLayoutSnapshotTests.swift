@@ -58,6 +58,9 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
                         metricsSource: .tract,
                         hasActiveSelection: true,
                         isLoadingSelection: false,
+                        selectionFeedbackState: nil,
+                        isRefreshingScale: false,
+                        onRetrySelection: {},
                         boundaryScale: .constant(.tract),
                         sheetOffset: .constant(1000)
                     )
@@ -75,6 +78,9 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
                         metricsSource: .tract,
                         hasActiveSelection: true,
                         isLoadingSelection: false,
+                        selectionFeedbackState: nil,
+                        isRefreshingScale: false,
+                        onRetrySelection: {},
                         boundaryScale: .constant(.tract),
                         sheetOffset: .constant(1000)
                     )

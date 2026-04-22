@@ -45,6 +45,48 @@ struct MapSelectionModelTests {
         #expect(model.selectedBoundary?.features.count == boundaries.tract?.features.count)
     }
 
+    @Test func exposesNoCoverageStateWhenLocationHasNoZipProfile() async throws {
+        let service = StubCensusNeighborhoodService(
+            zipBundleResult: .failure(CensusZipDemographicsService.ServiceError.noZCTAFound)
+        )
+        let model = MapSelectionModel(service: service)
+
+        model.handleMapSelection(CLLocationCoordinate2D(latitude: 37.78, longitude: -122.4))
+        await waitUntil { model.selectionFeedbackState == .noCoverage }
+
+        #expect(model.selectionFeedbackState == .noCoverage)
+        #expect(model.censusMetrics == nil)
+        #expect(model.selectedZipBundle == nil)
+        #expect(model.isBoundaryLoading == false)
+    }
+
+    @Test func marksScaleRefreshWhileKeepingCurrentProfileVisible() async throws {
+        let zipBundle = makeZipBundle()
+        let boundaries = makeBoundaries()
+        let zipDemographics = makeDemographics(name: "ZIP Demographics", population: 42_000)
+        let tractDemographics = makeDemographics(name: "Tract Demographics", population: 12_500)
+
+        let service = StubCensusNeighborhoodService(
+            zipBundleResult: .success(zipBundle),
+            boundaries: boundaries,
+            demographicsByScale: [.zip: zipDemographics, .tract: tractDemographics],
+            demographicsDelayNanoseconds: 200_000_000
+        )
+        let model = MapSelectionModel(service: service)
+
+        model.handleMapSelection(CLLocationCoordinate2D(latitude: 37.78, longitude: -122.4))
+        await waitUntil { model.selectedZipBundle != nil && model.isBoundaryLoading == false }
+
+        model.selectBoundaryScale(.tract)
+        await waitUntil { model.isRefreshingScale }
+
+        #expect(model.isRefreshingScale == true)
+        #expect(model.censusMetrics?.population == zipBundle.demographics.population)
+
+        await waitUntil { model.metricsSource == .tract && model.isRefreshingScale == false }
+        #expect(model.selectedDemographics?.name == "Tract Demographics")
+    }
+
     private func waitUntil(
         timeoutNanoseconds: UInt64 = 1_000_000_000,
         condition: @escaping @MainActor () -> Bool
@@ -68,17 +110,20 @@ private actor StubCensusNeighborhoodService: CensusNeighborhoodServing {
     let boundaries: NeighborhoodBoundarySet
     let demographicsByScale: [NeighborhoodScale: Demographics]
     let demographicsErrorsByScale: [NeighborhoodScale: Error]
+    let demographicsDelayNanoseconds: UInt64
 
     init(
         zipBundleResult: Result<ZipLookupResult, Error>,
         boundaries: NeighborhoodBoundarySet = makeBoundaries(),
         demographicsByScale: [NeighborhoodScale: Demographics] = [.zip: makeDemographics(name: "Zip Area", population: 20_000)],
-        demographicsErrorsByScale: [NeighborhoodScale: Error] = [:]
+        demographicsErrorsByScale: [NeighborhoodScale: Error] = [:],
+        demographicsDelayNanoseconds: UInt64 = 0
     ) {
         self.zipBundleResult = zipBundleResult
         self.boundaries = boundaries
         self.demographicsByScale = demographicsByScale
         self.demographicsErrorsByScale = demographicsErrorsByScale
+        self.demographicsDelayNanoseconds = demographicsDelayNanoseconds
     }
 
     func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
@@ -101,6 +146,10 @@ private actor StubCensusNeighborhoodService: CensusNeighborhoodServing {
         latitude: Double,
         longitude: Double
     ) async throws -> Demographics {
+        if demographicsDelayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: demographicsDelayNanoseconds)
+        }
+
         if let error = demographicsErrorsByScale[scale] {
             throw error
         }

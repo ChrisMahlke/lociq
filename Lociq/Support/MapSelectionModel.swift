@@ -10,6 +10,56 @@ import CoreLocation
 import Foundation
 import SwiftUI
 
+enum SelectionFeedbackState: Equatable {
+    case noCoverage
+    case sampleFallback
+
+    var title: String {
+        switch self {
+        case .noCoverage:
+            return AppStrings.Labels.noCoverageTitle
+        case .sampleFallback:
+            return AppStrings.Labels.sampleFallbackTitle
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .noCoverage:
+            return AppStrings.Labels.noCoverageBody
+        case .sampleFallback:
+            return AppStrings.Labels.sampleFallbackBody
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .noCoverage:
+            return "mappin.slash.circle.fill"
+        case .sampleFallback:
+            return "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .noCoverage:
+            return .orange
+        case .sampleFallback:
+            return .indigo
+        }
+    }
+
+    var allowsRetry: Bool {
+        switch self {
+        case .noCoverage:
+            return false
+        case .sampleFallback:
+            return true
+        }
+    }
+}
+
 @MainActor
 final class MapSelectionModel: ObservableObject {
     @Published var tappedCoordinate: CLLocationCoordinate2D?
@@ -24,6 +74,8 @@ final class MapSelectionModel: ObservableObject {
     @Published private(set) var selectedZipBundle: ZipLookupResult?
     @Published private(set) var isBoundaryLoading: Bool = false
     @Published private(set) var mapNotice: String?
+    @Published private(set) var selectionFeedbackState: SelectionFeedbackState?
+    @Published private(set) var isRefreshingScale: Bool = false
 
     private let service: any CensusNeighborhoodServing
     private var activeSelectionRequestID = UUID()
@@ -50,6 +102,9 @@ final class MapSelectionModel: ObservableObject {
 
     func selectBoundaryScale(_ scale: BoundaryOverlayScale) {
         boundaryScale = scale
+        if tappedCoordinate != nil, neighborhoodBoundaries != nil, selectedZipBundle != nil {
+            isRefreshingScale = true
+        }
 
         let requestID = activeSelectionRequestID
         activeScaleTask?.cancel()
@@ -65,13 +120,20 @@ final class MapSelectionModel: ObservableObject {
         }
     }
 
+    func retryCurrentSelection() {
+        guard let coordinate = tappedCoordinate else { return }
+        refreshData(for: coordinate)
+    }
+
     private func refreshData(for coordinate: CLLocationCoordinate2D) {
         let requestID = UUID()
         activeSelectionRequestID = requestID
         activeFetchTask?.cancel()
         activeScaleTask?.cancel()
         isBoundaryLoading = true
+        isRefreshingScale = false
         mapNotice = nil
+        selectionFeedbackState = nil
         censusMetrics = nil
         selectedDemographics = nil
         metricsSource = nil
@@ -101,6 +163,7 @@ final class MapSelectionModel: ObservableObject {
                 metricsSource = .zcta
                 selectedBoundary = bundle.boundary
                 selectedZipBundle = bundle
+                selectionFeedbackState = nil
             }
 
             let boundaries = await service.fetchNeighborhoodBoundaries(
@@ -133,6 +196,7 @@ final class MapSelectionModel: ObservableObject {
                 selectedZipBundle = nil
                 isBoundaryLoading = false
                 mapNotice = AppStrings.Labels.noZipAvailableNotice
+                selectionFeedbackState = .noCoverage
                 return
             }
 
@@ -162,6 +226,11 @@ final class MapSelectionModel: ObservableObject {
         }
 
         selectedBoundary = boundaryOverlay(for: boundaries, scale: scale)
+        defer {
+            if isSelectionRequestCurrent(requestID) {
+                isRefreshingScale = false
+            }
+        }
 
         let requestedScale: NeighborhoodScale = {
             switch scale {
@@ -183,6 +252,7 @@ final class MapSelectionModel: ObservableObject {
                 censusMetrics = mapDemographicsToMetrics(demographics)
                 selectedDemographics = demographics
                 metricsSource = source
+                selectionFeedbackState = nil
             }
         } catch is CancellationError {
             return
@@ -244,6 +314,7 @@ final class MapSelectionModel: ObservableObject {
         neighborhoodBoundaries = nil
         selectedZipBundle = nil
         isBoundaryLoading = false
+        selectionFeedbackState = .sampleFallback
     }
 
     private func mapDemographicsToMetrics(_ demographics: Demographics) -> CensusMetrics {

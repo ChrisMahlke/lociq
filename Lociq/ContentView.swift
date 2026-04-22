@@ -190,6 +190,9 @@ struct ContentView: View {
                     metricsSource: selectionModel.metricsSource,
                     hasActiveSelection: selectionModel.hasActiveSelection,
                     isLoadingSelection: selectionModel.isLoadingSelection,
+                    selectionFeedbackState: selectionModel.selectionFeedbackState,
+                    isRefreshingScale: selectionModel.isRefreshingScale,
+                    onRetrySelection: selectionModel.retryCurrentSelection,
                     boundaryScale: boundaryScaleBinding,
                     sheetOffset: .constant(1000)
                 )
@@ -245,6 +248,9 @@ struct ContentView: View {
                                 metricsSource: selectionModel.metricsSource,
                                 hasActiveSelection: selectionModel.hasActiveSelection,
                                 isLoadingSelection: selectionModel.isLoadingSelection,
+                                selectionFeedbackState: selectionModel.selectionFeedbackState,
+                                isRefreshingScale: selectionModel.isRefreshingScale,
+                                onRetrySelection: selectionModel.retryCurrentSelection,
                                 boundaryScale: boundaryScaleBinding,
                                 sheetOffset: $sheetOffset
                             )

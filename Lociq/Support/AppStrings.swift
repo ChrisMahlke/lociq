@@ -33,6 +33,12 @@ enum AppStrings {
         static var noSelectionBody: String { L10n.tr("Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance.") }
         static var loadingSelectionTitle: String { L10n.tr("Loading area profile") }
         static var loadingSelectionBody: String { L10n.tr("Fetching boundaries, Census context, and quick-read signals for your selected location.") }
+        static var noCoverageTitle: String { L10n.tr("No neighborhood profile here") }
+        static var noCoverageBody: String { L10n.tr("This point does not map to a ZIP-backed neighborhood profile. Try a nearby area on land.") }
+        static var sampleFallbackTitle: String { L10n.tr("Showing a temporary profile") }
+        static var sampleFallbackBody: String { L10n.tr("Live neighborhood data could not be loaded, so Lociq is showing sample metrics for now. Retry to request the selected area again.") }
+        static var retry: String { L10n.tr("Retry") }
+        static var refreshingScaleBody: String { L10n.tr("Keeping your current profile visible while the selected scale updates.") }
         static var dataZip: String { L10n.tr("Data: ZIP") }
         static var dataTract: String { L10n.tr("Data: Tract") }
         static var dataSample: String { L10n.tr("Data: Sample") }
@@ -118,6 +124,10 @@ enum AppStrings {
 
         static func tract(_ value: String) -> String {
             L10n.format("Tract %@", fallback: "Tract %@", value)
+        }
+
+        static func refreshingScale(_ value: String) -> String {
+            L10n.format("Refreshing %@ view", fallback: "Refreshing %@ view", value)
         }
 
         static func step(_ value: Int) -> String {

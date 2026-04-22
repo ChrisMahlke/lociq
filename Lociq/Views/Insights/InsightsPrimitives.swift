@@ -264,11 +264,50 @@ struct CompactSheetPromptCard: View {
     }
 }
 
+struct CompactSelectionFeedbackCard: View {
+    let title: String
+    let message: String
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(tint)
+                .frame(width: 28, height: 28)
+                .background(tint.opacity(0.14), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.primary.opacity(0.68))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(tint.opacity(0.16), lineWidth: 0.9)
+        )
+    }
+}
+
 struct SelectionStateCard: View {
     let title: String
     let message: String
     let systemImage: String
     let tint: Color
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
 
     var body: some View {
         Card {
@@ -290,9 +329,53 @@ struct SelectionStateCard: View {
                     }
                 }
 
-                PromptStepChipStack()
+                if let actionTitle, let action {
+                    Button(action: action) {
+                        Label(actionTitle, systemImage: "arrow.clockwise")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(tint)
+                } else {
+                    PromptStepChipStack()
+                }
             }
         }
+    }
+}
+
+struct InlineSelectionRefreshCard: View {
+    let title: String
+    let message: String
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            ProgressView()
+                .tint(tint)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(tint.opacity(0.10))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(tint.opacity(0.18), lineWidth: 0.9)
+        )
     }
 }
 

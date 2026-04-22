@@ -8,6 +8,9 @@ struct InsightsSheetContent: View {
     let metricsSource: MetricsSource?
     let hasActiveSelection: Bool
     let isLoadingSelection: Bool
+    let selectionFeedbackState: SelectionFeedbackState?
+    let isRefreshingScale: Bool
+    let onRetrySelection: () -> Void
     @Binding var boundaryScale: BoundaryOverlayScale
     @Binding var sheetOffset: CGFloat
 
@@ -66,6 +69,14 @@ struct InsightsSheetContent: View {
         boundaryScale == .tract && metricsSource == .zcta
     }
 
+    private var showsNoCoverageState: Bool {
+        selectionFeedbackState == .noCoverage
+    }
+
+    private var showsSampleFallbackState: Bool {
+        selectionFeedbackState == .sampleFallback
+    }
+
     var body: some View {
         Group {
             if isCollapsed {
@@ -79,7 +90,21 @@ struct InsightsSheetContent: View {
                         hasActiveSelection: hasActiveSelection
                     )
 
-                    if hasActiveSelection || isLoadingSelection {
+                    if showsNoCoverageState {
+                        CompactSelectionFeedbackCard(
+                            title: AppStrings.Labels.noCoverageTitle,
+                            message: AppStrings.Labels.noCoverageBody,
+                            systemImage: "mappin.slash.circle.fill",
+                            tint: .orange
+                        )
+                    } else if showsSampleFallbackState {
+                        CompactSelectionFeedbackCard(
+                            title: AppStrings.Labels.sampleFallbackTitle,
+                            message: AppStrings.Labels.sampleFallbackBody,
+                            systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90",
+                            tint: .indigo
+                        )
+                    } else if hasActiveSelection || isLoadingSelection {
                         CollapsedInsightsMetricsGrid(metrics: metrics)
                     } else {
                         CompactSheetPromptCard()
@@ -95,7 +120,14 @@ struct InsightsSheetContent: View {
                                 systemImage: "hand.tap.fill",
                                 tint: .blue
                             )
-                        } else if isLoadingSelection && demographics == nil {
+                        } else if showsNoCoverageState {
+                            SelectionStateCard(
+                                title: AppStrings.Labels.noCoverageTitle,
+                                message: AppStrings.Labels.noCoverageBody,
+                                systemImage: "mappin.slash.circle.fill",
+                                tint: .orange
+                            )
+                        } else if isLoadingSelection && demographics == nil && metrics == nil {
                             SelectionStateCard(
                                 title: AppStrings.Labels.loadingSelectionTitle,
                                 message: AppStrings.Labels.loadingSelectionBody,
@@ -104,7 +136,28 @@ struct InsightsSheetContent: View {
                             )
                             KeyMetricsGrid(metrics: metrics)
                             GeneratedInsightsSection(insights: [], isLoading: true)
+                        } else if showsSampleFallbackState {
+                            SelectionStateCard(
+                                title: AppStrings.Labels.sampleFallbackTitle,
+                                message: AppStrings.Labels.sampleFallbackBody,
+                                systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90",
+                                tint: .indigo,
+                                actionTitle: AppStrings.Labels.retry,
+                                action: onRetrySelection
+                            )
+
+                            if let metrics {
+                                KeyMetricsGrid(metrics: metrics)
+                            }
                         } else {
+                            if isRefreshingScale {
+                                InlineSelectionRefreshCard(
+                                    title: AppStrings.Formats.refreshingScale(boundaryScale.displayTitle),
+                                    message: AppStrings.Labels.refreshingScaleBody,
+                                    tint: themeTint
+                                )
+                            }
+
                             ExpandedInsightsHeaderRow(
                                 areaTitle: areaTitle,
                                 areaSubtitle: areaSubtitle,
