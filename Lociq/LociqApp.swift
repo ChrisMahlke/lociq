@@ -22,12 +22,9 @@ struct LociqApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(authSession: authSession)
+            ContentView()
                 .task {
                     await authSession.restoreIfPossible()
-                }
-                .onOpenURL { url in
-                    _ = authSession.handleOpenURL(url)
                 }
         }
     }

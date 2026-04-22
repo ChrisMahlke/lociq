@@ -88,11 +88,6 @@ final class LociqAuthSession: ObservableObject {
         await signInAnonymouslyIfNeeded()
     }
 
-    func handleOpenURL(_ url: URL) -> Bool {
-        _ = url
-        return false
-    }
-
     private func clearState() {
         currentEmail = nil
         currentUserID = nil

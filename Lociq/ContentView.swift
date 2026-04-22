@@ -28,7 +28,6 @@ enum BoundaryOverlayScale: String, CaseIterable, Identifiable {
 }
 
 struct ContentView: View {
-    @ObservedObject var authSession: LociqAuthSession
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
     @AppStorage("hasSeenMapQuickTip") private var hasSeenMapQuickTip: Bool = false
 
@@ -593,5 +592,5 @@ extension ContentView {
 }
 
 #Preview {
-    ContentView(authSession: LociqAuthSession())
+    ContentView()
 }

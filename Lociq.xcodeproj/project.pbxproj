@@ -11,7 +11,6 @@
 		F2A1B300A0B14EAA9D700021 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F2A1B300A0B14EAA9D700024 /* FirebaseCore */; };
 		F2A1B300A0B14EAA9D700022 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = F2A1B300A0B14EAA9D700025 /* FirebaseFunctions */; };
 		F2A1B300A0B14EAA9D700027 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F2A1B300A0B14EAA9D700028 /* FirebaseAuth */; };
-		F2A1B300A0B14EAA9D700029 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = F2A1B300A0B14EAA9D70002A /* GoogleSignIn */; };
 		F9092BB52F74891300230E66 /* launchscreen3.png in Resources */ = {isa = PBXBuildFile; fileRef = F9092BB42F74891300230E66 /* launchscreen3.png */; };
 		F96708A02F758CFC006D11C2 /* lociq.icon in Resources */ = {isa = PBXBuildFile; fileRef = F967089F2F758CFC006D11C2 /* lociq.icon */; };
 		F9F07C2D2F567AE8009C7121 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = F9F07C2C2F567AE8009C7121 /* GoogleMaps */; };
@@ -73,7 +72,6 @@
 				F2A1B300A0B14EAA9D700027 /* FirebaseAuth in Frameworks */,
 				F2A1B300A0B14EAA9D700021 /* FirebaseCore in Frameworks */,
 				F2A1B300A0B14EAA9D700022 /* FirebaseFunctions in Frameworks */,
-				F2A1B300A0B14EAA9D700029 /* GoogleSignIn in Frameworks */,
 				F9F07C2D2F567AE8009C7121 /* GoogleMaps in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -154,7 +152,6 @@
 				F2A1B300A0B14EAA9D700028 /* FirebaseAuth */,
 				F2A1B300A0B14EAA9D700024 /* FirebaseCore */,
 				F2A1B300A0B14EAA9D700025 /* FirebaseFunctions */,
-				F2A1B300A0B14EAA9D70002A /* GoogleSignIn */,
 				F9F07C2C2F567AE8009C7121 /* GoogleMaps */,
 			);
 			productName = Lociq;
@@ -241,7 +238,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				F2A1B300A0B14EAA9D700026 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
-				F2A1B300A0B14EAA9D70002B /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				F9F07C2B2F567AE8009C7121 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -303,7 +299,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n\nread_setting() {\n    file=\"$1\"\n    setting=\"$2\"\n\n    if [ ! -f \"$file\" ]; then\n        return 0\n    fi\n\n    line=$(/usr/bin/grep -E \"^[[:space:]]*$setting[[:space:]]*=\" \"$file\" | /usr/bin/tail -n 1 || true)\n    if [ -z \"$line\" ]; then\n        return 0\n    fi\n\n    value=${line#*=}\n    value=$(printf '%s' \"$value\" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//')\n    printf '%s' \"$value\"\n}\n\ncopy_if_present() {\n    source_file=\"$1\"\n    destination_file=\"$2\"\n\n    if [ -f \"$source_file\" ]; then\n        /bin/cp \"$source_file\" \"$destination_file\"\n    fi\n}\n\nGOOGLE_MAPS_KEY=$(read_setting \"$PROJECT_DIR/Config/GoogleMaps.xcconfig\" \"GOOGLE_MAPS_API_KEY\")\nif [ -z \"$GOOGLE_MAPS_KEY\" ]; then\n    GOOGLE_MAPS_KEY=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"GOOGLE_MAPS_API_KEY\")\nfi\n\nCENSUS_KEY=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"CENSUS_API_KEY\")\nUSE_FIREBASE_BACKEND=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"USE_FIREBASE_LOCIQ_BACKEND\")\nFIREBASE_FUNCTIONS_REGION=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"FIREBASE_FUNCTIONS_REGION\")\nALLOWED_GOOGLE_EMAIL=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"ALLOWED_GOOGLE_EMAIL\")\nGOOGLE_SERVICE_INFO=\"$PROJECT_DIR/Config/GoogleService-Info.plist\"\nREVERSED_CLIENT_ID=$(/usr/libexec/PlistBuddy -c \"Print :REVERSED_CLIENT_ID\" \"$GOOGLE_SERVICE_INFO\" 2>/dev/null || true)\nINFO_PLIST=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\nRESOURCES_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\n\n/usr/libexec/PlistBuddy -c \"Set :GoogleMapsAPIKey $GOOGLE_MAPS_KEY\" \"$INFO_PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :GoogleMapsAPIKey string $GOOGLE_MAPS_KEY\" \"$INFO_PLIST\"\n/usr/libexec/PlistBuddy -c \"Set :CensusAPIKey $CENSUS_KEY\" \"$INFO_PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :CensusAPIKey string $CENSUS_KEY\" \"$INFO_PLIST\"\n/usr/libexec/PlistBuddy -c \"Set :UseFirebaseLociqBackend $USE_FIREBASE_BACKEND\" \"$INFO_PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :UseFirebaseLociqBackend string $USE_FIREBASE_BACKEND\" \"$INFO_PLIST\"\n/usr/libexec/PlistBuddy -c \"Set :FirebaseFunctionsRegion $FIREBASE_FUNCTIONS_REGION\" \"$INFO_PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :FirebaseFunctionsRegion string $FIREBASE_FUNCTIONS_REGION\" \"$INFO_PLIST\"\n/usr/libexec/PlistBuddy -c \"Set :AllowedGoogleEmail $ALLOWED_GOOGLE_EMAIL\" \"$INFO_PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :AllowedGoogleEmail string $ALLOWED_GOOGLE_EMAIL\" \"$INFO_PLIST\"\n\nif [ -n \"$REVERSED_CLIENT_ID\" ]; then\n    /usr/libexec/PlistBuddy -c \"Delete :CFBundleURLTypes\" \"$INFO_PLIST\" 2>/dev/null || true\n    /usr/libexec/PlistBuddy -c \"Add :CFBundleURLTypes array\" \"$INFO_PLIST\"\n    /usr/libexec/PlistBuddy -c \"Add :CFBundleURLTypes:0 dict\" \"$INFO_PLIST\"\n    /usr/libexec/PlistBuddy -c \"Add :CFBundleURLTypes:0:CFBundleTypeRole string Editor\" \"$INFO_PLIST\"\n    /usr/libexec/PlistBuddy -c \"Add :CFBundleURLTypes:0:CFBundleURLSchemes array\" \"$INFO_PLIST\"\n    /usr/libexec/PlistBuddy -c \"Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID\" \"$INFO_PLIST\"\nfi\n\n/bin/mkdir -p \"$RESOURCES_DIR\"\ncopy_if_present \"$PROJECT_DIR/Config/GoogleMaps.xcconfig\" \"$RESOURCES_DIR/GoogleMaps.xcconfig\"\ncopy_if_present \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"$RESOURCES_DIR/Secrets.xcconfig\"\ncopy_if_present \"$PROJECT_DIR/Config/GoogleService-Info.plist\" \"$RESOURCES_DIR/GoogleService-Info.plist\"\n";
+			shellScript = "set -eu\n\nread_setting() {\n    file=\"$1\"\n    setting=\"$2\"\n\n    if [ ! -f \"$file\" ]; then\n        return 0\n    fi\n\n    line=$(/usr/bin/grep -E \"^[[:space:]]*$setting[[:space:]]*=\" \"$file\" | /usr/bin/tail -n 1 || true)\n    if [ -z \"$line\" ]; then\n        return 0\n    fi\n\n    value=${line#*=}\n    value=$(printf '%s' \"$value\" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//')\n    printf '%s' \"$value\"\n}\n\ncopy_if_present() {\n    source_file=\"$1\"\n    destination_file=\"$2\"\n\n    if [ -f \"$source_file\" ]; then\n        /bin/cp \"$source_file\" \"$destination_file\"\n    fi\n}\n\nGOOGLE_MAPS_KEY=$(read_setting \"$PROJECT_DIR/Config/GoogleMaps.xcconfig\" \"GOOGLE_MAPS_API_KEY\")\nif [ -z \"$GOOGLE_MAPS_KEY\" ]; then\n    GOOGLE_MAPS_KEY=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"GOOGLE_MAPS_API_KEY\")\nfi\n\nCENSUS_KEY=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"CENSUS_API_KEY\")\nUSE_FIREBASE_BACKEND=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"USE_FIREBASE_LOCIQ_BACKEND\")\nFIREBASE_FUNCTIONS_REGION=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"FIREBASE_FUNCTIONS_REGION\")\nINFO_PLIST=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\nRESOURCES_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\n\n/usr/libexec/PlistBuddy -c \"Set :GoogleMapsAPIKey $GOOGLE_MAPS_KEY\" \"$INFO_PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :GoogleMapsAPIKey string $GOOGLE_MAPS_KEY\" \"$INFO_PLIST\"\n/usr/libexec/PlistBuddy -c \"Set :CensusAPIKey $CENSUS_KEY\" \"$INFO_PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :CensusAPIKey string $CENSUS_KEY\" \"$INFO_PLIST\"\n/usr/libexec/PlistBuddy -c \"Set :UseFirebaseLociqBackend $USE_FIREBASE_BACKEND\" \"$INFO_PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :UseFirebaseLociqBackend string $USE_FIREBASE_BACKEND\" \"$INFO_PLIST\"\n/usr/libexec/PlistBuddy -c \"Set :FirebaseFunctionsRegion $FIREBASE_FUNCTIONS_REGION\" \"$INFO_PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :FirebaseFunctionsRegion string $FIREBASE_FUNCTIONS_REGION\" \"$INFO_PLIST\"\n\n/bin/mkdir -p \"$RESOURCES_DIR\"\ncopy_if_present \"$PROJECT_DIR/Config/GoogleMaps.xcconfig\" \"$RESOURCES_DIR/GoogleMaps.xcconfig\"\ncopy_if_present \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"$RESOURCES_DIR/Secrets.xcconfig\"\ncopy_if_present \"$PROJECT_DIR/Config/GoogleService-Info.plist\" \"$RESOURCES_DIR/GoogleService-Info.plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -678,14 +674,6 @@
 				minimumVersion = 12.0.0;
 			};
 		};
-		F2A1B300A0B14EAA9D70002B /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 8.0.0;
-			};
-		};
 		F9F07C2B2F567AE8009C7121 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/googlemaps/ios-maps-sdk";
@@ -716,11 +704,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F2A1B300A0B14EAA9D700026 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
-		};
-		F2A1B300A0B14EAA9D70002A /* GoogleSignIn */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F2A1B300A0B14EAA9D70002B /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
-			productName = GoogleSignIn;
 		};
 		F9F07C2C2F567AE8009C7121 /* GoogleMaps */ = {
 			isa = XCSwiftPackageProductDependency;
