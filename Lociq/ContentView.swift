@@ -141,7 +141,7 @@ struct ContentView: View {
 
                 }
             case .more:
-                MoreScreen(authSession: authSession)
+                MoreScreen()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

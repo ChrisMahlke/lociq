@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct MoreScreen: View {
-    @ObservedObject var authSession: LociqAuthSession
     @Environment(\.colorScheme) private var colorScheme
 
     private var backgroundWashColors: [Color] {
@@ -24,7 +23,6 @@ struct MoreScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 MoreHeroCard()
-                FirebaseAccessCard(authSession: authSession)
                 QuickStartCard()
                 ScaleComparisonCard()
                 WhatYouSeeCard()
@@ -48,95 +46,6 @@ struct MoreScreen: View {
                 .blur(radius: 10)
             }
         )
-    }
-}
-
-private struct FirebaseAccessCard: View {
-    @ObservedObject var authSession: LociqAuthSession
-
-    private var isUsingDirectFallback: Bool {
-        LociqFirebaseRuntime.currentDisabledReason != nil
-    }
-
-    private var statusTitle: String {
-        if !AppConfig.useFirebaseLociqBackend {
-            return "Firebase backend is disabled"
-        }
-
-        if isUsingDirectFallback {
-            return "Using direct public-data fallback"
-        }
-
-        if authSession.isSignedIn {
-            return "Anonymous Firebase session active"
-        }
-
-        if authSession.isBusy {
-            return "Starting secure session"
-        }
-
-        return "Shared Firebase backend is starting"
-    }
-
-    private var statusDetail: String {
-        if !AppConfig.useFirebaseLociqBackend {
-            return "Set USE_FIREBASE_LOCIQ_BACKEND to true to route Census calls through Firebase."
-        }
-
-        if isUsingDirectFallback {
-            return "The shared Firebase backend did not finish bootstrapping for this launch, so Lociq is using the direct Census and geography APIs instead."
-        }
-
-        if authSession.isSignedIn {
-            return "The app silently uses anonymous Firebase auth for shared backend access. App Check still protects the callable backend from unauthorized clients."
-        }
-
-        return "Lociq signs into Firebase automatically in the background so users can use the shared Census backend without an account wall."
-    }
-
-    var body: some View {
-        SectionPanel {
-            VStack(alignment: .leading, spacing: 12) {
-                SectionHeading(
-                    title: "Firebase account",
-                    subtitle: "Required for the shared Census backend",
-                    icon: "person.crop.circle.badge.checkmark",
-                    tint: .green
-                )
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(statusTitle)
-                        .font(.subheadline.weight(.semibold))
-                    Text(statusDetail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                if let errorMessage = authSession.errorMessage,
-                   !errorMessage.isEmpty,
-                   !isUsingDirectFallback {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-
-                Button("Reset Session") {
-                    Task {
-                        await authSession.resetSession()
-                    }
-                }
-                .buttonStyle(.bordered)
-                .disabled(authSession.isBusy || !authSession.isSignedIn)
-
-                InfoLine(
-                    icon: "lock.shield",
-                    title: "Session mode",
-                    detail: isUsingDirectFallback
-                        ? "Direct API fallback"
-                        : (authSession.isAnonymous ? "Anonymous Firebase user" : "Authenticated Firebase user")
-                )
-            }
-        }
     }
 }
 
@@ -345,10 +254,8 @@ private struct PrivacyAndTrustCard: View {
                 )
                 InfoLine(
                     icon: "person.crop.circle.badge.checkmark",
-                    title: AppConfig.useFirebaseLociqBackend ? "No personal account required" : "No account required",
-                    detail: AppConfig.useFirebaseLociqBackend
-                        ? "The app uses anonymous Firebase auth for the shared backend when it is configured. If that setup fails, Lociq falls back to direct public-data APIs."
-                        : "You can use the app without signing in or creating a personal profile."
+                    title: "No account required",
+                    detail: "You can use the app without signing in or creating a personal profile."
                 )
                 InfoLine(
                     icon: "building.columns",
