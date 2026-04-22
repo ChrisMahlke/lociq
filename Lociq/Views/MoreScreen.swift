@@ -63,22 +63,22 @@ private struct MoreHeroCard: View {
                 .frame(width: 34, height: 34)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("How Lociq works")
+                    Text(AppStrings.More.heroTitle)
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.white)
-                    Text("A quick guide to reading the map and profile cards.")
+                    Text(AppStrings.More.heroSubtitle)
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.82))
                 }
             }
 
-            Text("Tap a place, compare ZIP and tract views, and use the sheet to understand the area without digging through raw Census tables.")
+            Text(AppStrings.More.heroBody)
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.93))
 
             HStack(spacing: 10) {
-                HeroSignalPill(title: "Broad scan", subtitle: "ZIP")
-                HeroSignalPill(title: "Local detail", subtitle: "Tract")
+                HeroSignalPill(title: AppStrings.More.broadScan, subtitle: AppStrings.More.zipTitle)
+                HeroSignalPill(title: AppStrings.More.localDetail, subtitle: AppStrings.More.tractTitle)
             }
         }
         .padding(16)
@@ -100,17 +100,17 @@ private struct MoreHeroCard: View {
 
 private struct QuickStartCard: View {
     private let steps: [(title: String, detail: String, tint: Color)] = [
-        ("Tap any spot", "Select a location and load a neighborhood profile for that area.", .blue),
-        ("Switch scale", "Use ZIP for a broader read and tract for more local variation.", .teal),
-        ("Read the profile", "Swipe up to compare population, income, age, housing, and context.", .indigo)
+        (AppStrings.More.tapAnySpot, AppStrings.More.tapAnySpotDetail, .blue),
+        (AppStrings.More.switchScale, AppStrings.More.switchScaleDetail, .teal),
+        (AppStrings.Labels.readTheProfile, AppStrings.More.readTheProfileDetail, .indigo)
     ]
 
     var body: some View {
         SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
-                    title: "Start here",
-                    subtitle: "The fastest way to get useful signal from the app",
+                    title: AppStrings.More.startHere,
+                    subtitle: AppStrings.More.startHereSubtitle,
                     icon: "sparkles.rectangle.stack.fill",
                     tint: .indigo
                 )
@@ -135,33 +135,33 @@ private struct ScaleComparisonCard: View {
         SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
-                    title: "ZIP vs Tract",
-                    subtitle: "Use each scale for a different kind of question",
+                    title: AppStrings.More.zipVsTract,
+                    subtitle: AppStrings.More.zipVsTractSubtitle,
                     icon: "square.stack.3d.up.fill",
                     tint: .mint
                 )
 
                 HStack(spacing: 10) {
                     ScaleSummaryCard(
-                        title: "ZIP",
+                        title: AppStrings.More.zipTitle,
                         tint: .blue,
                         icon: "square.fill",
-                        detail: "Best for a broader neighborhood read and faster comparison across larger areas.",
-                        emphasis: "Broader view"
+                        detail: AppStrings.More.zipDetail,
+                        emphasis: AppStrings.More.broaderView
                     )
 
                     ScaleSummaryCard(
-                        title: "Tract",
+                        title: AppStrings.More.tractTitle,
                         tint: .teal,
                         icon: "square.fill",
-                        detail: "Best for finer local context when nearby blocks may differ within the same ZIP.",
-                        emphasis: "Closer view"
+                        detail: AppStrings.More.tractDetail,
+                        emphasis: AppStrings.More.closerView
                     )
                 }
 
                 CalloutStrip(
-                    title: "Tip",
-                    detail: "If two nearby places look similar in ZIP view, switch to tract to check for more local variation.",
+                    title: AppStrings.More.tip,
+                    detail: AppStrings.More.tipDetail,
                     tint: .teal
                 )
             }
@@ -171,22 +171,22 @@ private struct ScaleComparisonCard: View {
 
 private struct WhatYouSeeCard: View {
     private let items: [(label: String, meaning: String, tint: Color)] = [
-        ("Population", "How many people live in the selected area.", .blue),
-        ("Median income", "A quick proxy for household earning power in the area.", .green),
-        ("Median age", "Whether the area skews younger, older, or more mixed.", .indigo),
-        ("Households", "How many occupied homes are represented in this profile.", .orange),
-        ("Home value / rent", "A fast read on local housing cost pressure.", .red),
-        ("Occupancy mix", "Owner-occupied versus renter-occupied homes.", .orange),
-        ("Remote work / poverty", "Two signals that can help describe work patterns and economic strain.", .mint),
-        ("Demographic composition", "Relative group counts shown as simple visual comparisons.", .purple)
+        (AppStrings.Metrics.population, AppStrings.More.populationMeaning, .blue),
+        (AppStrings.Metrics.medianIncome, AppStrings.More.medianIncomeMeaning, .green),
+        (AppStrings.Metrics.medianAge, AppStrings.More.medianAgeMeaning, .indigo),
+        (AppStrings.Metrics.households, AppStrings.More.householdsMeaning, .orange),
+        ("\(AppStrings.Labels.homeValue) / \(AppStrings.Labels.grossRent)", AppStrings.More.homeValueRentMeaning, .red),
+        (AppStrings.Labels.occupancyMix, AppStrings.More.occupancyMixMeaning, .orange),
+        ("\(AppStrings.Labels.remoteWork) / \(AppStrings.Labels.poverty)", AppStrings.More.remoteWorkPovertyMeaning, .mint),
+        (AppStrings.Labels.demographicCompositionVisual, AppStrings.More.demographicCompositionMeaning, .purple)
     ]
 
     var body: some View {
         SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
-                    title: "What you’re seeing",
-                    subtitle: "How to interpret the profile without reading every number in depth",
+                    title: AppStrings.More.whatYoureSeeing,
+                    subtitle: AppStrings.More.whatYoureSeeingSubtitle,
                     icon: "chart.bar.xaxis",
                     tint: .orange
                 )
@@ -210,8 +210,8 @@ private struct MapControlsCard: View {
         SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
-                    title: "Map controls",
-                    subtitle: "Quick camera actions while exploring",
+                    title: AppStrings.More.mapControls,
+                    subtitle: AppStrings.More.mapControlsSubtitle,
                     icon: "location.viewfinder",
                     tint: .teal
                 )
@@ -219,15 +219,15 @@ private struct MapControlsCard: View {
                 VStack(spacing: 8) {
                     ControlExplanationRow(
                         icon: "location.fill",
-                        title: "My Area",
-                        detail: "Centers the map on your current location, or your latest selected area if location is unavailable.",
+                        title: AppStrings.More.myArea,
+                        detail: AppStrings.More.myAreaDetail,
                         tint: .blue
                     )
 
                     ControlExplanationRow(
                         icon: "scope",
-                        title: "Reset Map",
-                        detail: "Returns to the default city overview so you can quickly start a new comparison.",
+                        title: AppStrings.More.resetMap,
+                        detail: AppStrings.More.resetMapDetail,
                         tint: .teal
                     )
                 }
@@ -241,31 +241,31 @@ private struct PrivacyAndTrustCard: View {
         SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeading(
-                    title: "Privacy and data trust",
-                    subtitle: "What the app uses and what it does not",
+                    title: AppStrings.More.privacyTrust,
+                    subtitle: AppStrings.More.privacyTrustSubtitle,
                     icon: "lock.shield.fill",
                     tint: .green
                 )
 
                 InfoLine(
                     icon: "location.circle",
-                    title: "Location is optional",
-                    detail: "Lociq uses location to center the map and help you explore nearby areas more quickly."
+                    title: AppStrings.More.locationOptional,
+                    detail: AppStrings.More.locationOptionalDetail
                 )
                 InfoLine(
                     icon: "person.crop.circle.badge.checkmark",
-                    title: "No account required",
-                    detail: "You can use the app without signing in or creating a personal profile."
+                    title: AppStrings.More.noAccountRequired,
+                    detail: AppStrings.More.noAccountRequiredDetail
                 )
                 InfoLine(
                     icon: "building.columns",
-                    title: "Official public data",
-                    detail: "Profiles are built from U.S. Census ACS estimates and public geography services."
+                    title: AppStrings.More.officialPublicData,
+                    detail: AppStrings.More.officialPublicDataDetail
                 )
                 InfoLine(
                     icon: "waveform.path.ecg",
-                    title: "These are estimates",
-                    detail: "Census values are statistical estimates and should be treated as directional context, not exact counts."
+                    title: AppStrings.More.theseAreEstimates,
+                    detail: AppStrings.More.theseAreEstimatesDetail
                 )
             }
         }
@@ -489,18 +489,18 @@ private struct ControlExplanationRow: View {
 
 private struct SourceBadgeGrid: View {
     private let sources: [(title: String, icon: String, tint: Color)] = [
-        ("U.S. Census Bureau", "building.columns.fill", .indigo),
-        ("ACS 5-Year Estimates", "chart.xyaxis.line", .blue),
-        ("TIGERweb Geometry", "square.on.square.squareshape.controlhandles", .teal),
-        ("FCC Block Lookup", "antenna.radiowaves.left.and.right", .mint)
+        (AppStrings.More.usCensusBureau, "building.columns.fill", .indigo),
+        (AppStrings.More.acs5YearEstimates, "chart.xyaxis.line", .blue),
+        (AppStrings.More.tigerwebGeometry, "square.on.square.squareshape.controlhandles", .teal),
+        (AppStrings.More.fccBlockLookup, "antenna.radiowaves.left.and.right", .mint)
     ]
 
     var body: some View {
         SectionPanel {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeading(
-                    title: "Primary sources",
-                    subtitle: "The public datasets behind Lociq",
+                    title: AppStrings.More.primarySources,
+                    subtitle: AppStrings.More.primarySourcesSubtitle,
                     icon: "doc.text.magnifyingglass",
                     tint: .indigo
                 )
@@ -532,16 +532,16 @@ private struct DataQualityFootnoteCard: View {
         SectionPanel {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeading(
-                    title: "Data quality notes",
-                    subtitle: "Useful caveats when comparing places",
+                    title: AppStrings.More.dataQualityNotes,
+                    subtitle: AppStrings.More.dataQualityNotesSubtitle,
                     icon: "checkmark.seal.fill",
                     tint: .green
                 )
 
-                InfoLine(icon: "calendar", title: "Latest ACS dataset", detail: AppStrings.Release.latestACS5YearDataset)
-                InfoLine(icon: "waveform.path.ecg", title: "Values are estimates", detail: "Census values include statistical uncertainty")
-                InfoLine(icon: "location", title: "Boundary geometry", detail: "ZIP and tract polygons are generalized for map display")
-                InfoLine(icon: "clock", title: "Refresh behavior", detail: "Profiles update each time you tap a new location")
+                InfoLine(icon: "calendar", title: AppStrings.Labels.latestACSDataset, detail: AppStrings.Release.latestACS5YearDataset)
+                InfoLine(icon: "waveform.path.ecg", title: AppStrings.Labels.valuesAreEstimatesShort, detail: AppStrings.Labels.censusValuesIncludeStatisticalUncertainty)
+                InfoLine(icon: "location", title: AppStrings.Labels.boundaryGeometry, detail: AppStrings.Labels.zipAndTractPolygonsGeneralized)
+                InfoLine(icon: "clock", title: AppStrings.Labels.refreshBehavior, detail: AppStrings.Labels.profilesUpdateEachTime)
             }
         }
     }

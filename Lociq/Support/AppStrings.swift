@@ -11,75 +11,222 @@ enum AppStrings {
         static let emDash = "—"
         static let oneDecimalFormat = "%.1f"
         static let oneDecimalPercentFormat = "%.1f%%"
-        static let dollarsPrefix = "$"
     }
 
     enum Tabs {
-        static let map = "Map"
-        static let more = "More"
+        static var map: String { L10n.tr("Map") }
+        static var more: String { L10n.tr("More") }
     }
 
     enum Metrics {
-        static let population = "Population"
-        static let medianIncome = "Median Income"
-        static let medianAge = "Median Age"
-        static let households = "Households"
+        static var population: String { L10n.tr("Population") }
+        static var medianIncome: String { L10n.tr("Median Income") }
+        static var medianAge: String { L10n.tr("Median Age") }
+        static var households: String { L10n.tr("Households") }
     }
 
     enum Labels {
-        static let swipeUpForMoreData = "Swipe up for more data"
-        static let insights = "Insights"
-        static let selectedArea = "Selected area"
-        static let noSelectionTitle = "Start with the map"
-        static let noSelectionBody = "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance."
-        static let loadingSelectionTitle = "Loading area profile"
-        static let loadingSelectionBody = "Fetching boundaries, Census context, and quick-read signals for your selected location."
-        static let dataZip = "Data: ZIP"
-        static let dataTract = "Data: Tract"
-        static let dataSample = "Data: Sample"
-        static let howToUseTitle = "How to use it"
-        static let mapInstructionOne = "1. Tap a location on the map."
-        static let mapInstructionTwo = "2. Switch overlay scale at the top."
-        static let mapInstructionThree = "3. Compare how boundaries and context shift between ZIP and tract levels."
-        static let collapsedHint = "Tap on map · swipe up for neighborhood profile"
-        static let profileSubtitle = "Real census profile and quick-read insights"
-        static let neighborhoodProfile = "Neighborhood profile"
-        static let housingAffordabilityTitle = "Housing and affordability"
-        static let homeValue = "Home value"
-        static let grossRent = "Gross rent"
-        static let workAndHouseholdSnapshot = "Work and household snapshot"
-        static let quickSignals = "Quick signals"
-        static let remoteWork = "Remote work"
-        static let poverty = "Poverty"
-        static let demographicCompositionVisual = "Demographic composition"
-        static let white = "White"
-        static let black = "Black"
-        static let asian = "Asian"
-        static let hispanicLatino = "Hispanic/Latino"
-        static let noGeneratedInsights = "No generated insights yet for this location."
-        static let occupancyMix = "Occupancy mix"
-        static let housing = "Housing"
-        static let affordability = "Affordability"
-        static let mobility = "Mobility"
-        static let demographics = "Demographics"
-        static let services = "Services"
-        static let geography = "Geography"
-        static let onboardingTitleOne = "Explore neighborhoods fast"
-        static let onboardingBodyOne = "Tap any spot on the map to load local Census context in seconds."
-        static let onboardingTitleTwo = "Compare ZIP and Tract"
-        static let onboardingBodyTwo = "Switch scales to see how metrics shift between broader and finer boundaries."
-        static let onboardingTitleThree = "Swipe up for deeper context"
-        static let onboardingBodyThree = "Expand the bottom sheet to view housing, work, and demographic composition details."
-        static let onboardingNext = "Next"
-        static let onboardingGetStarted = "Get Started"
-        static let onboardingSkip = "Skip"
-        static let overview = "Overview"
-        static let currentScale = "Current scale"
-        static let tractFallbackTitle = "ZIP fallback active"
-        static let tractFallbackBody = "Tract data is unavailable for this selection, so the profile is showing ZIP-level Census data."
-        static let mapTipTitle = "Tap to explore"
-        static let mapTipBody = "Select any point on the map to load a neighborhood profile, then switch between ZIP and tract."
-        static let dismiss = "Dismiss"
+        static var swipeUpForMoreData: String { L10n.tr("Swipe up for more data") }
+        static var insights: String { L10n.tr("Insights") }
+        static var selectedArea: String { L10n.tr("Selected area") }
+        static var noSelectionTitle: String { L10n.tr("Start with the map") }
+        static var noSelectionBody: String { L10n.tr("Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance.") }
+        static var loadingSelectionTitle: String { L10n.tr("Loading area profile") }
+        static var loadingSelectionBody: String { L10n.tr("Fetching boundaries, Census context, and quick-read signals for your selected location.") }
+        static var dataZip: String { L10n.tr("Data: ZIP") }
+        static var dataTract: String { L10n.tr("Data: Tract") }
+        static var dataSample: String { L10n.tr("Data: Sample") }
+        static var howToUseTitle: String { L10n.tr("How to use it") }
+        static var mapInstructionOne: String { L10n.tr("1. Tap a location on the map.") }
+        static var mapInstructionTwo: String { L10n.tr("2. Switch overlay scale at the top.") }
+        static var mapInstructionThree: String { L10n.tr("3. Compare how boundaries and context shift between ZIP and tract levels.") }
+        static var collapsedHint: String { L10n.tr("Tap on map · swipe up for neighborhood profile") }
+        static var profileSubtitle: String { L10n.tr("Real census profile and quick-read insights") }
+        static var neighborhoodProfile: String { L10n.tr("Neighborhood profile") }
+        static var housingAffordabilityTitle: String { L10n.tr("Housing and affordability") }
+        static var housingAffordabilitySubtitle: String { L10n.tr("Home prices, rent, and how occupancy is split") }
+        static var homeValue: String { L10n.tr("Home value") }
+        static var grossRent: String { L10n.tr("Gross rent") }
+        static var workAndHouseholdSnapshot: String { L10n.tr("Work and household snapshot") }
+        static var quickSignals: String { L10n.tr("Quick signals") }
+        static var quickSignalsSubtitle: String { L10n.tr("Fast read on work patterns and economic pressure") }
+        static var remoteWork: String { L10n.tr("Remote work") }
+        static var poverty: String { L10n.tr("Poverty") }
+        static var demographicCompositionVisual: String { L10n.tr("Demographic composition") }
+        static var demographicCompositionSubtitle: String { L10n.tr("Relative group sizes within the selected geography") }
+        static var white: String { L10n.tr("White") }
+        static var black: String { L10n.tr("Black") }
+        static var asian: String { L10n.tr("Asian") }
+        static var hispanicLatino: String { L10n.tr("Hispanic/Latino") }
+        static var noGeneratedInsights: String { L10n.tr("No generated insights yet for this location.") }
+        static var generatedInsightsSubtitle: String { L10n.tr("Plain-English takeaways generated from the active profile") }
+        static var occupancyMix: String { L10n.tr("Occupancy mix") }
+        static var housing: String { L10n.tr("Housing") }
+        static var affordability: String { L10n.tr("Affordability") }
+        static var mobility: String { L10n.tr("Mobility") }
+        static var demographics: String { L10n.tr("Demographics") }
+        static var services: String { L10n.tr("Services") }
+        static var geography: String { L10n.tr("Geography") }
+        static var onboardingTitleOne: String { L10n.tr("Explore neighborhoods fast") }
+        static var onboardingBodyOne: String { L10n.tr("Tap any spot on the map to load local Census context in seconds.") }
+        static var onboardingTitleTwo: String { L10n.tr("Compare ZIP and Tract") }
+        static var onboardingBodyTwo: String { L10n.tr("Switch scales to see how metrics shift between broader and finer boundaries.") }
+        static var onboardingTitleThree: String { L10n.tr("Swipe up for deeper context") }
+        static var onboardingBodyThree: String { L10n.tr("Expand the bottom sheet to view housing, work, and demographic composition details.") }
+        static var onboardingNext: String { L10n.tr("Next") }
+        static var onboardingGetStarted: String { L10n.tr("Get Started") }
+        static var onboardingSkip: String { L10n.tr("Skip") }
+        static var overview: String { L10n.tr("Overview") }
+        static var currentScale: String { L10n.tr("Current scale") }
+        static var tractFallbackTitle: String { L10n.tr("ZIP fallback active") }
+        static var tractFallbackBody: String { L10n.tr("Tract data is unavailable for this selection, so the profile is showing ZIP-level Census data.") }
+        static var mapTipTitle: String { L10n.tr("Tap to explore") }
+        static var mapTipBody: String { L10n.tr("Select any point on the map to load a neighborhood profile, then switch between ZIP and tract.") }
+        static var dismiss: String { L10n.tr("Dismiss") }
+        static var noZipAvailableNotice: String { L10n.tr("No ZIP code is available for this location. Try a nearby area on land.") }
+        static var googleMapsKeyRequired: String { L10n.tr("Google Maps Key Required") }
+        static var googleMapsKeyBody: String { L10n.tr("Add GOOGLE_MAPS_API_KEY in Config/GoogleMaps.xcconfig or your scheme environment variables.") }
+        static var loadingBoundary: String { L10n.tr("Loading boundary") }
+        static var updatingNeighborhoodOutline: String { L10n.tr("Updating neighborhood outline") }
+        static var locationUnavailable: String { L10n.tr("Location unavailable") }
+        static var appTitle: String { L10n.tr("Lociq") }
+        static var ipadSidebarBody: String { L10n.tr("Review the neighborhood profile while the map stays live.") }
+        static var profile: String { L10n.tr("Profile") }
+        static var guide: String { L10n.tr("Guide") }
+        static var tapMapToLoadContext: String { L10n.tr("Tap the map to load ZIP and tract context.") }
+        static var tapTheMap: String { L10n.tr("Tap the map") }
+        static var expandForMore: String { L10n.tr("Expand for more") }
+        static var tapAPlace: String { L10n.tr("Tap a place") }
+        static var compareScales: String { L10n.tr("Compare scales") }
+        static var readTheProfile: String { L10n.tr("Read the profile") }
+        static var usingBroaderZIPContext: String { L10n.tr("Using broader ZIP context") }
+        static var broaderNeighborhoodRead: String { L10n.tr("Broader neighborhood read") }
+        static var finerLocalContext: String { L10n.tr("Finer local context") }
+        static var valuesAreEstimatesShort: String { L10n.tr("Values are estimates") }
+        static var latestACSDataset: String { L10n.tr("Latest ACS dataset") }
+        static var boundaryGeometry: String { L10n.tr("Boundary geometry") }
+        static var refreshBehavior: String { L10n.tr("Refresh behavior") }
+        static var censusValuesIncludeStatisticalUncertainty: String { L10n.tr("Census values include statistical uncertainty") }
+        static var zipAndTractPolygonsGeneralized: String { L10n.tr("ZIP and tract polygons are generalized for map display") }
+        static var profilesUpdateEachTime: String { L10n.tr("Profiles update each time you tap a new location") }
+    }
+
+    enum Formats {
+        static func zip(_ value: String) -> String {
+            L10n.format("ZIP %@", fallback: "ZIP %@", value)
+        }
+
+        static func tract(_ value: String) -> String {
+            L10n.format("Tract %@", fallback: "Tract %@", value)
+        }
+
+        static func step(_ value: Int) -> String {
+            L10n.format("%d", fallback: "%d", value)
+        }
+
+        static func ownerOccupied(_ owner: String, renter: String) -> String {
+            L10n.format("%@ owner-occupied, %@ renter-occupied", fallback: "%@ owner-occupied, %@ renter-occupied", owner, renter)
+        }
+
+        static func homeownership(_ ownerPct: String, householdSize: String) -> String {
+            L10n.format("Homeownership at %@ with average household size of %@", fallback: "Homeownership at %@ with average household size of %@", ownerPct, householdSize)
+        }
+
+        static func housingSnapshotHomeValue(_ value: String, qualifier: String) -> String {
+            if qualifier.isEmpty {
+                return L10n.format("Median home value: %@", fallback: "Median home value: %@", value)
+            }
+            return L10n.format("Median home value: %@ %@", fallback: "Median home value: %@ %@", value, qualifier)
+        }
+
+        static func housingSnapshotRent(_ value: String, qualifier: String) -> String {
+            if qualifier.isEmpty {
+                return L10n.format("Median gross rent: %@", fallback: "Median gross rent: %@", value)
+            }
+            return L10n.format("Median gross rent: %@ %@", fallback: "Median gross rent: %@ %@", value, qualifier)
+        }
+
+        static func peoplePerHousehold(_ value: String) -> String {
+            L10n.format("%@ people per household.", fallback: "%@ people per household.", value)
+        }
+
+        static func workersReportWorkingFromHome(_ value: String) -> String {
+            L10n.format("%@ of workers report working from home.", fallback: "%@ of workers report working from home.", value)
+        }
+
+        static func belowPovertyLine(_ value: String) -> String {
+            L10n.format("%@ of people are below the poverty line (ACS estimate).", fallback: "%@ of people are below the poverty line (ACS estimate).", value)
+        }
+    }
+
+    enum Insight {
+        static var housingSnapshotTitle: String { L10n.tr("Housing snapshot") }
+        static var averageHouseholdSizeTitle: String { L10n.tr("Average household size") }
+        static var remoteWorkCommonTitle: String { L10n.tr("Remote-work common") }
+        static var remoteWorkLessCommonTitle: String { L10n.tr("Remote-work less common") }
+        static var higherPovertyRateTitle: String { L10n.tr("Higher poverty rate") }
+        static var lowerPovertyRateTitle: String { L10n.tr("Lower poverty rate") }
+        static var povertyRateTitle: String { L10n.tr("Poverty rate") }
+        static var highQualifier: String { L10n.tr("(high)") }
+    }
+
+    enum More {
+        static var heroTitle: String { L10n.tr("How Lociq works") }
+        static var heroSubtitle: String { L10n.tr("A quick guide to reading the map and profile cards.") }
+        static var heroBody: String { L10n.tr("Tap a place, compare ZIP and tract views, and use the sheet to understand the area without digging through raw Census tables.") }
+        static var broadScan: String { L10n.tr("Broad scan") }
+        static var localDetail: String { L10n.tr("Local detail") }
+        static var tapAnySpot: String { L10n.tr("Tap any spot") }
+        static var tapAnySpotDetail: String { L10n.tr("Select a location and load a neighborhood profile for that area.") }
+        static var switchScale: String { L10n.tr("Switch scale") }
+        static var switchScaleDetail: String { L10n.tr("Use ZIP for a broader read and tract for more local variation.") }
+        static var readTheProfileDetail: String { L10n.tr("Swipe up to compare population, income, age, housing, and context.") }
+        static var startHere: String { L10n.tr("Start here") }
+        static var startHereSubtitle: String { L10n.tr("The fastest way to get useful signal from the app") }
+        static var zipVsTract: String { L10n.tr("ZIP vs Tract") }
+        static var zipVsTractSubtitle: String { L10n.tr("Use each scale for a different kind of question") }
+        static var zipTitle: String { L10n.tr("ZIP") }
+        static var zipDetail: String { L10n.tr("Best for a broader neighborhood read and faster comparison across larger areas.") }
+        static var broaderView: String { L10n.tr("Broader view") }
+        static var tractTitle: String { L10n.tr("Tract") }
+        static var tractDetail: String { L10n.tr("Best for finer local context when nearby blocks may differ within the same ZIP.") }
+        static var closerView: String { L10n.tr("Closer view") }
+        static var tip: String { L10n.tr("Tip") }
+        static var tipDetail: String { L10n.tr("If two nearby places look similar in ZIP view, switch to tract to check for more local variation.") }
+        static var whatYoureSeeing: String { L10n.tr("What you’re seeing") }
+        static var whatYoureSeeingSubtitle: String { L10n.tr("How to interpret the profile without reading every number in depth") }
+        static var populationMeaning: String { L10n.tr("How many people live in the selected area.") }
+        static var medianIncomeMeaning: String { L10n.tr("A quick proxy for household earning power in the area.") }
+        static var medianAgeMeaning: String { L10n.tr("Whether the area skews younger, older, or more mixed.") }
+        static var householdsMeaning: String { L10n.tr("How many occupied homes are represented in this profile.") }
+        static var homeValueRentMeaning: String { L10n.tr("A fast read on local housing cost pressure.") }
+        static var occupancyMixMeaning: String { L10n.tr("Owner-occupied versus renter-occupied homes.") }
+        static var remoteWorkPovertyMeaning: String { L10n.tr("Two signals that can help describe work patterns and economic strain.") }
+        static var demographicCompositionMeaning: String { L10n.tr("Relative group counts shown as simple visual comparisons.") }
+        static var mapControls: String { L10n.tr("Map controls") }
+        static var mapControlsSubtitle: String { L10n.tr("Quick camera actions while exploring") }
+        static var myArea: String { L10n.tr("My Area") }
+        static var myAreaDetail: String { L10n.tr("Centers the map on your current location, or your latest selected area if location is unavailable.") }
+        static var resetMap: String { L10n.tr("Reset Map") }
+        static var resetMapDetail: String { L10n.tr("Returns to the default city overview so you can quickly start a new comparison.") }
+        static var privacyTrust: String { L10n.tr("Privacy and data trust") }
+        static var privacyTrustSubtitle: String { L10n.tr("What the app uses and what it does not") }
+        static var locationOptional: String { L10n.tr("Location is optional") }
+        static var locationOptionalDetail: String { L10n.tr("Lociq uses location to center the map and help you explore nearby areas more quickly.") }
+        static var noAccountRequired: String { L10n.tr("No account required") }
+        static var noAccountRequiredDetail: String { L10n.tr("You can use the app without signing in or creating a personal profile.") }
+        static var officialPublicData: String { L10n.tr("Official public data") }
+        static var officialPublicDataDetail: String { L10n.tr("Profiles are built from U.S. Census ACS estimates and public geography services.") }
+        static var theseAreEstimates: String { L10n.tr("These are estimates") }
+        static var theseAreEstimatesDetail: String { L10n.tr("Census values are statistical estimates and should be treated as directional context, not exact counts.") }
+        static var usCensusBureau: String { L10n.tr("U.S. Census Bureau") }
+        static var acs5YearEstimates: String { L10n.tr("ACS 5-Year Estimates") }
+        static var tigerwebGeometry: String { L10n.tr("TIGERweb Geometry") }
+        static var fccBlockLookup: String { L10n.tr("FCC Block Lookup") }
+        static var primarySources: String { L10n.tr("Primary sources") }
+        static var primarySourcesSubtitle: String { L10n.tr("The public datasets behind Lociq") }
+        static var dataQualityNotes: String { L10n.tr("Data quality notes") }
+        static var dataQualityNotesSubtitle: String { L10n.tr("Useful caveats when comparing places") }
     }
 
     enum Network {
@@ -99,7 +246,7 @@ enum AppStrings {
     }
 
     enum Release {
-        static let latestACS5YearDataset = "2022 ACS 5-Year release"
+        static var latestACS5YearDataset: String { L10n.tr("2022 ACS 5-Year release") }
     }
 }
 
@@ -133,10 +280,23 @@ enum NumberFormatting {
     static let decimalFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
+        formatter.locale = .current
+        return formatter
+    }()
+
+    static let currencyFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 0
+        formatter.locale = .current
         return formatter
     }()
 
     static func decimalString(_ value: Int) -> String {
         decimalFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+
+    static func currencyString(_ value: Int) -> String {
+        currencyFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }

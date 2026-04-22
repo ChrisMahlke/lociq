@@ -19,6 +19,15 @@ enum BoundaryOverlayScale: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var displayTitle: String {
+        switch self {
+        case .zip:
+            return AppStrings.More.zipTitle
+        case .tract:
+            return AppStrings.More.tractTitle
+        }
+    }
+
     var themeColor: Color {
         switch self {
         case .zip: return .blue
@@ -353,7 +362,7 @@ struct ContentView: View {
                     self.neighborhoodBoundaries = nil
                     self.selectedZipBundle = nil
                     self.isBoundaryLoading = false
-                    self.mapNotice = "No ZIP code is available for this location. Try a nearby area on land."
+                    self.mapNotice = AppStrings.Labels.noZipAvailableNotice
                 }
                 return
             }
@@ -442,10 +451,10 @@ private struct MissingGoogleMapsKeyView: View {
                     .font(.system(size: 28, weight: .semibold))
                     .foregroundStyle(.orange)
 
-                Text("Google Maps Key Required")
+                Text(AppStrings.Labels.googleMapsKeyRequired)
                     .font(.title3.weight(.semibold))
 
-                Text("Add GOOGLE_MAPS_API_KEY in Config/GoogleMaps.xcconfig or your scheme environment variables.")
+                Text(AppStrings.Labels.googleMapsKeyBody)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -506,10 +515,10 @@ private struct BoundaryLoadingBadge: View {
                 .progressViewStyle(.circular)
                 .tint(.blue)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Loading boundary")
+                Text(AppStrings.Labels.loadingBoundary)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                Text("Updating neighborhood outline")
+                Text(AppStrings.Labels.updatingNeighborhoodOutline)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
             }
@@ -538,7 +547,7 @@ private struct MapNoticeBanner: View {
                 .foregroundStyle(.white)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Location unavailable")
+                Text(AppStrings.Labels.locationUnavailable)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
                 Text(message)
@@ -671,21 +680,21 @@ private struct IPadSidebarHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Lociq")
+                Text(AppStrings.Labels.appTitle)
                     .font(.title2.weight(.bold))
-                Text("Review the neighborhood profile while the map stays live.")
+                Text(AppStrings.Labels.ipadSidebarBody)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
             HStack(spacing: 10) {
                 button(
-                    title: "Profile",
+                    title: AppStrings.Labels.profile,
                     systemImage: selection == .map ? IconNames.mapFilled : IconNames.map,
                     tab: .map
                 )
                 button(
-                    title: "Guide",
+                    title: AppStrings.Labels.guide,
                     systemImage: selection == .more ? IconNames.moreFilled : IconNames.more,
                     tab: .more
                 )

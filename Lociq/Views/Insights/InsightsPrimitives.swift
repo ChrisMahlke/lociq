@@ -98,7 +98,7 @@ struct BoundaryScaleIconToggle: View {
                     let isSelected = scale == option
                     let color = activeColor(for: option)
 
-                    Text(option.rawValue)
+                    Text(option.displayTitle)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(isSelected ? color : .primary.opacity(0.72))
                         .frame(minWidth: 54)
@@ -114,7 +114,7 @@ struct BoundaryScaleIconToggle: View {
                         )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(option.rawValue)
+                .accessibilityLabel(option.displayTitle)
                 .accessibilityAddTraits(scale == option ? .isSelected : [])
             }
         }
@@ -136,14 +136,14 @@ struct ScaleStatusBanner: View {
 
     private var detail: String {
         if isFallbackToZIP {
-            return "Using broader ZIP context"
+            return AppStrings.Labels.usingBroaderZIPContext
         }
 
         switch boundaryScale {
         case .zip:
-            return "Broader neighborhood read"
+            return AppStrings.Labels.broaderNeighborhoodRead
         case .tract:
-            return "Finer local context"
+            return AppStrings.Labels.finerLocalContext
         }
     }
 
@@ -230,7 +230,7 @@ struct CompactSheetPromptCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(AppStrings.Labels.noSelectionTitle)
                     .font(.subheadline.weight(.semibold))
-                Text("Tap the map to load ZIP and tract context.")
+                Text(AppStrings.Labels.tapMapToLoadContext)
                     .font(.caption)
                     .foregroundStyle(.primary.opacity(0.68))
             }
@@ -276,9 +276,9 @@ struct SelectionStateCard: View {
                 }
 
                 HStack(spacing: 8) {
-                    PromptStepChip(text: "Tap a place", tint: .blue)
-                    PromptStepChip(text: "Compare scales", tint: .teal)
-                    PromptStepChip(text: "Read the profile", tint: .indigo)
+                    PromptStepChip(text: AppStrings.Labels.tapAPlace, tint: .blue)
+                    PromptStepChip(text: AppStrings.Labels.compareScales, tint: .teal)
+                    PromptStepChip(text: AppStrings.Labels.readTheProfile, tint: .indigo)
                 }
             }
         }

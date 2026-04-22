@@ -821,7 +821,7 @@ private final class DirectCensusZipDemographicsClient: @unchecked Sendable {
         return try await fetchACSDemographics(
             forQuery: "zip code tabulation area:\(zcta)",
             inQuery: nil,
-            fallbackName: "ZCTA \(zcta)",
+            fallbackName: AppStrings.Formats.zip(zcta),
             variables: acsExtendedVariables
         )
     }
@@ -833,7 +833,7 @@ private final class DirectCensusZipDemographicsClient: @unchecked Sendable {
         return try await fetchACSDemographics(
             forQuery: "tract:\(tract)",
             inQuery: "state:\(state)+county:\(county)",
-            fallbackName: "Tract \(tractGeoid)",
+            fallbackName: AppStrings.Formats.tract(tractGeoid),
             variables: acsExtendedVariables
         )
     }
@@ -988,7 +988,7 @@ private final class DirectCensusZipDemographicsClient: @unchecked Sendable {
 
 // MARK: - Insight Engine (no extra network calls)
 
-private enum InsightEngine {
+enum InsightEngine {
 
     static func makeInsights(
         zcta: String,
@@ -1005,21 +1005,23 @@ private enum InsightEngine {
         var housingSeverity: Insight.Severity = .neutral
 
         if let hv = demographics.medianHomeValue {
-            housingDetails.append("Median home value: \(formatCurrency(hv))" + (hv >= 1_000_000 ? " (high)" : ""))
+            let qualifier = hv >= 1_000_000 ? AppStrings.Insight.highQualifier : ""
+            housingDetails.append(AppStrings.Formats.housingSnapshotHomeValue(formatCurrency(hv), qualifier: qualifier))
             if hv >= 1_000_000 {
                 housingSeverity = .caution
             }
         }
 
         if let rent = demographics.medianGrossRent {
-            housingDetails.append("Median gross rent: \(formatCurrency(rent))" + (rent >= 3000 ? " (high)" : ""))
+            let qualifier = rent >= 3000 ? AppStrings.Insight.highQualifier : ""
+            housingDetails.append(AppStrings.Formats.housingSnapshotRent(formatCurrency(rent), qualifier: qualifier))
             if rent >= 3000 {
                 housingSeverity = .caution
             }
         }
 
         if let ownerPct = demographics.ownerOccupiedPct, let renterPct = demographics.renterOccupiedPct {
-            let occupancyText = "\(formatPct(ownerPct)) owner-occupied, \(formatPct(renterPct)) renter-occupied"
+            let occupancyText = AppStrings.Formats.ownerOccupied(formatPct(ownerPct), renter: formatPct(renterPct))
             housingDetails.append(occupancyText)
             if housingSeverity != .caution, ownerPct >= 60 {
                 housingSeverity = .positive
@@ -1027,7 +1029,12 @@ private enum InsightEngine {
         }
 
         if let ownerPct = demographics.ownerOccupiedPct, let hh = demographics.averageHouseholdSize {
-            housingDetails.append("Homeownership at \(formatPct(ownerPct)) with average household size of \(formatNumber(hh, decimals: 1))")
+            housingDetails.append(
+                AppStrings.Formats.homeownership(
+                    formatPct(ownerPct),
+                    householdSize: formatNumber(hh, decimals: 1)
+                )
+            )
         }
 
         if !housingDetails.isEmpty {
@@ -1035,7 +1042,7 @@ private enum InsightEngine {
                 Insight(
                     category: .housing,
                     severity: housingSeverity,
-                    title: "Housing snapshot",
+                    title: AppStrings.Insight.housingSnapshotTitle,
                     detail: housingDetails.joined(separator: ". ") + "."
                 )
             )
@@ -1046,8 +1053,8 @@ private enum InsightEngine {
                 Insight(
                     category: .demographics,
                     severity: .neutral,
-                    title: "Average household size",
-                    detail: "\(formatNumber(hh, decimals: 2)) people per household."
+                    title: AppStrings.Insight.averageHouseholdSizeTitle,
+                    detail: AppStrings.Formats.peoplePerHousehold(formatNumber(hh, decimals: 2))
                 )
             )
         }
@@ -1055,13 +1062,13 @@ private enum InsightEngine {
         // Mobility / remote work
         if let wfh = demographics.workersWfhPct {
             let sev: Insight.Severity = wfh >= 20 ? .positive : .neutral
-            let label = wfh >= 20 ? "Remote-work common" : "Remote-work less common"
+            let label = wfh >= 20 ? AppStrings.Insight.remoteWorkCommonTitle : AppStrings.Insight.remoteWorkLessCommonTitle
             insights.append(
                 Insight(
                     category: .mobility,
                     severity: sev,
                     title: label,
-                    detail: "\(formatPct(wfh)) of workers report working from home."
+                    detail: AppStrings.Formats.workersReportWorkingFromHome(formatPct(wfh))
                 )
             )
         }
@@ -1072,13 +1079,13 @@ private enum InsightEngine {
             let label: String
             if pov >= 20 {
                 sev = .caution
-                label = "Higher poverty rate"
+                label = AppStrings.Insight.higherPovertyRateTitle
             } else if pov <= 8 {
                 sev = .positive
-                label = "Lower poverty rate"
+                label = AppStrings.Insight.lowerPovertyRateTitle
             } else {
                 sev = .neutral
-                label = "Poverty rate"
+                label = AppStrings.Insight.povertyRateTitle
             }
 
             insights.append(
@@ -1086,7 +1093,7 @@ private enum InsightEngine {
                     category: .affordability,
                     severity: sev,
                     title: label,
-                    detail: "\(formatPct(pov)) of people are below the poverty line (ACS estimate)."
+                    detail: AppStrings.Formats.belowPovertyLine(formatPct(pov))
                 )
             )
         }
@@ -1101,11 +1108,7 @@ private enum InsightEngine {
     }
 
     private static func formatCurrency(_ value: Int) -> String {
-        let nf = NumberFormatter()
-        nf.numberStyle = .currency
-        nf.maximumFractionDigits = 0
-        nf.locale = Locale(identifier: "en_US")
-        return nf.string(from: NSNumber(value: value)) ?? "\(value)"
+        NumberFormatting.currencyString(value)
     }
 
     private static func formatPct(_ value: Double) -> String {
@@ -1117,6 +1120,7 @@ private enum InsightEngine {
         nf.numberStyle = .decimal
         nf.minimumFractionDigits = decimals
         nf.maximumFractionDigits = decimals
+        nf.locale = .current
         return nf.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }

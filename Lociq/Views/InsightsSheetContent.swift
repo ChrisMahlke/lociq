@@ -29,7 +29,7 @@ struct InsightsSheetContent: View {
         if let demographics, !demographics.name.isEmpty {
             return demographics.name
         }
-        return zipCode.map { "ZIP \($0)" } ?? AppStrings.Labels.noSelectionTitle
+        return zipCode.map(AppStrings.Formats.zip) ?? AppStrings.Labels.noSelectionTitle
     }
 
     private var areaSubtitle: String {
@@ -40,11 +40,11 @@ struct InsightsSheetContent: View {
         }
 
         if let zipCode {
-            parts.append("ZIP \(zipCode)")
+            parts.append(AppStrings.Formats.zip(zipCode))
         }
 
         if boundaryScale == .tract, let tractCode = zipBundle?.tract?.tractCode, !tractCode.isEmpty {
-            parts.append("Tract \(tractCode)")
+            parts.append(AppStrings.Formats.tract(tractCode))
         }
 
         return parts.joined(separator: " · ")

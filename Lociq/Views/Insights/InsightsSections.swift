@@ -16,7 +16,7 @@ struct CollapsedInsightsHeaderRow: View {
                 .filter { !$0.isEmpty }
         }
 
-        return ["Tap the map", "Expand for more"]
+        return [AppStrings.Labels.tapTheMap, AppStrings.Labels.expandForMore]
     }
 
     var body: some View {
@@ -85,7 +85,7 @@ struct ExpandedInsightsHeaderRow: View {
     @Binding var boundaryScale: BoundaryOverlayScale
 
     private var contextItems: [String] {
-        areaSubtitle.isEmpty ? (zipCode.map { ["ZIP \($0)"] } ?? []) : areaSubtitle
+        areaSubtitle.isEmpty ? (zipCode.map { [AppStrings.Formats.zip($0)] } ?? []) : areaSubtitle
             .split(separator: "·")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
@@ -121,7 +121,7 @@ struct HousingAffordabilitySection: View {
             VStack(alignment: .leading, spacing: 10) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.housingAffordabilityTitle,
-                    subtitle: "Home prices, rent, and how occupancy is split",
+                    subtitle: AppStrings.Labels.housingAffordabilitySubtitle,
                     icon: "house.and.flag.fill",
                     tint: themeTint
                 )
@@ -161,7 +161,7 @@ struct QuickSignalsSection: View {
             VStack(alignment: .leading, spacing: 10) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.quickSignals,
-                    subtitle: "Fast read on work patterns and economic pressure",
+                    subtitle: AppStrings.Labels.quickSignalsSubtitle,
                     icon: "waveform.path.ecg.rectangle.fill",
                     tint: themeTint
                 )
@@ -196,7 +196,7 @@ struct DemographicCompositionSection: View {
             VStack(alignment: .leading, spacing: 10) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.demographicCompositionVisual,
-                    subtitle: "Relative group sizes within the selected geography",
+                    subtitle: AppStrings.Labels.demographicCompositionSubtitle,
                     icon: "person.3.sequence.fill",
                     tint: themeTint
                 )
@@ -235,7 +235,7 @@ struct GeneratedInsightsSection: View {
     let isLoading: Bool
 
     private var visibleInsights: [Insight] {
-        insights.filter { $0.title != "Housing snapshot" }
+        insights.filter { $0.category != .housing }
     }
 
     var body: some View {
@@ -243,7 +243,7 @@ struct GeneratedInsightsSection: View {
             VStack(alignment: .leading, spacing: 8) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.insights,
-                    subtitle: "Plain-English takeaways generated from the active profile",
+                    subtitle: AppStrings.Labels.generatedInsightsSubtitle,
                     icon: "text.bubble.fill",
                     tint: .indigo
                 )

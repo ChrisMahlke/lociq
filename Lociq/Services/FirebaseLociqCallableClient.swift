@@ -181,16 +181,29 @@ private struct ZipBundleResponse: Decodable {
     let zcta: String
 
     func toDomain() -> ZipLookupResult {
-        ZipLookupResult(
+        let countyInfo = county?.toDomain()
+        let tractInfo = tract?.toDomain()
+        let placeInfo = place?.toDomain()
+        let boundaryMetricsInfo = boundaryMetrics?.toDomain()
+        let demographicsModel = demographics.toDomain()
+
+        return ZipLookupResult(
             zcta: zcta,
-            county: county?.toDomain(),
-            tract: tract?.toDomain(),
-            place: place?.toDomain(),
+            county: countyInfo,
+            tract: tractInfo,
+            place: placeInfo,
             isIncorporatedPlace: isIncorporatedPlace,
             boundary: boundary,
-            boundaryMetrics: boundaryMetrics?.toDomain(),
-            demographics: demographics.toDomain(),
-            insights: insights.map { $0.toDomain() }
+            boundaryMetrics: boundaryMetricsInfo,
+            demographics: demographicsModel,
+            insights: InsightEngine.makeInsights(
+                zcta: zcta,
+                county: countyInfo,
+                tract: tractInfo,
+                isIncorporatedPlace: isIncorporatedPlace,
+                boundaryMetrics: boundaryMetricsInfo,
+                demographics: demographicsModel
+            )
         )
     }
 }

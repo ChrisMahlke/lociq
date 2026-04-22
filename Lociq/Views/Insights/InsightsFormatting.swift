@@ -8,7 +8,7 @@ enum InsightsFormatting {
 
     static func currency(_ value: Int?) -> String {
         guard let value else { return AppStrings.Symbols.emDash }
-        return "\(AppStrings.Symbols.dollarsPrefix)\(NumberFormatting.decimalString(value))"
+        return NumberFormatting.currencyString(value)
     }
 
     static func percent(_ value: Double?, suffixCount: Int?) -> String {
