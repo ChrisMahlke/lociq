@@ -235,6 +235,7 @@
 				Base,
 				es,
 				"zh-Hans",
+				"zh-Hant",
 			);
 			mainGroup = F9F07BF62F567A44009C7121;
 			minimizedProjectReferenceProxies = 1;
@@ -301,7 +302,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n\nread_setting() {\n    file=\"$1\"\n    setting=\"$2\"\n\n    if [ ! -f \"$file\" ]; then\n        return 0\n    fi\n\n    line=$(/usr/bin/grep -E \"^[[:space:]]*$setting[[:space:]]*=\" \"$file\" | /usr/bin/tail -n 1 || true)\n    if [ -z \"$line\" ]; then\n        return 0\n    fi\n\n    value=${line#*=}\n    value=$(printf '%s' \"$value\" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//')\n    printf '%s' \"$value\"\n}\n\ncopy_if_present() {\n    source_file=\"$1\"\n    destination_file=\"$2\"\n\n    if [ -f \"$source_file\" ]; then\n        /bin/cp \"$source_file\" \"$destination_file\"\n    fi\n}\n\nset_plist_string() {\n    key=\"$1\"\n    value=\"$2\"\n\n    /usr/libexec/PlistBuddy -c \"Set :$key $value\" \"$INFO_PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :$key string $value\" \"$INFO_PLIST\"\n}\n\ndelete_plist_key() {\n    key=\"$1\"\n    /usr/libexec/PlistBuddy -c \"Delete :$key\" \"$INFO_PLIST\" 2>/dev/null || true\n}\n\nGOOGLE_MAPS_KEY=$(read_setting \"$PROJECT_DIR/Config/GoogleMaps.xcconfig\" \"GOOGLE_MAPS_API_KEY\")\nif [ -z \"$GOOGLE_MAPS_KEY\" ]; then\n    GOOGLE_MAPS_KEY=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"GOOGLE_MAPS_API_KEY\")\nfi\n\nCENSUS_KEY=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"CENSUS_API_KEY\")\nUSE_FIREBASE_BACKEND=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"USE_FIREBASE_LOCIQ_BACKEND\")\nFIREBASE_FUNCTIONS_REGION=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"FIREBASE_FUNCTIONS_REGION\")\nFIREBASE_APP_CHECK_DEBUG_TOKEN=$(read_setting \"$PROJECT_DIR/Config/Secrets.xcconfig\" \"FIREBASE_APP_CHECK_DEBUG_TOKEN\")\nINFO_PLIST=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\nRESOURCES_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\n\nset_plist_string \"GoogleMapsAPIKey\" \"$GOOGLE_MAPS_KEY\"\nset_plist_string \"CensusAPIKey\" \"$CENSUS_KEY\"\nset_plist_string \"UseFirebaseLociqBackend\" \"$USE_FIREBASE_BACKEND\"\nset_plist_string \"FirebaseFunctionsRegion\" \"$FIREBASE_FUNCTIONS_REGION\"\n\nif [ \"$CONFIGURATION\" = \"Debug\" ] && [ \"$PLATFORM_NAME\" = \"iphonesimulator\" ] && [ -n \"$FIREBASE_APP_CHECK_DEBUG_TOKEN\" ]; then\n    set_plist_string \"FirebaseAppCheckDebugToken\" \"$FIREBASE_APP_CHECK_DEBUG_TOKEN\"\nelse\n    delete_plist_key \"FirebaseAppCheckDebugToken\"\nfi\n\n/bin/mkdir -p \"$RESOURCES_DIR\"\ncopy_if_present \"$PROJECT_DIR/Config/GoogleService-Info.plist\" \"$RESOURCES_DIR/GoogleService-Info.plist\"\n";
+			shellScript = "set -eu\n\ncopy_if_present() {\n    source_file=\"$1\"\n    destination_file=\"$2\"\n\n    if [ -f \"$source_file\" ]; then\n        /bin/cp \"$source_file\" \"$destination_file\"\n    fi\n}\n\nRESOURCES_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\n/bin/mkdir -p \"$RESOURCES_DIR\"\ncopy_if_present \"$PROJECT_DIR/Config/GoogleService-Info.plist\" \"$RESOURCES_DIR/GoogleService-Info.plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
