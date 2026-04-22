@@ -102,6 +102,9 @@ struct BoundaryScaleIconToggle: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(isSelected ? color : .primary.opacity(0.72))
                         .frame(minWidth: 54)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                        .multilineTextAlignment(.center)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(
@@ -149,14 +152,26 @@ struct ScaleStatusBanner: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
-                Text(detail)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary.opacity(0.72))
+            ViewThatFits(in: .vertical) {
+                HStack(spacing: 12) {
+                    Text(detail)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary.opacity(0.72))
+                        .fixedSize(horizontal: false, vertical: true)
 
-                Spacer(minLength: 0)
+                    Spacer(minLength: 0)
 
-                BoundaryScaleIconToggle(scale: $boundaryScale)
+                    BoundaryScaleIconToggle(scale: $boundaryScale)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(detail)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary.opacity(0.72))
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    BoundaryScaleIconToggle(scale: $boundaryScale)
+                }
             }
 
             if isFallbackToZIP {
@@ -275,11 +290,25 @@ struct SelectionStateCard: View {
                     }
                 }
 
-                HStack(spacing: 8) {
-                    PromptStepChip(text: AppStrings.Labels.tapAPlace, tint: .blue)
-                    PromptStepChip(text: AppStrings.Labels.compareScales, tint: .teal)
-                    PromptStepChip(text: AppStrings.Labels.readTheProfile, tint: .indigo)
-                }
+                PromptStepChipStack()
+            }
+        }
+    }
+}
+
+private struct PromptStepChipStack: View {
+    var body: some View {
+        ViewThatFits(in: .vertical) {
+            HStack(spacing: 8) {
+                PromptStepChip(text: AppStrings.Labels.tapAPlace, tint: .blue)
+                PromptStepChip(text: AppStrings.Labels.compareScales, tint: .teal)
+                PromptStepChip(text: AppStrings.Labels.readTheProfile, tint: .indigo)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                PromptStepChip(text: AppStrings.Labels.tapAPlace, tint: .blue)
+                PromptStepChip(text: AppStrings.Labels.compareScales, tint: .teal)
+                PromptStepChip(text: AppStrings.Labels.readTheProfile, tint: .indigo)
             }
         }
     }
@@ -293,6 +322,7 @@ private struct PromptStepChip: View {
         Text(text)
             .font(.caption.weight(.semibold))
             .foregroundStyle(tint)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(tint.opacity(0.12), in: Capsule())

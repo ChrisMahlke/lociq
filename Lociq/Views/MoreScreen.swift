@@ -66,15 +66,19 @@ private struct MoreHeroCard: View {
                     Text(AppStrings.More.heroTitle)
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("more.hero.title")
                     Text(AppStrings.More.heroSubtitle)
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.82))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
             Text(AppStrings.More.heroBody)
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.93))
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 10) {
                 HeroSignalPill(title: AppStrings.More.broadScan, subtitle: AppStrings.More.zipTitle)
@@ -131,6 +135,8 @@ private struct QuickStartCard: View {
 }
 
 private struct ScaleComparisonCard: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     var body: some View {
         SectionPanel {
             VStack(alignment: .leading, spacing: 12) {
@@ -141,22 +147,14 @@ private struct ScaleComparisonCard: View {
                     tint: .mint
                 )
 
-                HStack(spacing: 10) {
-                    ScaleSummaryCard(
-                        title: AppStrings.More.zipTitle,
-                        tint: .blue,
-                        icon: "square.fill",
-                        detail: AppStrings.More.zipDetail,
-                        emphasis: AppStrings.More.broaderView
-                    )
-
-                    ScaleSummaryCard(
-                        title: AppStrings.More.tractTitle,
-                        tint: .teal,
-                        icon: "square.fill",
-                        detail: AppStrings.More.tractDetail,
-                        emphasis: AppStrings.More.closerView
-                    )
+                if horizontalSizeClass == .compact {
+                    VStack(spacing: 10) {
+                        scaleCards
+                    }
+                } else {
+                    HStack(spacing: 10) {
+                        scaleCards
+                    }
                 }
 
                 CalloutStrip(
@@ -167,9 +165,30 @@ private struct ScaleComparisonCard: View {
             }
         }
     }
+
+    @ViewBuilder
+    private var scaleCards: some View {
+        ScaleSummaryCard(
+            title: AppStrings.More.zipTitle,
+            tint: .blue,
+            icon: "square.fill",
+            detail: AppStrings.More.zipDetail,
+            emphasis: AppStrings.More.broaderView
+        )
+
+        ScaleSummaryCard(
+            title: AppStrings.More.tractTitle,
+            tint: .teal,
+            icon: "square.fill",
+            detail: AppStrings.More.tractDetail,
+            emphasis: AppStrings.More.closerView
+        )
+    }
 }
 
 private struct WhatYouSeeCard: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     private let items: [(label: String, meaning: String, tint: Color)] = [
         (AppStrings.Metrics.population, AppStrings.More.populationMeaning, .blue),
         (AppStrings.Metrics.medianIncome, AppStrings.More.medianIncomeMeaning, .green),
@@ -191,7 +210,7 @@ private struct WhatYouSeeCard: View {
                     tint: .orange
                 )
 
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(items, id: \.label) { item in
                         InsightMeaningRow(
                             label: item.label,
@@ -202,6 +221,14 @@ private struct WhatYouSeeCard: View {
                 }
             }
         }
+    }
+
+    private var columns: [GridItem] {
+        if horizontalSizeClass == .compact {
+            return [GridItem(.flexible(), spacing: 8)]
+        }
+
+        return [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
     }
 }
 
@@ -289,9 +316,11 @@ private struct SectionHeading: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -314,9 +343,11 @@ private struct QuickStartRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
@@ -352,6 +383,7 @@ private struct ScaleSummaryCard: View {
                     .foregroundStyle(tint)
                 Text(title)
                     .font(.headline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Text(emphasis.uppercased())
@@ -400,9 +432,11 @@ private struct CalloutStrip: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.caption.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(10)
@@ -475,9 +509,11 @@ private struct ControlExplanationRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
@@ -488,6 +524,8 @@ private struct ControlExplanationRow: View {
 }
 
 private struct SourceBadgeGrid: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     private let sources: [(title: String, icon: String, tint: Color)] = [
         (AppStrings.More.usCensusBureau, "building.columns.fill", .indigo),
         (AppStrings.More.acs5YearEstimates, "chart.xyaxis.line", .blue),
@@ -505,16 +543,16 @@ private struct SourceBadgeGrid: View {
                     tint: .indigo
                 )
 
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(sources, id: \.title) { source in
-                        HStack(spacing: 6) {
+                        HStack(alignment: .top, spacing: 6) {
                             Image(systemName: source.icon)
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(source.tint)
                             Text(source.title)
                                 .font(.caption.weight(.semibold))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 7)
@@ -524,6 +562,14 @@ private struct SourceBadgeGrid: View {
                 }
             }
         }
+    }
+
+    private var columns: [GridItem] {
+        if horizontalSizeClass == .compact {
+            return [GridItem(.flexible(), spacing: 8)]
+        }
+
+        return [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
     }
 }
 
@@ -570,9 +616,11 @@ private struct HeroSignalPill: View {
             Text(title)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.74))
+                .fixedSize(horizontal: false, vertical: true)
             Text(subtitle)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
@@ -595,9 +643,11 @@ private struct InfoLine: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.caption.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

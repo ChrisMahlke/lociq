@@ -56,6 +56,10 @@ struct ContentView: View {
         ProcessInfo.processInfo.arguments.contains("UITEST_SKIP_ONBOARDING")
     }
 
+    private var isUITestResettingState: Bool {
+        ProcessInfo.processInfo.arguments.contains("UITEST_RESET_STATE")
+    }
+
     private var defaultSheetPeekHeight: CGFloat {
         max(140, min(220, UIScreen.main.bounds.height * 0.25))
     }
@@ -260,6 +264,10 @@ struct ContentView: View {
             }
         }
         .onAppear {
+            if isUITestResettingState {
+                hasSeenOnboarding = false
+                hasSeenMapQuickTip = false
+            }
             if isUITestSkippingOnboarding {
                 hasSeenOnboarding = true
             }
@@ -469,6 +477,8 @@ private struct IPadSidebarHeader: View {
                     .font(.subheadline.weight(.semibold))
                 Text(title)
                     .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
             }
             .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
             .padding(.horizontal, 14)
@@ -483,6 +493,7 @@ private struct IPadSidebarHeader: View {
                     .stroke(isSelected ? Color.accentColor.opacity(0.22) : Color.primary.opacity(0.07), lineWidth: 0.9)
             )
         }
+        .accessibilityIdentifier(tab == .map ? "sidebar.profile" : "sidebar.guide")
         .buttonStyle(.plain)
     }
 }

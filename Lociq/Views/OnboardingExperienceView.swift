@@ -42,6 +42,7 @@ struct OnboardingExperienceView: View {
                         onDone()
                     }
                     .font(.subheadline.weight(.semibold))
+                    .accessibilityIdentifier("onboarding.skip")
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 6)
@@ -72,6 +73,7 @@ struct OnboardingExperienceView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
+                .accessibilityIdentifier("onboarding.primary")
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
             }
@@ -103,6 +105,8 @@ private struct OnboardingCard: View {
 
             Text(page.title)
                 .font(.title2.weight(.bold))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("onboarding.pageTitle")
 
             Text(page.body)
                 .font(.body)

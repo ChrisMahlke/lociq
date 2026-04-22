@@ -253,10 +253,7 @@ struct GeneratedInsightsSection: View {
                     Text(AppStrings.Labels.noGeneratedInsights)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .allowsTightening(true)
-                        .minimumScaleFactor(0.8)
-                        .clipped()
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     InsightRedesignPanel(insights: visibleInsights)
                 }

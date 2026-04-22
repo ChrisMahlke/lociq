@@ -7,49 +7,165 @@
 
 import XCTest
 
+private enum UITestIDs {
+    static let tabMap = "tab.map"
+    static let tabMore = "tab.more"
+    static let sidebarProfile = "sidebar.profile"
+    static let sidebarGuide = "sidebar.guide"
+    static let moreHeroTitle = "more.hero.title"
+    static let onboardingPrimary = "onboarding.primary"
+}
+
+private struct LocaleLaunchConfiguration {
+    let name: String
+    let languageCode: String
+    let localeIdentifier: String
+}
+
 final class LociqUITests: XCTestCase {
 
-    private func makeApp(skippingOnboarding: Bool = true) -> XCUIApplication {
+    private func makeApp(
+        skippingOnboarding: Bool = true,
+        languageCode: String? = nil,
+        localeIdentifier: String? = nil
+    ) -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchArguments += ["UITEST_RESET_STATE"]
         if skippingOnboarding {
             app.launchArguments += ["UITEST_SKIP_ONBOARDING"]
+        }
+        if let languageCode {
+            app.launchArguments += ["-AppleLanguages", "(\(languageCode))"]
+        }
+        if let localeIdentifier {
+            app.launchArguments += ["-AppleLocale", localeIdentifier]
         }
         return app
     }
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
+    override func tearDownWithError() throws {}
 
     @MainActor
     func testTabSwitchingShowsMoreScreenContent() throws {
         let app = makeApp()
         app.launch()
 
-        XCTAssertTrue(app.buttons["Map"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["More"].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForMapControl(in: app, timeout: 5))
+        XCTAssertTrue(waitForMoreControl(in: app, timeout: 5))
 
-        app.buttons["More"].tap()
-        XCTAssertTrue(app.staticTexts["How Lociq works"].waitForExistence(timeout: 5))
+        openMoreScreen(in: app)
+        XCTAssertTrue(waitForMoreHeroTitle(in: app, timeout: 5))
 
-        app.buttons["Map"].tap()
-        XCTAssertTrue(app.buttons["More"].waitForExistence(timeout: 5))
+        openMapScreen(in: app)
+        XCTAssertTrue(waitForMoreControl(in: app, timeout: 5))
+    }
+
+    @MainActor
+    func testLocalizedGuideSnapshots() throws {
+        let scenarios = [
+            LocaleLaunchConfiguration(name: "German", languageCode: "de", localeIdentifier: "de_DE"),
+            LocaleLaunchConfiguration(name: "FrenchCanadian", languageCode: "fr-CA", localeIdentifier: "fr_CA"),
+            LocaleLaunchConfiguration(name: "Arabic", languageCode: "ar", localeIdentifier: "ar"),
+            LocaleLaunchConfiguration(name: "TraditionalChinese", languageCode: "zh-Hant", localeIdentifier: "zh_Hant")
+        ]
+
+        for scenario in scenarios {
+            let app = makeApp(
+                skippingOnboarding: true,
+                languageCode: scenario.languageCode,
+                localeIdentifier: scenario.localeIdentifier
+            )
+
+            app.launch()
+            XCTAssertTrue(waitForMoreControl(in: app, timeout: 5))
+
+            addNamedScreenshot(from: app, name: "\(scenario.name)-Map")
+
+            openMoreScreen(in: app)
+            XCTAssertTrue(waitForMoreHeroTitle(in: app, timeout: 5))
+
+            addNamedScreenshot(from: app, name: "\(scenario.name)-More")
+            app.terminate()
+        }
+    }
+
+    @MainActor
+    func testLocalizedOnboardingSnapshots() throws {
+        let scenarios = [
+            LocaleLaunchConfiguration(name: "German", languageCode: "de", localeIdentifier: "de_DE"),
+            LocaleLaunchConfiguration(name: "Arabic", languageCode: "ar", localeIdentifier: "ar"),
+            LocaleLaunchConfiguration(name: "TraditionalChinese", languageCode: "zh-Hant", localeIdentifier: "zh_Hant")
+        ]
+
+        for scenario in scenarios {
+            let app = makeApp(
+                skippingOnboarding: false,
+                languageCode: scenario.languageCode,
+                localeIdentifier: scenario.localeIdentifier
+            )
+
+            app.launch()
+            let primaryButton = app.buttons[UITestIDs.onboardingPrimary]
+            XCTAssertTrue(primaryButton.waitForExistence(timeout: 5))
+
+            addNamedScreenshot(from: app, name: "\(scenario.name)-Onboarding-Page1")
+
+            primaryButton.tap()
+            XCTAssertTrue(primaryButton.waitForExistence(timeout: 5))
+
+            addNamedScreenshot(from: app, name: "\(scenario.name)-Onboarding-Page2")
+            app.terminate()
+        }
     }
 
     @MainActor
     func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             makeApp().launch()
         }
+    }
+
+    private func waitForMapControl(in app: XCUIApplication, timeout: TimeInterval) -> Bool {
+        app.buttons[UITestIDs.tabMap].waitForExistence(timeout: timeout)
+            || app.buttons[UITestIDs.sidebarProfile].waitForExistence(timeout: timeout)
+    }
+
+    private func waitForMoreControl(in app: XCUIApplication, timeout: TimeInterval) -> Bool {
+        app.buttons[UITestIDs.tabMore].waitForExistence(timeout: timeout)
+            || app.buttons[UITestIDs.sidebarGuide].waitForExistence(timeout: timeout)
+    }
+
+    private func waitForMoreHeroTitle(in app: XCUIApplication, timeout: TimeInterval) -> Bool {
+        app.staticTexts[UITestIDs.moreHeroTitle].waitForExistence(timeout: timeout)
+            || app.otherElements[UITestIDs.moreHeroTitle].waitForExistence(timeout: timeout)
+    }
+
+    private func openMoreScreen(in app: XCUIApplication) {
+        if app.buttons[UITestIDs.tabMore].waitForExistence(timeout: 2) {
+            app.buttons[UITestIDs.tabMore].tap()
+            return
+        }
+
+        app.buttons[UITestIDs.sidebarGuide].tap()
+    }
+
+    private func openMapScreen(in app: XCUIApplication) {
+        if app.buttons[UITestIDs.tabMap].waitForExistence(timeout: 2) {
+            app.buttons[UITestIDs.tabMap].tap()
+            return
+        }
+
+        app.buttons[UITestIDs.sidebarProfile].tap()
+    }
+
+    private func addNamedScreenshot(from app: XCUIApplication, name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }

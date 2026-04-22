@@ -24,6 +24,7 @@ struct BottomRibbon: View {
 
     private func ribbonButton(title: String, systemImage: String, tab: TabSelection) -> some View {
         let isSelected = selection == tab
+        let identifier = tab == .map ? "tab.map" : "tab.more"
 
         return Button {
             selection = tab
@@ -34,6 +35,9 @@ struct BottomRibbon: View {
                     .symbolRenderingMode(.hierarchical)
                 Text(title)
                     .font(.caption.weight(.semibold))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -49,6 +53,7 @@ struct BottomRibbon: View {
             )
             .contentShape(Rectangle())
         }
+        .accessibilityIdentifier(identifier)
         .buttonStyle(.plain)
     }
 }
