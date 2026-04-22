@@ -100,67 +100,8 @@ enum AppConfig {
             return plistValue
         }
 
-        // Fallback for device builds: a local xcconfig can be copied into the app bundle
-        // during the build so the app still has a production-friendly local config source.
-        if let bundledConfigValue = bundledXCConfigValue(for: key),
-           !bundledConfigValue.isEmpty {
-            return bundledConfigValue
-        }
-
         return ""
     }
-
-    private static func bundledXCConfigValue(for key: String) -> String? {
-        let configMappings: [String: [(file: String, setting: String)]] = [
-            "GOOGLE_MAPS_API_KEY": [("GoogleMaps", "GOOGLE_MAPS_API_KEY")],
-            "GoogleMapsAPIKey": [("GoogleMaps", "GOOGLE_MAPS_API_KEY")],
-            "CENSUS_API_KEY": [("Secrets", "CENSUS_API_KEY")],
-            "CensusAPIKey": [("Secrets", "CENSUS_API_KEY")],
-            "USE_FIREBASE_LOCIQ_BACKEND": [("Secrets", "USE_FIREBASE_LOCIQ_BACKEND")],
-            "UseFirebaseLociqBackend": [("Secrets", "USE_FIREBASE_LOCIQ_BACKEND")],
-            "FIREBASE_FUNCTIONS_REGION": [("Secrets", "FIREBASE_FUNCTIONS_REGION")],
-            "FirebaseFunctionsRegion": [("Secrets", "FIREBASE_FUNCTIONS_REGION")],
-            "FIREBASE_APP_CHECK_DEBUG_TOKEN": [("Secrets", "FIREBASE_APP_CHECK_DEBUG_TOKEN")],
-            "FirebaseAppCheckDebugToken": [("Secrets", "FIREBASE_APP_CHECK_DEBUG_TOKEN")]
-        ]
-
-        guard let candidates = configMappings[key] else {
-            return nil
-        }
-
-        for candidate in candidates {
-            guard let url = Bundle.main.url(forResource: candidate.file, withExtension: "xcconfig"),
-                  let contents = try? String(contentsOf: url),
-                  let value = parseXCConfig(contents: contents, setting: candidate.setting),
-                  !value.isEmpty else {
-                continue
-            }
-
-            return value
-        }
-
-        return nil
-    }
-
-    private static func parseXCConfig(contents: String, setting: String) -> String? {
-        for rawLine in contents.split(whereSeparator: \.isNewline) {
-            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !line.isEmpty, !line.hasPrefix("//"), !line.hasPrefix("#include") else {
-                continue
-            }
-
-            let parts = line.split(separator: "=", maxSplits: 1).map(String.init)
-            guard parts.count == 2,
-                  parts[0].trimmingCharacters(in: .whitespacesAndNewlines) == setting else {
-                continue
-            }
-
-            return parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
-        return nil
-    }
-
 }
 
 private extension String {

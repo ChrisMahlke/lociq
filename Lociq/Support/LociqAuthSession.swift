@@ -2,10 +2,9 @@
 //  LociqAuthSession.swift
 //  Lociq
 //
-//  Silent Firebase auth for all users of the shared backend.
+//  Anonymous Firebase auth bootstrap for the shared callable backend.
 //
 
-import Combine
 import Foundation
 import os
 
@@ -18,24 +17,15 @@ import FirebaseCore
 #endif
 
 @MainActor
-final class LociqAuthSession: ObservableObject {
-    @Published private(set) var currentEmail: String?
-    @Published private(set) var currentUserID: String?
-    @Published private(set) var isAnonymous = true
-    @Published private(set) var isBusy = false
-    @Published private(set) var isSignedIn = false
-    @Published var errorMessage: String?
-
-    private let logger = Logger(
+enum LociqAuthSession {
+    private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "io.chrismahlke.lociq",
         category: "FirebaseAuth"
     )
 
-    func restoreIfPossible() async {
+    static func restoreIfPossible() async {
         guard AppConfig.useFirebaseLociqBackend else {
             LociqFirebaseRuntime.clearDisableReason()
-            errorMessage = nil
-            clearState()
             return
         }
 
@@ -43,8 +33,6 @@ final class LociqAuthSession: ObservableObject {
         guard FirebaseApp.app() != nil else {
             let message = "Firebase is not configured in this build."
             LociqFirebaseRuntime.disableForCurrentSession(reason: message)
-            errorMessage = message
-            clearState()
             return
         }
 
@@ -55,44 +43,9 @@ final class LociqAuthSession: ObservableObject {
 
         await signInAnonymouslyIfNeeded()
         #else
-        clearState()
         let message = "FirebaseAuth is not linked into this build."
         LociqFirebaseRuntime.disableForCurrentSession(reason: message)
-        errorMessage = message
         #endif
-    }
-
-    func ensureSignedIn() async {
-        guard AppConfig.useFirebaseLociqBackend else { return }
-
-        #if canImport(FirebaseAuth)
-        if let user = Auth.auth().currentUser {
-            applyAuthenticatedUser(user)
-            return
-        }
-        await signInAnonymouslyIfNeeded()
-        #endif
-    }
-
-    func resetSession() async {
-        #if canImport(FirebaseAuth)
-        do {
-            try Auth.auth().signOut()
-        } catch {
-            logger.error("Firebase sign-out failed: \(error.localizedDescription)")
-        }
-        #endif
-
-        clearState()
-        errorMessage = nil
-        await signInAnonymouslyIfNeeded()
-    }
-
-    private func clearState() {
-        currentEmail = nil
-        currentUserID = nil
-        isAnonymous = true
-        isSignedIn = false
     }
 }
 
@@ -110,9 +63,9 @@ private extension LociqAuthSession {
         }
     }
 
-    func signInAnonymouslyIfNeeded() async {
+    static func signInAnonymouslyIfNeeded() async {
         guard AppConfig.useFirebaseLociqBackend else {
-            clearState()
+            LociqFirebaseRuntime.clearDisableReason()
             return
         }
 
@@ -120,10 +73,6 @@ private extension LociqAuthSession {
             applyAuthenticatedUser(currentUser)
             return
         }
-
-        isBusy = true
-        errorMessage = nil
-        defer { isBusy = false }
 
         do {
             let result: AuthDataResult = try await withCheckedThrowingContinuation { continuation in
@@ -147,21 +96,15 @@ private extension LociqAuthSession {
             logger.error("Anonymous Firebase sign-in failed: \(error.localizedDescription)")
             let message = userFacingAuthErrorMessage(for: error)
             LociqFirebaseRuntime.disableForCurrentSession(reason: message)
-            errorMessage = message
-            clearState()
         }
     }
 
-    func applyAuthenticatedUser(_ user: User) {
+    static func applyAuthenticatedUser(_ user: User) {
         LociqFirebaseRuntime.clearDisableReason()
-        currentEmail = user.email
-        currentUserID = user.uid
-        errorMessage = nil
-        isAnonymous = user.isAnonymous
-        isSignedIn = true
+        logger.debug("Firebase auth ready for user \(user.uid, privacy: .private(mask: .hash))")
     }
 
-    func userFacingAuthErrorMessage(for error: Error) -> String {
+    static func userFacingAuthErrorMessage(for error: Error) -> String {
         let nsError = error as NSError
 
         guard nsError.domain == AuthErrorDomain,

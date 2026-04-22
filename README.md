@@ -52,7 +52,7 @@ The project uses local configuration files so the real Google Maps key is not ha
 
 - Committed example: [`Config/GoogleMaps.example.xcconfig`](/Users/chrismahlke/ios/lociq/Config/GoogleMaps.example.xcconfig)
 - Local file for your real key: `Config/GoogleMaps.xcconfig`
-- Optional legacy/local secrets file: `Config/Secrets.xcconfig`
+- Optional local secrets file: `Config/Secrets.xcconfig`
 - Optional Firebase bundle file: `Config/GoogleService-Info.plist`
 
 The app reads configuration through [`AppConfig.swift`](/Users/chrismahlke/ios/lociq/Lociq/AppConfig.swift), and Google Maps is initialized at startup in [`LociqApp.swift`](/Users/chrismahlke/ios/lociq/Lociq/LociqApp.swift).
@@ -71,6 +71,8 @@ The Firebase callable path also requires:
 - `Config/GoogleService-Info.plist` from Firebase for bundle id `io.chrismahlke.lociq`
 - Firebase App Check to be registered for the iOS app
 - Firebase Authentication Anonymous sign-in to be enabled for the project
+
+Only the resolved runtime values are written into the built app's `Info.plist`; the local `.xcconfig` files themselves are not copied into the app bundle.
 
 ## Google Maps Setup
 
@@ -117,6 +119,7 @@ xcodebuild test -project Lociq.xcodeproj -scheme Lociq -destination 'platform=iO
 ## Security Notes
 
 - Do not commit `Config/GoogleMaps.xcconfig`.
+- Do not commit `Config/Secrets.xcconfig` or `Config/GoogleService-Info.plist`.
 - Treat the key as deployable client configuration, not as a server secret.
 - Real protection comes from Google Cloud restrictions on bundle ID and API scope.
 
