@@ -84,6 +84,7 @@ enum AppStrings {
         static var onboardingSkip: String { L10n.tr("Skip") }
         static var overview: String { L10n.tr("Overview") }
         static var currentScale: String { L10n.tr("Current scale") }
+        static var share: String { L10n.tr("Share") }
         static var tractFallbackTitle: String { L10n.tr("ZIP fallback active") }
         static var tractFallbackBody: String { L10n.tr("Tract data is unavailable for this selection, so the profile is showing ZIP-level Census data.") }
         static var mapTipTitle: String { L10n.tr("Tap to explore") }

@@ -119,6 +119,7 @@
 "Select a location and load a neighborhood profile for that area." = "選擇一個位置並載入該區域的社區資料。";
 "Select any point on the map to load a neighborhood profile, then switch between ZIP and tract." = "在地圖上選取任意一點以載入社區資料，然後在 ZIP 與普查區之間切換。";
 "Selected area" = "已選區域";
+"Share" = "分享";
 "Services" = "服務";
 "Skip" = "略過";
 "Start here" = "從這裡開始";

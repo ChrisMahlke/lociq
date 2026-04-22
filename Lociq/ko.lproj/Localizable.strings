@@ -119,6 +119,7 @@
 "Select a location and load a neighborhood profile for that area." = "위치를 선택하면 해당 지역의 동네 프로필을 불러옵니다.";
 "Select any point on the map to load a neighborhood profile, then switch between ZIP and tract." = "지도에서 아무 지점이나 선택해 동네 프로필을 불러온 뒤 ZIP과 트랙트를 전환할 수 있습니다.";
 "Selected area" = "선택한 영역";
+"Share" = "공유";
 "Services" = "서비스";
 "Skip" = "건너뛰기";
 "Start here" = "여기서 시작";

@@ -119,6 +119,7 @@
 "Select a location and load a neighborhood profile for that area." = "場所を選択して、そのエリアの近隣プロフィールを読み込みます。";
 "Select any point on the map to load a neighborhood profile, then switch between ZIP and tract." = "地図上の任意の地点を選ぶと近隣プロフィールを読み込み、その後 ZIP とトラクトを切り替えられます。";
 "Selected area" = "選択したエリア";
+"Share" = "共有";
 "Services" = "サービス";
 "Skip" = "スキップ";
 "Start here" = "ここから始める";

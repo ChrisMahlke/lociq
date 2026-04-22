@@ -65,6 +65,22 @@ struct InsightsSheetContent: View {
         boundaryScale.themeColor
     }
 
+    private var shareSummary: String? {
+        guard hasActiveSelection else { return nil }
+        guard !showsNoCoverageState && !showsSampleFallbackState else { return nil }
+        guard metrics != nil || demographics != nil else { return nil }
+
+        return NeighborhoodShareSummaryFormatter.makeSummary(
+            areaTitle: areaTitle,
+            areaSubtitle: areaSubtitle,
+            boundaryScale: boundaryScale,
+            metricsSource: metricsSource,
+            metrics: metrics,
+            demographics: demographics,
+            insights: insights
+        )
+    }
+
     private var isFallbackToZIP: Bool {
         boundaryScale == .tract && metricsSource == .zcta
     }
@@ -164,6 +180,7 @@ struct InsightsSheetContent: View {
                                 zipCode: zipCode,
                                 metricsSource: metricsSource,
                                 isFallbackToZIP: isFallbackToZIP,
+                                shareSummary: shareSummary,
                                 boundaryScale: $boundaryScale
                             )
                             .id("header-\(refreshAnimationKey)")

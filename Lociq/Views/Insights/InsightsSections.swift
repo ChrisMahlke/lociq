@@ -82,6 +82,7 @@ struct ExpandedInsightsHeaderRow: View {
     let zipCode: String?
     let metricsSource: MetricsSource?
     let isFallbackToZIP: Bool
+    let shareSummary: String?
     @Binding var boundaryScale: BoundaryOverlayScale
 
     private var contextItems: [String] {
@@ -104,6 +105,46 @@ struct ExpandedInsightsHeaderRow: View {
                 }
 
                 Spacer()
+
+                if let shareSummary {
+                    ShareLink(
+                        item: shareSummary,
+                        subject: Text(areaTitle),
+                        preview: SharePreview(areaTitle, image: Image(systemName: "square.and.arrow.up"))
+                    ) {
+                        ViewThatFits(in: .horizontal) {
+                            Label(AppStrings.Labels.share, systemImage: "square.and.arrow.up")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(boundaryScale.themeColor)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 9)
+                                .background(
+                                    Capsule()
+                                        .fill(boundaryScale.themeColor.opacity(0.12))
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .stroke(boundaryScale.themeColor.opacity(0.2), lineWidth: 0.9)
+                                )
+
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(boundaryScale.themeColor)
+                                .frame(width: 38, height: 38)
+                                .background(
+                                    Circle()
+                                        .fill(boundaryScale.themeColor.opacity(0.12))
+                                )
+                                .overlay(
+                                    Circle()
+                                        .stroke(boundaryScale.themeColor.opacity(0.2), lineWidth: 0.9)
+                                )
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("insights.share")
+                    .accessibilityLabel(AppStrings.Labels.share)
+                }
             }
 
             ContextPillRow(items: contextItems, tint: boundaryScale.themeColor)
