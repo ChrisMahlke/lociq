@@ -34,17 +34,18 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
 
     private func makeSnapshotCases() -> [SnapshotCase] {
         let fixtures = SnapshotFixtures.make()
+        let libraryStore = SnapshotFixtures.makeLibraryStore()
 
         return [
             SnapshotCase(
                 name: "more-compact",
                 size: CGSize(width: 320, height: 1400),
-                view: AnyView(MoreScreen())
+                view: AnyView(MoreScreen(libraryStore: libraryStore, onSelectPlace: { _ in }))
             ),
             SnapshotCase(
                 name: "more-regular",
                 size: CGSize(width: 834, height: 1194),
-                view: AnyView(MoreScreen())
+                view: AnyView(MoreScreen(libraryStore: libraryStore, onSelectPlace: { _ in }))
             ),
             SnapshotCase(
                 name: "insights-compact",
@@ -61,6 +62,8 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
                         selectionFeedbackState: nil,
                         isRefreshingScale: false,
                         onRetrySelection: {},
+                        isCurrentPlaceSaved: true,
+                        onToggleSaved: {},
                         boundaryScale: .constant(.tract),
                         sheetOffset: .constant(1000)
                     )
@@ -81,6 +84,8 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
                         selectionFeedbackState: nil,
                         isRefreshingScale: false,
                         onRetrySelection: {},
+                        isCurrentPlaceSaved: true,
+                        onToggleSaved: {},
                         boundaryScale: .constant(.tract),
                         sheetOffset: .constant(1000)
                     )
@@ -241,5 +246,48 @@ private enum SnapshotFixtures {
         )
 
         return FixtureBundle(zipCode: zipCode, metrics: metrics, demographics: demographics, zipBundle: zipBundle)
+    }
+
+    @MainActor
+    static func makeLibraryStore() -> NeighborhoodLibraryStore {
+        let defaults = UserDefaults(suiteName: "LocalizedLayoutSnapshotTests")!
+        defaults.removePersistentDomain(forName: "LocalizedLayoutSnapshotTests")
+        let store = NeighborhoodLibraryStore(userDefaults: defaults, storageKey: "library")
+
+        store.recordLookup(
+            NeighborhoodLookupSnapshot(
+                id: "06075022902",
+                title: "San Francisco",
+                subtitle: "San Francisco County · ZIP 94110 · Tract 022902",
+                zipCode: "94110",
+                latitude: 37.76,
+                longitude: -122.42,
+                preferredScale: .tract
+            )
+        )
+        _ = store.toggleSaved(
+            NeighborhoodLookupSnapshot(
+                id: "06075022902",
+                title: "San Francisco",
+                subtitle: "San Francisco County · ZIP 94110 · Tract 022902",
+                zipCode: "94110",
+                latitude: 37.76,
+                longitude: -122.42,
+                preferredScale: .tract
+            )
+        )
+        store.recordLookup(
+            NeighborhoodLookupSnapshot(
+                id: "94107",
+                title: "Mission Bay",
+                subtitle: "San Francisco County · ZIP 94107",
+                zipCode: "94107",
+                latitude: 37.77,
+                longitude: -122.39,
+                preferredScale: .zip
+            )
+        )
+
+        return store
     }
 }

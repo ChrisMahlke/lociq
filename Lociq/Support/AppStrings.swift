@@ -116,6 +116,8 @@ enum AppStrings {
         static var censusValuesIncludeStatisticalUncertainty: String { L10n.tr("Census values include statistical uncertainty") }
         static var zipAndTractPolygonsGeneralized: String { L10n.tr("ZIP and tract polygons are generalized for map display") }
         static var profilesUpdateEachTime: String { L10n.tr("Profiles update each time you tap a new location") }
+        static var savePlace: String { L10n.tr("Save place") }
+        static var removeSavedPlace: String { L10n.tr("Remove saved place") }
     }
 
     enum Formats {
@@ -238,6 +240,12 @@ enum AppStrings {
         static var primarySourcesSubtitle: String { L10n.tr("The public datasets behind Lociq") }
         static var dataQualityNotes: String { L10n.tr("Data quality notes") }
         static var dataQualityNotesSubtitle: String { L10n.tr("Useful caveats when comparing places") }
+        static var savedPlaces: String { L10n.tr("Saved places") }
+        static var savedPlacesSubtitle: String { L10n.tr("Bookmark neighborhoods to reopen them quickly from any device size") }
+        static var noSavedPlacesYet: String { L10n.tr("No saved places yet. Open a neighborhood profile and tap the bookmark button to keep it handy.") }
+        static var recentLookups: String { L10n.tr("Recent lookups") }
+        static var recentLookupsSubtitle: String { L10n.tr("Jump back to neighborhoods you explored recently") }
+        static var noRecentLookupsYet: String { L10n.tr("Recent places will appear here after you explore the map.") }
     }
 
     enum Network {

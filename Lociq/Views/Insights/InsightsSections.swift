@@ -82,6 +82,8 @@ struct ExpandedInsightsHeaderRow: View {
     let zipCode: String?
     let metricsSource: MetricsSource?
     let isFallbackToZIP: Bool
+    let isCurrentPlaceSaved: Bool
+    let onToggleSaved: () -> Void
     let shareSummary: String?
     @Binding var boundaryScale: BoundaryOverlayScale
 
@@ -105,6 +107,24 @@ struct ExpandedInsightsHeaderRow: View {
                 }
 
                 Spacer()
+
+                Button(action: onToggleSaved) {
+                    Image(systemName: isCurrentPlaceSaved ? "bookmark.fill" : "bookmark")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(boundaryScale.themeColor)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            Circle()
+                                .fill(boundaryScale.themeColor.opacity(0.12))
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(boundaryScale.themeColor.opacity(0.2), lineWidth: 0.9)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("insights.save")
+                .accessibilityLabel(isCurrentPlaceSaved ? AppStrings.Labels.removeSavedPlace : AppStrings.Labels.savePlace)
 
                 if let shareSummary {
                     ShareLink(

@@ -42,13 +42,18 @@ struct ContentView: View {
     @AppStorage("hasSeenMapQuickTip") private var hasSeenMapQuickTip: Bool = false
 
     @StateObject private var selectionModel: MapSelectionModel
+    @StateObject private var libraryStore: NeighborhoodLibraryStore
     @State private var selection: TabSelection = .map
     @State private var sheetOffset: CGFloat = 0
     @State private var showOnboarding: Bool = false
 
     init(dependencies: AppDependencies = .live) {
+        _libraryStore = StateObject(wrappedValue: dependencies.neighborhoodLibraryStore)
         _selectionModel = StateObject(
-            wrappedValue: MapSelectionModel(service: dependencies.makeCensusLookupService())
+            wrappedValue: MapSelectionModel(
+                service: dependencies.makeCensusLookupService(),
+                libraryStore: dependencies.neighborhoodLibraryStore
+            )
         )
     }
 
@@ -172,7 +177,14 @@ struct ContentView: View {
             case .map:
                 mapPane(ignoresSafeAreaTop: true)
             case .more:
-                MoreScreen()
+                MoreScreen(
+                    libraryStore: libraryStore,
+                    onSelectPlace: { entry in
+                        selection = .map
+                        hasSeenMapQuickTip = true
+                        selectionModel.openLibraryEntry(entry)
+                    }
+                )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -193,6 +205,8 @@ struct ContentView: View {
                     selectionFeedbackState: selectionModel.selectionFeedbackState,
                     isRefreshingScale: selectionModel.isRefreshingScale,
                     onRetrySelection: selectionModel.retryCurrentSelection,
+                    isCurrentPlaceSaved: selectionModel.isCurrentPlaceSaved,
+                    onToggleSaved: selectionModel.toggleSavedCurrentPlace,
                     boundaryScale: boundaryScaleBinding,
                     sheetOffset: .constant(1000)
                 )
@@ -200,7 +214,14 @@ struct ContentView: View {
                 .padding(.top, 18)
                 .padding(.bottom, 12)
             case .more:
-                MoreScreen()
+                MoreScreen(
+                    libraryStore: libraryStore,
+                    onSelectPlace: { entry in
+                        selection = .map
+                        hasSeenMapQuickTip = true
+                        selectionModel.openLibraryEntry(entry)
+                    }
+                )
             }
         }
     }
@@ -251,6 +272,8 @@ struct ContentView: View {
                                 selectionFeedbackState: selectionModel.selectionFeedbackState,
                                 isRefreshingScale: selectionModel.isRefreshingScale,
                                 onRetrySelection: selectionModel.retryCurrentSelection,
+                                isCurrentPlaceSaved: selectionModel.isCurrentPlaceSaved,
+                                onToggleSaved: selectionModel.toggleSavedCurrentPlace,
                                 boundaryScale: boundaryScaleBinding,
                                 sheetOffset: $sheetOffset
                             )

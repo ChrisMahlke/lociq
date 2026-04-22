@@ -78,12 +78,14 @@ final class MapSelectionModel: ObservableObject {
     @Published private(set) var isRefreshingScale: Bool = false
 
     private let service: any CensusNeighborhoodServing
+    private let libraryStore: NeighborhoodLibraryStore
     private var activeSelectionRequestID = UUID()
     private var activeFetchTask: Task<Void, Never>?
     private var activeScaleTask: Task<Void, Never>?
 
-    init(service: any CensusNeighborhoodServing) {
+    init(service: any CensusNeighborhoodServing, libraryStore: NeighborhoodLibraryStore) {
         self.service = service
+        self.libraryStore = libraryStore
     }
 
     var hasActiveSelection: Bool {
@@ -92,6 +94,19 @@ final class MapSelectionModel: ObservableObject {
 
     var isLoadingSelection: Bool {
         tappedCoordinate != nil && (censusMetrics == nil || isBoundaryLoading)
+    }
+
+    var savedPlaces: [NeighborhoodLibraryEntry] {
+        libraryStore.savedPlaces
+    }
+
+    var recentLookups: [NeighborhoodLibraryEntry] {
+        libraryStore.recentLookups
+    }
+
+    var isCurrentPlaceSaved: Bool {
+        guard let currentLookupSnapshot else { return false }
+        return libraryStore.isSaved(currentLookupSnapshot)
     }
 
     func handleMapSelection(_ coordinate: CLLocationCoordinate2D?) {
@@ -123,6 +138,19 @@ final class MapSelectionModel: ObservableObject {
     func retryCurrentSelection() {
         guard let coordinate = tappedCoordinate else { return }
         refreshData(for: coordinate)
+    }
+
+    func toggleSavedCurrentPlace() {
+        guard let currentLookupSnapshot else { return }
+        _ = libraryStore.toggleSaved(currentLookupSnapshot)
+        objectWillChange.send()
+    }
+
+    func openLibraryEntry(_ entry: NeighborhoodLibraryEntry) {
+        boundaryScale = entry.preferredScale
+        handleMapSelection(
+            CLLocationCoordinate2D(latitude: entry.latitude, longitude: entry.longitude)
+        )
     }
 
     private func refreshData(for coordinate: CLLocationCoordinate2D) {
@@ -164,6 +192,10 @@ final class MapSelectionModel: ObservableObject {
                 selectedBoundary = bundle.boundary
                 selectedZipBundle = bundle
                 selectionFeedbackState = nil
+            }
+
+            if let snapshot = makeLookupSnapshot(bundle: bundle, coordinate: coordinate) {
+                libraryStore.recordLookup(snapshot)
             }
 
             let boundaries = await service.fetchNeighborhoodBoundaries(
@@ -340,5 +372,46 @@ final class MapSelectionModel: ObservableObject {
         case .tract:
             return boundaries.tract
         }
+    }
+
+    private var currentLookupSnapshot: NeighborhoodLookupSnapshot? {
+        guard let coordinate = tappedCoordinate, let bundle = selectedZipBundle else { return nil }
+        return makeLookupSnapshot(bundle: bundle, coordinate: coordinate)
+    }
+
+    private func makeLookupSnapshot(
+        bundle: ZipLookupResult,
+        coordinate: CLLocationCoordinate2D
+    ) -> NeighborhoodLookupSnapshot? {
+        let title: String
+        if let placeName = bundle.place?.name, !placeName.isEmpty {
+            title = placeName
+        } else if !bundle.demographics.name.isEmpty {
+            title = bundle.demographics.name
+        } else {
+            title = AppStrings.Formats.zip(bundle.zcta)
+        }
+
+        var subtitleParts: [String] = []
+        if let countyName = bundle.county?.name, !countyName.isEmpty {
+            subtitleParts.append(countyName)
+        }
+        subtitleParts.append(AppStrings.Formats.zip(bundle.zcta))
+        if let tractCode = bundle.tract?.tractCode, !tractCode.isEmpty {
+            subtitleParts.append(AppStrings.Formats.tract(tractCode))
+        }
+
+        let entryID = bundle.tract?.geoid ?? bundle.zcta
+        guard !entryID.isEmpty else { return nil }
+
+        return NeighborhoodLookupSnapshot(
+            id: entryID,
+            title: title,
+            subtitle: subtitleParts.joined(separator: " · "),
+            zipCode: bundle.zcta,
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            preferredScale: boundaryScale
+        )
     }
 }

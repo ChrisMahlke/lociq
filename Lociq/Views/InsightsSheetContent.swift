@@ -11,6 +11,8 @@ struct InsightsSheetContent: View {
     let selectionFeedbackState: SelectionFeedbackState?
     let isRefreshingScale: Bool
     let onRetrySelection: () -> Void
+    let isCurrentPlaceSaved: Bool
+    let onToggleSaved: () -> Void
     @Binding var boundaryScale: BoundaryOverlayScale
     @Binding var sheetOffset: CGFloat
 
@@ -180,6 +182,8 @@ struct InsightsSheetContent: View {
                                 zipCode: zipCode,
                                 metricsSource: metricsSource,
                                 isFallbackToZIP: isFallbackToZIP,
+                                isCurrentPlaceSaved: isCurrentPlaceSaved,
+                                onToggleSaved: onToggleSaved,
                                 shareSummary: shareSummary,
                                 boundaryScale: $boundaryScale
                             )

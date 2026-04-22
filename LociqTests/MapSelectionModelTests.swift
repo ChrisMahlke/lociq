@@ -8,7 +8,7 @@ struct MapSelectionModelTests {
         let service = StubCensusNeighborhoodService(
             zipBundleResult: .failure(CensusZipDemographicsService.ServiceError.requestFailed(status: 500, bodySnippet: "boom"))
         )
-        let model = MapSelectionModel(service: service)
+        let model = MapSelectionModel(service: service, libraryStore: makeLibraryStore())
 
         model.handleMapSelection(CLLocationCoordinate2D(latitude: 37.78, longitude: -122.4))
         await waitUntil { model.metricsSource == .sample }
@@ -31,7 +31,7 @@ struct MapSelectionModelTests {
             demographicsByScale: [.zip: zipDemographics],
             demographicsErrorsByScale: [.tract: CensusZipDemographicsService.ServiceError.noDemographicsFound]
         )
-        let model = MapSelectionModel(service: service)
+        let model = MapSelectionModel(service: service, libraryStore: makeLibraryStore())
 
         model.handleMapSelection(CLLocationCoordinate2D(latitude: 37.78, longitude: -122.4))
         await waitUntil { model.selectedZipBundle != nil && model.isBoundaryLoading == false }
@@ -49,7 +49,7 @@ struct MapSelectionModelTests {
         let service = StubCensusNeighborhoodService(
             zipBundleResult: .failure(CensusZipDemographicsService.ServiceError.noZCTAFound)
         )
-        let model = MapSelectionModel(service: service)
+        let model = MapSelectionModel(service: service, libraryStore: makeLibraryStore())
 
         model.handleMapSelection(CLLocationCoordinate2D(latitude: 37.78, longitude: -122.4))
         await waitUntil { model.selectionFeedbackState == .noCoverage }
@@ -72,7 +72,7 @@ struct MapSelectionModelTests {
             demographicsByScale: [.zip: zipDemographics, .tract: tractDemographics],
             demographicsDelayNanoseconds: 200_000_000
         )
-        let model = MapSelectionModel(service: service)
+        let model = MapSelectionModel(service: service, libraryStore: makeLibraryStore())
 
         model.handleMapSelection(CLLocationCoordinate2D(latitude: 37.78, longitude: -122.4))
         await waitUntil { model.selectedZipBundle != nil && model.isBoundaryLoading == false }
@@ -85,6 +85,24 @@ struct MapSelectionModelTests {
 
         await waitUntil { model.metricsSource == .tract && model.isRefreshingScale == false }
         #expect(model.selectedDemographics?.name == "Tract Demographics")
+    }
+
+    @Test func recordsSuccessfulLookupsInNeighborhoodLibrary() async throws {
+        let zipBundle = makeZipBundle()
+        let store = makeLibraryStore()
+        let service = StubCensusNeighborhoodService(zipBundleResult: .success(zipBundle))
+        let model = MapSelectionModel(service: service, libraryStore: store)
+
+        model.handleMapSelection(CLLocationCoordinate2D(latitude: 37.78, longitude: -122.4))
+        await waitUntil { model.selectedZipBundle != nil && model.recentLookups.count == 1 }
+
+        #expect(model.recentLookups.first?.title == "San Francisco")
+        #expect(model.isCurrentPlaceSaved == false)
+
+        model.toggleSavedCurrentPlace()
+
+        #expect(model.isCurrentPlaceSaved == true)
+        #expect(model.savedPlaces.count == 1)
     }
 
     private func waitUntil(
@@ -103,6 +121,14 @@ struct MapSelectionModelTests {
             elapsed += interval
         }
     }
+}
+
+@MainActor
+private func makeLibraryStore() -> NeighborhoodLibraryStore {
+    let suiteName = "MapSelectionModelTests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    return NeighborhoodLibraryStore(userDefaults: defaults, storageKey: "library")
 }
 
 private actor StubCensusNeighborhoodService: CensusNeighborhoodServing {

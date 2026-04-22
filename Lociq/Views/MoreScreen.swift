@@ -2,6 +2,8 @@ import SwiftUI
 
 struct MoreScreen: View {
     @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject var libraryStore: NeighborhoodLibraryStore
+    let onSelectPlace: (NeighborhoodLibraryEntry) -> Void
 
     private var backgroundWashColors: [Color] {
         if colorScheme == .dark {
@@ -23,6 +25,24 @@ struct MoreScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 MoreHeroCard()
+                NeighborhoodLibraryCard(
+                    title: AppStrings.More.savedPlaces,
+                    subtitle: AppStrings.More.savedPlacesSubtitle,
+                    icon: "bookmark.fill",
+                    tint: .blue,
+                    entries: libraryStore.savedPlaces,
+                    emptyState: AppStrings.More.noSavedPlacesYet,
+                    onSelectPlace: onSelectPlace
+                )
+                NeighborhoodLibraryCard(
+                    title: AppStrings.More.recentLookups,
+                    subtitle: AppStrings.More.recentLookupsSubtitle,
+                    icon: "clock.arrow.circlepath",
+                    tint: .teal,
+                    entries: libraryStore.recentLookups,
+                    emptyState: AppStrings.More.noRecentLookupsYet,
+                    onSelectPlace: onSelectPlace
+                )
                 QuickStartCard()
                 ScaleComparisonCard()
                 WhatYouSeeCard()
@@ -46,6 +66,92 @@ struct MoreScreen: View {
                 .blur(radius: 10)
             }
         )
+    }
+}
+
+private struct NeighborhoodLibraryCard: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let tint: Color
+    let entries: [NeighborhoodLibraryEntry]
+    let emptyState: String
+    let onSelectPlace: (NeighborhoodLibraryEntry) -> Void
+
+    var body: some View {
+        SectionPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeading(
+                    title: title,
+                    subtitle: subtitle,
+                    icon: icon,
+                    tint: tint
+                )
+
+                if entries.isEmpty {
+                    Text(emptyState)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(entries) { entry in
+                            Button {
+                                onSelectPlace(entry)
+                            } label: {
+                                NeighborhoodLibraryRow(entry: entry, tint: tint)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct NeighborhoodLibraryRow: View {
+    let entry: NeighborhoodLibraryEntry
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: entry.isSaved ? "bookmark.fill" : "clock.arrow.circlepath")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(tint)
+                .frame(width: 28, height: 28)
+                .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !entry.subtitle.isEmpty {
+                    Text(entry.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Text(entry.preferredScale.displayTitle)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(tint.opacity(0.12), in: Capsule())
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "arrow.up.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(tint.opacity(0.8))
+                .padding(.top, 3)
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
