@@ -12,13 +12,17 @@ import CoreLocation
 import FirebaseCore
 #endif
 
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
+
 #if canImport(FirebaseFunctions)
 import FirebaseFunctions
 #endif
 
 public final class FirebaseLociqCallableClient: @unchecked Sendable {
     static func makeDefaultIfAvailable() -> FirebaseLociqCallableClient? {
-        guard AppConfig.useFirebaseLociqBackend else {
+        guard LociqFirebaseRuntime.isCallableBackendEnabled else {
             return nil
         }
 
@@ -26,6 +30,12 @@ public final class FirebaseLociqCallableClient: @unchecked Sendable {
         guard FirebaseApp.app() != nil else {
             return nil
         }
+
+        #if canImport(FirebaseAuth)
+        guard Auth.auth().currentUser != nil else {
+            return nil
+        }
+        #endif
 
         return FirebaseLociqCallableClient(region: AppConfig.firebaseFunctionsRegion)
         #else

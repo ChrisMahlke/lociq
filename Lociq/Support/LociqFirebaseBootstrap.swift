@@ -24,23 +24,33 @@ enum LociqFirebaseBootstrap {
 
     static func configureIfAvailable() {
         guard AppConfig.useFirebaseLociqBackend else {
+            LociqFirebaseRuntime.clearDisableReason()
             return
         }
 
         #if canImport(FirebaseCore)
         guard FirebaseApp.app() == nil else {
+            LociqFirebaseRuntime.clearDisableReason()
             return
         }
 
         guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
-            logger.error("""
+            let message = """
             Firebase backend is enabled but GoogleService-Info.plist is missing from the app bundle.
             Copy Config/GoogleService-Info.plist into the app resources before enabling the callable backend.
-            """)
+            """
+            LociqFirebaseRuntime.disableForCurrentSession(reason: message)
+            logger.error("\(message, privacy: .public)")
             return
         }
 
         #if canImport(FirebaseAppCheck)
+        #if targetEnvironment(simulator)
+        let debugToken = AppConfig.firebaseAppCheckDebugToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !debugToken.isEmpty {
+            setenv("FIRAAppCheckDebugToken", debugToken, 1)
+        }
+        #endif
         AppCheck.setAppCheckProviderFactory(LociqAppCheckProviderFactory())
         #endif
 
@@ -49,12 +59,15 @@ enum LociqFirebaseBootstrap {
         #endif
 
         FirebaseApp.configure()
+        LociqFirebaseRuntime.clearDisableReason()
         logger.info("Configured Firebase for the callable Census backend.")
         #else
-        logger.error("""
+        let message = """
         Firebase backend is enabled but Firebase Apple SDKs are not linked in this build.
         Add FirebaseCore, FirebaseFunctions, and FirebaseAppCheck before enabling the callable backend.
-        """)
+        """
+        LociqFirebaseRuntime.disableForCurrentSession(reason: message)
+        logger.error("\(message, privacy: .public)")
         #endif
     }
 }

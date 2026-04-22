@@ -70,7 +70,7 @@ The Firebase callable path also requires:
 
 - `Config/GoogleService-Info.plist` from Firebase for bundle id `io.chrismahlke.lociq`
 - Firebase App Check to be registered for the iOS app
-- a signed-in Firebase user that matches the allowed account on the backend
+- Firebase Authentication Anonymous sign-in to be enabled for the project
 
 ## Google Maps Setup
 

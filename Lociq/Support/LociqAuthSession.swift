@@ -33,6 +33,7 @@ final class LociqAuthSession: ObservableObject {
 
     func restoreIfPossible() async {
         guard AppConfig.useFirebaseLociqBackend else {
+            LociqFirebaseRuntime.clearDisableReason()
             errorMessage = nil
             clearState()
             return
@@ -40,7 +41,9 @@ final class LociqAuthSession: ObservableObject {
 
         #if canImport(FirebaseAuth) && canImport(FirebaseCore)
         guard FirebaseApp.app() != nil else {
-            errorMessage = "Firebase is not configured in this build."
+            let message = "Firebase is not configured in this build."
+            LociqFirebaseRuntime.disableForCurrentSession(reason: message)
+            errorMessage = message
             clearState()
             return
         }
@@ -53,7 +56,9 @@ final class LociqAuthSession: ObservableObject {
         await signInAnonymouslyIfNeeded()
         #else
         clearState()
-        errorMessage = "FirebaseAuth is not linked into this build."
+        let message = "FirebaseAuth is not linked into this build."
+        LociqFirebaseRuntime.disableForCurrentSession(reason: message)
+        errorMessage = message
         #endif
     }
 
@@ -145,17 +150,44 @@ private extension LociqAuthSession {
             applyAuthenticatedUser(result.user)
         } catch {
             logger.error("Anonymous Firebase sign-in failed: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
+            let message = userFacingAuthErrorMessage(for: error)
+            LociqFirebaseRuntime.disableForCurrentSession(reason: message)
+            errorMessage = message
             clearState()
         }
     }
 
     func applyAuthenticatedUser(_ user: User) {
+        LociqFirebaseRuntime.clearDisableReason()
         currentEmail = user.email
         currentUserID = user.uid
         errorMessage = nil
         isAnonymous = user.isAnonymous
         isSignedIn = true
+    }
+
+    func userFacingAuthErrorMessage(for error: Error) -> String {
+        let nsError = error as NSError
+
+        guard nsError.domain == AuthErrorDomain,
+              let code = AuthErrorCode(rawValue: nsError.code) else {
+            return error.localizedDescription
+        }
+
+        switch code {
+        case .operationNotAllowed:
+            return "Anonymous Firebase Auth is not enabled for this project. Enable Anonymous in Firebase Authentication or turn off USE_FIREBASE_LOCIQ_BACKEND."
+        case .appNotAuthorized:
+            return "This iOS app is not authorized for the configured Firebase project. Verify that GoogleService-Info.plist matches bundle ID io.chrismahlke.lociq."
+        case .invalidAPIKey:
+            return "The Firebase app configuration is invalid. Verify GoogleService-Info.plist and rebuild the app."
+        case .networkError:
+            return "Firebase could not reach the network to start the shared backend session."
+        case .internalError:
+            return "Firebase Auth returned an internal error while starting the shared backend session. This usually means the Firebase Authentication project is missing Anonymous sign-in or the iOS app configuration does not match the project."
+        default:
+            return error.localizedDescription
+        }
     }
 }
 #endif

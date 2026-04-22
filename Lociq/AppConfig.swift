@@ -70,6 +70,11 @@ enum AppConfig {
         value(forAnyOf: ["FIREBASE_FUNCTIONS_REGION", "FirebaseFunctionsRegion"]).ifEmpty("us-central1")
     }
 
+    /// Optional App Check debug token for local simulator use.
+    static var firebaseAppCheckDebugToken: String {
+        value(forAnyOf: ["FIREBASE_APP_CHECK_DEBUG_TOKEN", "FirebaseAppCheckDebugToken"])
+    }
+
     private static func value(forAnyOf keys: [String]) -> String {
         for key in keys {
             let resolved = value(for: key)
@@ -114,7 +119,9 @@ enum AppConfig {
             "USE_FIREBASE_LOCIQ_BACKEND": [("Secrets", "USE_FIREBASE_LOCIQ_BACKEND")],
             "UseFirebaseLociqBackend": [("Secrets", "USE_FIREBASE_LOCIQ_BACKEND")],
             "FIREBASE_FUNCTIONS_REGION": [("Secrets", "FIREBASE_FUNCTIONS_REGION")],
-            "FirebaseFunctionsRegion": [("Secrets", "FIREBASE_FUNCTIONS_REGION")]
+            "FirebaseFunctionsRegion": [("Secrets", "FIREBASE_FUNCTIONS_REGION")],
+            "FIREBASE_APP_CHECK_DEBUG_TOKEN": [("Secrets", "FIREBASE_APP_CHECK_DEBUG_TOKEN")],
+            "FirebaseAppCheckDebugToken": [("Secrets", "FIREBASE_APP_CHECK_DEBUG_TOKEN")]
         ]
 
         guard let candidates = configMappings[key] else {

@@ -54,9 +54,17 @@ struct MoreScreen: View {
 private struct FirebaseAccessCard: View {
     @ObservedObject var authSession: LociqAuthSession
 
+    private var isUsingDirectFallback: Bool {
+        LociqFirebaseRuntime.currentDisabledReason != nil
+    }
+
     private var statusTitle: String {
         if !AppConfig.useFirebaseLociqBackend {
             return "Firebase backend is disabled"
+        }
+
+        if isUsingDirectFallback {
+            return "Using direct public-data fallback"
         }
 
         if authSession.isSignedIn {
@@ -73,6 +81,10 @@ private struct FirebaseAccessCard: View {
     private var statusDetail: String {
         if !AppConfig.useFirebaseLociqBackend {
             return "Set USE_FIREBASE_LOCIQ_BACKEND to true to route Census calls through Firebase."
+        }
+
+        if isUsingDirectFallback {
+            return "The shared Firebase backend did not finish bootstrapping for this launch, so Lociq is using the direct Census and geography APIs instead."
         }
 
         if authSession.isSignedIn {
@@ -100,7 +112,9 @@ private struct FirebaseAccessCard: View {
                         .foregroundStyle(.secondary)
                 }
 
-                if let errorMessage = authSession.errorMessage, !errorMessage.isEmpty {
+                if let errorMessage = authSession.errorMessage,
+                   !errorMessage.isEmpty,
+                   !isUsingDirectFallback {
                     Text(errorMessage)
                         .font(.caption)
                         .foregroundStyle(.red)
@@ -117,7 +131,9 @@ private struct FirebaseAccessCard: View {
                 InfoLine(
                     icon: "lock.shield",
                     title: "Session mode",
-                    detail: authSession.isAnonymous ? "Anonymous Firebase user" : "Authenticated Firebase user"
+                    detail: isUsingDirectFallback
+                        ? "Direct API fallback"
+                        : (authSession.isAnonymous ? "Anonymous Firebase user" : "Authenticated Firebase user")
                 )
             }
         }
@@ -329,9 +345,9 @@ private struct PrivacyAndTrustCard: View {
                 )
                 InfoLine(
                     icon: "person.crop.circle.badge.checkmark",
-                    title: AppConfig.useFirebaseLociqBackend ? "Google account required for Firebase backend" : "No account required",
+                    title: AppConfig.useFirebaseLociqBackend ? "No personal account required" : "No account required",
                     detail: AppConfig.useFirebaseLociqBackend
-                        ? "Sign in with the allowed Google account to use the shared Firebase Census backend. Local map exploration still works without it."
+                        ? "The app uses anonymous Firebase auth for the shared backend when it is configured. If that setup fails, Lociq falls back to direct public-data APIs."
                         : "You can use the app without signing in or creating a personal profile."
                 )
                 InfoLine(
