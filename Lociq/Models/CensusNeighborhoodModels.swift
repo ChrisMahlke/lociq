@@ -1,0 +1,286 @@
+//
+//  CensusNeighborhoodModels.swift
+//  Lociq
+//
+//  Shared domain models for neighborhood lookup, GeoJSON, and generated insights.
+//
+
+import CoreLocation
+import Foundation
+
+public struct ZipLookupResult: Sendable {
+    public let zcta: String
+    public let county: CountyInfo?
+    public let tract: TractInfo?
+    public let place: PlaceInfo?
+    public let isIncorporatedPlace: Bool
+    public let boundary: GeoJSONFeatureCollection
+    public let boundaryMetrics: BoundaryMetrics?
+    public let demographics: Demographics
+    public let insights: [Insight]
+
+    public init(
+        zcta: String,
+        county: CountyInfo?,
+        tract: TractInfo?,
+        place: PlaceInfo?,
+        isIncorporatedPlace: Bool,
+        boundary: GeoJSONFeatureCollection,
+        boundaryMetrics: BoundaryMetrics?,
+        demographics: Demographics,
+        insights: [Insight]
+    ) {
+        self.zcta = zcta
+        self.county = county
+        self.tract = tract
+        self.place = place
+        self.isIncorporatedPlace = isIncorporatedPlace
+        self.boundary = boundary
+        self.boundaryMetrics = boundaryMetrics
+        self.demographics = demographics
+        self.insights = insights
+    }
+}
+
+public struct NeighborhoodBoundarySet: Sendable {
+    public let zip: GeoJSONFeatureCollection
+    public let tract: GeoJSONFeatureCollection?
+    public let block: GeoJSONFeatureCollection?
+
+    public init(zip: GeoJSONFeatureCollection, tract: GeoJSONFeatureCollection?, block: GeoJSONFeatureCollection?) {
+        self.zip = zip
+        self.tract = tract
+        self.block = block
+    }
+}
+
+public enum NeighborhoodScale: Sendable {
+    case zip
+    case tract
+}
+
+public struct CountyInfo: Sendable {
+    public let name: String
+    public let stateFIPS: String?
+    public let countyFIPS: String?
+    public let geoid: String?
+
+    public init(name: String, stateFIPS: String?, countyFIPS: String?, geoid: String?) {
+        self.name = name
+        self.stateFIPS = stateFIPS
+        self.countyFIPS = countyFIPS
+        self.geoid = geoid
+    }
+}
+
+public struct TractInfo: Sendable {
+    public let name: String?
+    public let geoid: String?
+    public let stateFIPS: String?
+    public let countyFIPS: String?
+    public let tractCode: String?
+
+    public init(name: String?, geoid: String?, stateFIPS: String?, countyFIPS: String?, tractCode: String?) {
+        self.name = name
+        self.geoid = geoid
+        self.stateFIPS = stateFIPS
+        self.countyFIPS = countyFIPS
+        self.tractCode = tractCode
+    }
+}
+
+public struct PlaceInfo: Sendable {
+    public enum PlaceType: String, Sendable {
+        case incorporatedPlace
+        case censusDesignatedPlace
+        case unknown
+    }
+
+    public let name: String
+    public let stateFIPS: String?
+    public let placeFIPS: String?
+    public let type: PlaceType
+
+    public init(name: String, stateFIPS: String?, placeFIPS: String?, type: PlaceType) {
+        self.name = name
+        self.stateFIPS = stateFIPS
+        self.placeFIPS = placeFIPS
+        self.type = type
+    }
+}
+
+public struct BoundaryMetrics: Sendable {
+    public let centroid: CLLocationCoordinate2D?
+    public let bbox: BoundingBox?
+    public let areaKm2Approx: Double?
+    public let perimeterKmApprox: Double?
+
+    public init(
+        centroid: CLLocationCoordinate2D?,
+        bbox: BoundingBox?,
+        areaKm2Approx: Double?,
+        perimeterKmApprox: Double?
+    ) {
+        self.centroid = centroid
+        self.bbox = bbox
+        self.areaKm2Approx = areaKm2Approx
+        self.perimeterKmApprox = perimeterKmApprox
+    }
+}
+
+public struct BoundingBox: Sendable {
+    public let minLat: Double
+    public let minLon: Double
+    public let maxLat: Double
+    public let maxLon: Double
+}
+
+public struct Demographics: Sendable {
+    public let name: String
+    public let population: Int?
+    public let medianHouseholdIncome: Int?
+    public let medianAge: Double?
+    public let housingUnits: Int?
+    public let medianHomeValue: Int?
+    public let medianGrossRent: Int?
+    public let averageHouseholdSize: Double?
+    public let ownerOccupied: Int?
+    public let renterOccupied: Int?
+    public let ownerOccupiedPct: Double?
+    public let renterOccupiedPct: Double?
+    public let workersTotal: Int?
+    public let workersWfh: Int?
+    public let workersWfhPct: Double?
+    public let povertyUniverse: Int?
+    public let povertyBelow: Int?
+    public let povertyRatePct: Double?
+    public let whiteAlone: Int?
+    public let blackAlone: Int?
+    public let asianAlone: Int?
+    public let hispanicOrLatino: Int?
+
+    public init(
+        name: String,
+        population: Int?,
+        medianHouseholdIncome: Int?,
+        medianAge: Double?,
+        housingUnits: Int?,
+        medianHomeValue: Int?,
+        medianGrossRent: Int?,
+        averageHouseholdSize: Double?,
+        ownerOccupied: Int?,
+        renterOccupied: Int?,
+        ownerOccupiedPct: Double?,
+        renterOccupiedPct: Double?,
+        workersTotal: Int?,
+        workersWfh: Int?,
+        workersWfhPct: Double?,
+        povertyUniverse: Int?,
+        povertyBelow: Int?,
+        povertyRatePct: Double?,
+        whiteAlone: Int?,
+        blackAlone: Int?,
+        asianAlone: Int?,
+        hispanicOrLatino: Int?
+    ) {
+        self.name = name
+        self.population = population
+        self.medianHouseholdIncome = medianHouseholdIncome
+        self.medianAge = medianAge
+        self.housingUnits = housingUnits
+        self.medianHomeValue = medianHomeValue
+        self.medianGrossRent = medianGrossRent
+        self.averageHouseholdSize = averageHouseholdSize
+        self.ownerOccupied = ownerOccupied
+        self.renterOccupied = renterOccupied
+        self.ownerOccupiedPct = ownerOccupiedPct
+        self.renterOccupiedPct = renterOccupiedPct
+        self.workersTotal = workersTotal
+        self.workersWfh = workersWfh
+        self.workersWfhPct = workersWfhPct
+        self.povertyUniverse = povertyUniverse
+        self.povertyBelow = povertyBelow
+        self.povertyRatePct = povertyRatePct
+        self.whiteAlone = whiteAlone
+        self.blackAlone = blackAlone
+        self.asianAlone = asianAlone
+        self.hispanicOrLatino = hispanicOrLatino
+    }
+}
+
+public struct Insight: Sendable {
+    public enum Severity: String, Sendable {
+        case neutral
+        case positive
+        case caution
+    }
+
+    public enum Category: String, Sendable {
+        case housing
+        case affordability
+        case mobility
+        case demographics
+        case governance
+        case geography
+    }
+
+    public let category: Category
+    public let severity: Severity
+    public let title: String
+    public let detail: String
+
+    public init(category: Category, severity: Severity, title: String, detail: String) {
+        self.category = category
+        self.severity = severity
+        self.title = title
+        self.detail = detail
+    }
+}
+
+public struct GeoJSONFeatureCollection: Codable, Sendable {
+    public let type: String
+    public let features: [GeoJSONFeature]
+}
+
+public struct GeoJSONFeature: Codable, Sendable {
+    public let type: String
+    public let properties: [String: String?]?
+    public let geometry: GeoJSONGeometry?
+}
+
+public enum GeoJSONGeometry: Codable, Sendable {
+    case polygon([[[Double]]])
+    case multiPolygon([[[[Double]]]])
+    case other(String)
+
+    private enum CodingKeys: String, CodingKey { case type, coordinates }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .type)
+
+        switch type {
+        case "Polygon":
+            self = .polygon(try container.decode([[[Double]]].self, forKey: .coordinates))
+        case "MultiPolygon":
+            self = .multiPolygon(try container.decode([[[[Double]]]].self, forKey: .coordinates))
+        default:
+            self = .other(type)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        switch self {
+        case .polygon(let coordinates):
+            try container.encode("Polygon", forKey: .type)
+            try container.encode(coordinates, forKey: .coordinates)
+        case .multiPolygon(let coordinates):
+            try container.encode("MultiPolygon", forKey: .type)
+            try container.encode(coordinates, forKey: .coordinates)
+        case .other(let type):
+            try container.encode(type, forKey: .type)
+        }
+    }
+}
