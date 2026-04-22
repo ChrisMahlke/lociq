@@ -90,6 +90,14 @@ enum AppStrings {
         static var mapTipTitle: String { L10n.tr("Tap to explore") }
         static var mapTipBody: String { L10n.tr("Select any point on the map to load a neighborhood profile, then switch between ZIP and tract.") }
         static var dismiss: String { L10n.tr("Dismiss") }
+        static var searchPlaceholder: String { L10n.tr("Search ZIP, city, neighborhood, or address") }
+        static var clearSearch: String { L10n.tr("Clear search") }
+        static var searchingPlaces: String { L10n.tr("Searching places") }
+        static var searchingPlacesBody: String { L10n.tr("Looking up matching ZIPs, cities, neighborhoods, and addresses.") }
+        static var noSearchResultsTitle: String { L10n.tr("No places found") }
+        static var noSearchResultsBody: String { L10n.tr("Try a different ZIP, city, neighborhood, or street address.") }
+        static var searchUnavailableTitle: String { L10n.tr("Search is unavailable") }
+        static var searchErrorBody: String { L10n.tr("The app could not load search results right now. Try again in a moment.") }
         static var noZipAvailableNotice: String { L10n.tr("No ZIP code is available for this location. Try a nearby area on land.") }
         static var googleMapsKeyRequired: String { L10n.tr("Google Maps Key Required") }
         static var googleMapsKeyBody: String { L10n.tr("Add GOOGLE_MAPS_API_KEY in Config/GoogleMaps.xcconfig or your scheme environment variables.") }

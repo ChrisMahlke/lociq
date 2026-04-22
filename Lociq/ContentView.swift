@@ -42,6 +42,7 @@ struct ContentView: View {
     @AppStorage("hasSeenMapQuickTip") private var hasSeenMapQuickTip: Bool = false
 
     @StateObject private var selectionModel: MapSelectionModel
+    @StateObject private var searchModel: MapSearchModel
     @StateObject private var libraryStore: NeighborhoodLibraryStore
     @State private var selection: TabSelection = .map
     @State private var sheetOffset: CGFloat = 0
@@ -50,6 +51,7 @@ struct ContentView: View {
 
     init(dependencies: AppDependencies = .live) {
         _libraryStore = StateObject(wrappedValue: dependencies.neighborhoodLibraryStore)
+        _searchModel = StateObject(wrappedValue: MapSearchModel(service: dependencies.makePlaceSearchService()))
         _selectionModel = StateObject(
             wrappedValue: MapSelectionModel(
                 service: dependencies.makeCensusLookupService(),
@@ -105,12 +107,13 @@ struct ContentView: View {
         Binding(
             get: { selectionModel.tappedCoordinate },
             set: { newValue in
-                if let coord = newValue {
+                if newValue != nil {
                     hasSeenMapQuickTip = true
                     if usesSidebarLayout {
                         selection = .map
                     }
                     Haptics.selectionChanged()
+                    searchModel.dismissResults()
                 }
                 selectionModel.handleMapSelection(newValue)
             }
@@ -134,21 +137,31 @@ struct ContentView: View {
                     .modifier(OptionalTopSafeAreaIgnoring(enabled: ignoresSafeAreaTop))
             }
 
-            if selectionModel.isBoundaryLoading {
-                BoundaryLoadingBadge()
-                    .padding(.top, 14)
-            }
+            VStack(alignment: .leading, spacing: 10) {
+                if AppConfig.hasGoogleMapsAPIKey {
+                    MapSearchPanel(model: searchModel, onSelectResult: openSearchResult)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 14)
+                }
 
-            if let mapNotice = selectionModel.mapNotice {
-                MapNoticeBanner(message: mapNotice)
-                    .padding(.top, selectionModel.isBoundaryLoading ? 62 : 14)
-                    .padding(.horizontal, 12)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .task(id: mapNotice) {
-                        try? await Task.sleep(nanoseconds: 4_500_000_000)
-                        selectionModel.clearMapNotice(ifMatches: mapNotice)
-                    }
+                if selectionModel.isBoundaryLoading {
+                    BoundaryLoadingBadge()
+                        .padding(.horizontal, 12)
+                }
+
+                if let mapNotice = selectionModel.mapNotice {
+                    MapNoticeBanner(message: mapNotice)
+                        .padding(.horizontal, 12)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .task(id: mapNotice) {
+                            try? await Task.sleep(nanoseconds: 4_500_000_000)
+                            selectionModel.clearMapNotice(ifMatches: mapNotice)
+                        }
+                }
+
+                Spacer()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             if AppConfig.hasGoogleMapsAPIKey && shouldShowMapQuickTip {
                 VStack {
@@ -223,12 +236,25 @@ struct ContentView: View {
     private func openLibraryEntry(_ entry: NeighborhoodLibraryEntry) {
         selection = .map
         hasSeenMapQuickTip = true
+        searchModel.dismissResults()
         mapFocusRequest = MapFocusRequest(
             id: UUID(),
             coordinate: CLLocationCoordinate2D(latitude: entry.latitude, longitude: entry.longitude),
             minimumZoom: 13
         )
         selectionModel.openLibraryEntry(entry)
+    }
+
+    private func openSearchResult(_ result: PlaceSearchResult) {
+        selection = .map
+        hasSeenMapQuickTip = true
+        searchModel.selectResult(result)
+        mapFocusRequest = MapFocusRequest(
+            id: UUID(),
+            coordinate: result.coordinate,
+            minimumZoom: 13
+        )
+        selectionModel.handleMapSelection(result.coordinate)
     }
 
     var body: some View {
