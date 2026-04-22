@@ -28,6 +28,7 @@ enum BoundaryOverlayScale: String, CaseIterable, Identifiable {
 }
 
 struct ContentView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
     @AppStorage("hasSeenMapQuickTip") private var hasSeenMapQuickTip: Bool = false
 
@@ -57,8 +58,16 @@ struct ContentView: View {
         max(140, min(220, UIScreen.main.bounds.height * 0.25))
     }
 
+    private var usesSidebarLayout: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
+    }
+
     private var mapBottomInset: CGFloat {
-        max(defaultSheetPeekHeight, sheetOffset) + 12
+        if usesSidebarLayout {
+            return 20
+        }
+
+        return max(defaultSheetPeekHeight, sheetOffset) + 12
     }
 
     private var boundaryThemeTint: Color {
@@ -76,6 +85,9 @@ struct ContentView: View {
                 tappedCoordinate = newValue
                 if let coord = newValue {
                     hasSeenMapQuickTip = true
+                    if usesSidebarLayout {
+                        selection = .map
+                    }
                     Haptics.selectionChanged()
                     refreshData(for: coord)
                 }
@@ -83,62 +95,68 @@ struct ContentView: View {
         )
     }
 
+    @ViewBuilder
+    private func mapPane(ignoresSafeAreaTop: Bool) -> some View {
+        ZStack(alignment: .top) {
+            if AppConfig.hasGoogleMapsAPIKey {
+                GoogleMapViewRepresentable(
+                    tappedCoordinate: tappedBinding,
+                    selectedBoundary: selectedBoundary,
+                    selectedScale: boundaryScale,
+                    contentInsetBottom: mapBottomInset
+                )
+                .modifier(OptionalTopSafeAreaIgnoring(enabled: ignoresSafeAreaTop))
+            } else {
+                MissingGoogleMapsKeyView()
+                    .modifier(OptionalTopSafeAreaIgnoring(enabled: ignoresSafeAreaTop))
+            }
+
+            if isBoundaryLoading {
+                BoundaryLoadingBadge()
+                    .padding(.top, 14)
+            }
+
+            if let mapNotice {
+                MapNoticeBanner(message: mapNotice)
+                    .padding(.top, isBoundaryLoading ? 62 : 14)
+                    .padding(.horizontal, 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task(id: mapNotice) {
+                        try? await Task.sleep(nanoseconds: 4_500_000_000)
+                        if self.mapNotice == mapNotice {
+                            self.mapNotice = nil
+                        }
+                    }
+            }
+
+            if AppConfig.hasGoogleMapsAPIKey && shouldShowMapQuickTip {
+                VStack {
+                    Spacer()
+                    HStack {
+                        MapQuickTipCard {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                hasSeenMapQuickTip = true
+                            }
+                        }
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+
+                        Spacer()
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, mapBottomInset + 28)
+                .animation(.easeInOut(duration: 0.2), value: mapBottomInset)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
     private var activeScreen: some View {
         Group {
             switch selection {
             case .map:
-                ZStack(alignment: .top) {
-                    if AppConfig.hasGoogleMapsAPIKey {
-                        GoogleMapViewRepresentable(
-                            tappedCoordinate: tappedBinding,
-                            selectedBoundary: selectedBoundary,
-                            selectedScale: boundaryScale,
-                            contentInsetBottom: mapBottomInset
-                        )
-                        .ignoresSafeArea(edges: .top)
-                    } else {
-                        MissingGoogleMapsKeyView()
-                            .ignoresSafeArea(edges: .top)
-                    }
-
-                    if isBoundaryLoading {
-                        BoundaryLoadingBadge()
-                            .padding(.top, 14)
-                    }
-
-                    if let mapNotice {
-                        MapNoticeBanner(message: mapNotice)
-                            .padding(.top, isBoundaryLoading ? 62 : 14)
-                            .padding(.horizontal, 12)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                            .task(id: mapNotice) {
-                                try? await Task.sleep(nanoseconds: 4_500_000_000)
-                                if self.mapNotice == mapNotice {
-                                    self.mapNotice = nil
-                                }
-                            }
-                    }
-
-                    if AppConfig.hasGoogleMapsAPIKey && shouldShowMapQuickTip {
-                        VStack {
-                            Spacer()
-                            HStack {
-                                MapQuickTipCard {
-                                    withAnimation(.easeOut(duration: 0.2)) {
-                                        hasSeenMapQuickTip = true
-                                    }
-                                }
-                                .transition(.move(edge: .leading).combined(with: .opacity))
-
-                                Spacer()
-                            }
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, mapBottomInset + 28)
-                        .animation(.easeInOut(duration: 0.2), value: mapBottomInset)
-                    }
-
-                }
+                mapPane(ignoresSafeAreaTop: true)
             case .more:
                 MoreScreen()
             }
@@ -146,38 +164,90 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private var sidebarContent: some View {
+        Group {
+            switch selection {
+            case .map:
+                InsightsSheetContent(
+                    zipCode: selectedZipCode,
+                    metrics: censusMetrics,
+                    demographics: selectedDemographics,
+                    zipBundle: selectedZipBundle,
+                    metricsSource: metricsSource,
+                    hasActiveSelection: tappedCoordinate != nil,
+                    isLoadingSelection: tappedCoordinate != nil && (censusMetrics == nil || isBoundaryLoading),
+                    boundaryScale: $boundaryScale,
+                    sheetOffset: .constant(1000)
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 12)
+            case .more:
+                MoreScreen()
+            }
+        }
+    }
+
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Main content behind the sheet
-            activeScreen
+        Group {
+            if usesSidebarLayout {
+                GeometryReader { geo in
+                    let sidebarWidth = min(max(geo.size.width * 0.34, 360), 460)
 
-            // Bottom sheet is only visible while exploring the map.
-            if selection == .map {
-                BottomSheet(sheetOffset: $sheetOffset) {
-                    InsightsSheetContent(
-                        zipCode: selectedZipCode,
-                        metrics: censusMetrics,
-                        demographics: selectedDemographics,
-                        zipBundle: selectedZipBundle,
-                        metricsSource: metricsSource,
-                        hasActiveSelection: tappedCoordinate != nil,
-                        isLoadingSelection: tappedCoordinate != nil && (censusMetrics == nil || isBoundaryLoading),
-                        boundaryScale: $boundaryScale,
-                        sheetOffset: $sheetOffset
-                    )
+                    HStack(spacing: 0) {
+                        VStack(spacing: 0) {
+                            IPadSidebarHeader(selection: $selection)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 18)
+                                .padding(.bottom, 14)
+
+                            Divider()
+
+                            sidebarContent
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        }
+                        .frame(width: sidebarWidth)
+                        .background(Color(.secondarySystemGroupedBackground))
+
+                        Divider()
+
+                        mapPane(ignoresSafeAreaTop: false)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Color(.systemBackground))
+                    }
+                    .frame(width: geo.size.width, height: geo.size.height)
                 }
-                .tint(boundaryThemeTint)
-                .animation(.easeInOut(duration: 0.25), value: boundaryScale)
-                .accessibilitySortPriority(1)
-                .zIndex(1)
-            }
+            } else {
+                ZStack(alignment: .bottom) {
+                    activeScreen
 
-            // Bottom ribbon at the very front
-            VStack(spacing: 0) {
-                BottomRibbon(selection: $selection)
+                    if selection == .map {
+                        BottomSheet(sheetOffset: $sheetOffset) {
+                            InsightsSheetContent(
+                                zipCode: selectedZipCode,
+                                metrics: censusMetrics,
+                                demographics: selectedDemographics,
+                                zipBundle: selectedZipBundle,
+                                metricsSource: metricsSource,
+                                hasActiveSelection: tappedCoordinate != nil,
+                                isLoadingSelection: tappedCoordinate != nil && (censusMetrics == nil || isBoundaryLoading),
+                                boundaryScale: $boundaryScale,
+                                sheetOffset: $sheetOffset
+                            )
+                        }
+                        .tint(boundaryThemeTint)
+                        .animation(.easeInOut(duration: 0.25), value: boundaryScale)
+                        .accessibilitySortPriority(1)
+                        .zIndex(1)
+                    }
+
+                    VStack(spacing: 0) {
+                        BottomRibbon(selection: $selection)
+                    }
+                    .zIndex(2)
+                    .allowsHitTesting(true)
+                }
             }
-            .zIndex(2)
-            .allowsHitTesting(true)
         }
         .onChange(of: boundaryScale) { newScale in
             Haptics.softImpact()
@@ -593,4 +663,73 @@ extension ContentView {
 
 #Preview {
     ContentView()
+}
+
+private struct IPadSidebarHeader: View {
+    @Binding var selection: TabSelection
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Lociq")
+                    .font(.title2.weight(.bold))
+                Text("Review the neighborhood profile while the map stays live.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 10) {
+                button(
+                    title: "Profile",
+                    systemImage: selection == .map ? IconNames.mapFilled : IconNames.map,
+                    tab: .map
+                )
+                button(
+                    title: "Guide",
+                    systemImage: selection == .more ? IconNames.moreFilled : IconNames.more,
+                    tab: .more
+                )
+            }
+        }
+    }
+
+    private func button(title: String, systemImage: String, tab: TabSelection) -> some View {
+        let isSelected = selection == tab
+
+        return Button {
+            selection = tab
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.14) : Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? Color.accentColor.opacity(0.22) : Color.primary.opacity(0.07), lineWidth: 0.9)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct OptionalTopSafeAreaIgnoring: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.ignoresSafeArea(edges: .top)
+        } else {
+            content
+        }
+    }
 }
