@@ -9,6 +9,16 @@ import SwiftUI
 import GoogleMaps
 import CoreLocation
 
+struct MapFocusRequest: Equatable {
+    let id: UUID
+    let coordinate: CLLocationCoordinate2D
+    let minimumZoom: Float
+
+    static func == (lhs: MapFocusRequest, rhs: MapFocusRequest) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 /// Bridges Google Maps UIKit APIs into SwiftUI.
 struct GoogleMapViewRepresentable: UIViewRepresentable {
     private static let defaultCamera = GMSCameraPosition(latitude: 37.7749, longitude: -122.4194, zoom: 12)
@@ -19,17 +29,20 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
     private static var hasAutoSelectedUserLocation = false
 
     @Binding var tappedCoordinate: CLLocationCoordinate2D?
+    let focusRequest: MapFocusRequest?
     let selectedBoundary: GeoJSONFeatureCollection?
     let selectedScale: BoundaryOverlayScale
     let contentInsetBottom: CGFloat
 
     init(
         tappedCoordinate: Binding<CLLocationCoordinate2D?>,
+        focusRequest: MapFocusRequest? = nil,
         selectedBoundary: GeoJSONFeatureCollection?,
         selectedScale: BoundaryOverlayScale = .zip,
         contentInsetBottom: CGFloat = 0
     ) {
         self._tappedCoordinate = tappedCoordinate
+        self.focusRequest = focusRequest
         self.selectedBoundary = selectedBoundary
         self.selectedScale = selectedScale
         self.contentInsetBottom = contentInsetBottom
@@ -83,6 +96,7 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
         uiView.padding = UIEdgeInsets(top: 0, left: 0, bottom: contentInsetBottom, right: 0)
         context.coordinator.parent = self
         context.coordinator.updateBoundaryOverlay(on: uiView, with: selectedBoundary, scale: selectedScale)
+        context.coordinator.applyFocusRequestIfNeeded(on: uiView)
     }
 
     /// Handles `GMSMapViewDelegate` callbacks and boundary overlay lifecycle.
@@ -91,6 +105,7 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
         private let locationManager = CLLocationManager()
         private weak var mapView: GMSMapView?
         private var hasCenteredOnUserLocation = false
+        private var lastAppliedFocusRequestID: UUID?
 
         init(_ parent: GoogleMapViewRepresentable) {
             self.parent = parent
@@ -120,6 +135,20 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
                 guard let geometry = feature.geometry else { continue }
                 GoogleMapViewRepresentable.sharedBoundaryOverlays.append(contentsOf: makePolygons(from: geometry, mapView: mapView, scale: scale))
             }
+        }
+
+        func applyFocusRequestIfNeeded(on mapView: GMSMapView) {
+            guard let focusRequest = parent.focusRequest else { return }
+            guard focusRequest.id != lastAppliedFocusRequestID else { return }
+
+            lastAppliedFocusRequestID = focusRequest.id
+            let zoom = max(mapView.camera.zoom, focusRequest.minimumZoom)
+            let camera = GMSCameraPosition(
+                latitude: focusRequest.coordinate.latitude,
+                longitude: focusRequest.coordinate.longitude,
+                zoom: zoom
+            )
+            mapView.animate(to: camera)
         }
 
         private func clearBoundaryOverlays() {

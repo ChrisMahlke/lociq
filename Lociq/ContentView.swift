@@ -46,6 +46,7 @@ struct ContentView: View {
     @State private var selection: TabSelection = .map
     @State private var sheetOffset: CGFloat = 0
     @State private var showOnboarding: Bool = false
+    @State private var mapFocusRequest: MapFocusRequest?
 
     init(dependencies: AppDependencies = .live) {
         _libraryStore = StateObject(wrappedValue: dependencies.neighborhoodLibraryStore)
@@ -122,6 +123,7 @@ struct ContentView: View {
             if AppConfig.hasGoogleMapsAPIKey {
                 GoogleMapViewRepresentable(
                     tappedCoordinate: tappedBinding,
+                    focusRequest: mapFocusRequest,
                     selectedBoundary: selectionModel.selectedBoundary,
                     selectedScale: selectionModel.boundaryScale,
                     contentInsetBottom: mapBottomInset
@@ -179,11 +181,7 @@ struct ContentView: View {
             case .more:
                 MoreScreen(
                     libraryStore: libraryStore,
-                    onSelectPlace: { entry in
-                        selection = .map
-                        hasSeenMapQuickTip = true
-                        selectionModel.openLibraryEntry(entry)
-                    }
+                    onSelectPlace: openLibraryEntry
                 )
             }
         }
@@ -216,14 +214,21 @@ struct ContentView: View {
             case .more:
                 MoreScreen(
                     libraryStore: libraryStore,
-                    onSelectPlace: { entry in
-                        selection = .map
-                        hasSeenMapQuickTip = true
-                        selectionModel.openLibraryEntry(entry)
-                    }
+                    onSelectPlace: openLibraryEntry
                 )
             }
         }
+    }
+
+    private func openLibraryEntry(_ entry: NeighborhoodLibraryEntry) {
+        selection = .map
+        hasSeenMapQuickTip = true
+        mapFocusRequest = MapFocusRequest(
+            id: UUID(),
+            coordinate: CLLocationCoordinate2D(latitude: entry.latitude, longitude: entry.longitude),
+            minimumZoom: 13
+        )
+        selectionModel.openLibraryEntry(entry)
     }
 
     var body: some View {
