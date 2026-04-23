@@ -47,25 +47,31 @@ struct CollapsedInsightsMetricsGrid: View {
     let metrics: CensusMetrics?
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+        VStack(spacing: 0) {
             CollapsedMetricChip(
                 icon: IconNames.personFilled,
                 label: AppStrings.Metrics.population,
                 value: InsightsFormatting.number(metrics?.population),
                 loading: metrics == nil
             )
+            Divider()
+                .padding(.leading, 34)
             CollapsedMetricChip(
                 icon: IconNames.money,
                 label: AppStrings.Metrics.medianIncome,
                 value: metrics?.medianIncome.map { InsightsFormatting.currency($0) },
                 loading: metrics == nil
             )
+            Divider()
+                .padding(.leading, 34)
             CollapsedMetricChip(
                 icon: IconNames.clock,
                 label: AppStrings.Metrics.medianAge,
                 value: metrics?.medianAge.map { String(format: AppStrings.Symbols.oneDecimalFormat, $0) },
                 loading: metrics == nil
             )
+            Divider()
+                .padding(.leading, 34)
             CollapsedMetricChip(
                 icon: IconNames.house,
                 label: AppStrings.Metrics.households,
@@ -73,6 +79,7 @@ struct CollapsedInsightsMetricsGrid: View {
                 loading: metrics == nil
             )
         }
+        .padding(.vertical, 2)
     }
 }
 

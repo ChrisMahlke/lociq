@@ -514,45 +514,40 @@ struct CollapsedMetricChip: View {
     let loading: Bool
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(alignment: .center, spacing: 10) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.tint)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.accentColor.opacity(0.82))
+                .frame(width: 18, height: 18)
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text(label)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                if loading {
-                    ProgressView()
-                        .scaleEffect(0.75)
-                } else if let value = value {
-                    Text(value)
-                        .id(value)
-                        .font(.system(size: 15, weight: .semibold))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .transition(.opacity.combined(with: .scale(scale: 0.97)))
-                } else {
-                    Text(AppStrings.Symbols.emDash)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.primary.opacity(0.7))
-                }
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            if loading {
+                ProgressView()
+                    .scaleEffect(0.72)
+            } else if let value = value {
+                Text(value)
+                    .id(value)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            } else {
+                Text(AppStrings.Symbols.emDash)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.primary.opacity(0.7))
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 2)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            Capsule()
-                .fill(Color(.secondarySystemGroupedBackground))
-        )
-        .overlay(
-            Capsule()
-                .stroke(Color.accentColor.opacity(0.14), lineWidth: 0.9)
-        )
-        .shadow(color: .black.opacity(0.05), radius: 3, y: 1)
         .animation(.easeInOut(duration: 0.2), value: value)
     }
 }
@@ -580,13 +575,19 @@ private struct FlexiblePillStack: View {
 
     var body: some View {
         ViewThatFits(in: .vertical) {
-            HStack(spacing: 8) {
-                ForEach(items, id: \.self) { item in
+            HStack(spacing: 6) {
+                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                    if index > 0 {
+                        Text("·")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary.opacity(0.7))
+                    }
+
                     ContextPill(text: item, tint: tint)
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(items, id: \.self) { item in
                     ContextPill(text: item, tint: tint)
                 }
@@ -601,15 +602,9 @@ private struct ContextPill: View {
 
     var body: some View {
         Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(tint.opacity(0.12), in: Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(tint.opacity(0.20), lineWidth: 0.8)
-            )
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
