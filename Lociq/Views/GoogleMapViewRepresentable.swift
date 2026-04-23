@@ -56,7 +56,7 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
 
         let mapView = GMSMapView(options: options)
         mapView.settings.compassButton = true
-        mapView.settings.myLocationButton = true
+        mapView.settings.myLocationButton = false
         mapView.isMyLocationEnabled = true
         return mapView
     }

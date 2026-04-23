@@ -137,6 +137,25 @@ final class MapSelectionModel: ObservableObject {
         refreshData(for: coordinate)
     }
 
+    func clearSelection() {
+        activeSelectionRequestID = UUID()
+        activeFetchTask?.cancel()
+        activeScaleTask?.cancel()
+        tappedCoordinate = nil
+        selectedZipCode = nil
+        censusMetrics = nil
+        selectedDemographics = nil
+        metricsSource = nil
+        selectedBoundary = nil
+        neighborhoodBoundaries = nil
+        selectedZipBundle = nil
+        resolvedPlaceProfile = nil
+        isBoundaryLoading = false
+        isRefreshingScale = false
+        mapNotice = nil
+        selectionFeedbackState = nil
+    }
+
     func toggleSavedCurrentPlace() {
         guard let currentLookupSnapshot else { return }
         _ = libraryStore.toggleSaved(currentLookupSnapshot)

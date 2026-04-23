@@ -94,6 +94,14 @@ struct ContentView: View {
         selectionModel.boundaryScale.themeColor
     }
 
+    private var floatingMapControlsBottomPadding: CGFloat {
+        if usesSidebarLayout {
+            return 20
+        }
+
+        return mapBottomInset + 18
+    }
+
     private var shouldShowMapQuickTip: Bool {
         selection == .map && !showOnboarding && !hasSeenMapQuickTip && selectionModel.tappedCoordinate == nil
     }
@@ -173,6 +181,22 @@ struct ContentView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            if AppConfig.hasGoogleMapsAPIKey {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        MapFloatingControls(
+                            onFocusMyArea: focusMapOnUserArea,
+                            onResetMap: resetMapView
+                        )
+                    }
+                }
+                .padding(.trailing, 12)
+                .padding(.bottom, floatingMapControlsBottomPadding)
+                .animation(.easeInOut(duration: 0.2), value: floatingMapControlsBottomPadding)
+            }
 
             if AppConfig.hasGoogleMapsAPIKey && shouldShowMapQuickTip {
                 VStack {
@@ -284,6 +308,22 @@ struct ContentView: View {
     private func openComparePicker() {
         compareSearchModel.clear()
         showComparePicker = true
+    }
+
+    private func focusMapOnUserArea() {
+        hasSeenMapQuickTip = true
+        GoogleMapViewRepresentable.focusOnUserOrSelection(selection: selectionModel.tappedCoordinate)
+    }
+
+    private func resetMapView() {
+        hasSeenMapQuickTip = true
+        showSearchExperience = false
+        showComparePicker = false
+        searchModel.dismissResults()
+        compareModel.clear()
+        selectionModel.clearSelection()
+        mapFocusRequest = nil
+        GoogleMapViewRepresentable.resetCamera()
     }
 
     private func chooseComparisonResult(_ result: PlaceSearchResult) {
@@ -423,6 +463,44 @@ private enum Haptics {
         let generator = UIImpactFeedbackGenerator(style: .soft)
         generator.prepare()
         generator.impactOccurred(intensity: 0.8)
+    }
+}
+
+private struct MapFloatingControls: View {
+    let onFocusMyArea: () -> Void
+    let onResetMap: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            button(
+                icon: "location.fill",
+                title: AppStrings.More.myArea,
+                action: onFocusMyArea
+            )
+            button(
+                icon: "scope",
+                title: AppStrings.More.resetMap,
+                action: onResetMap
+            )
+        }
+    }
+
+    private func button(icon: String, title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.subheadline.weight(.bold))
+                .frame(width: 18, height: 18)
+            .foregroundStyle(.primary)
+            .frame(width: 42, height: 42)
+            .background(.ultraThinMaterial, in: Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color.primary.opacity(0.10), lineWidth: 0.8)
+            )
+            .shadow(color: .black.opacity(0.10), radius: 10, y: 3)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 }
 
