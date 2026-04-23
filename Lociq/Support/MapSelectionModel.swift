@@ -82,6 +82,7 @@ final class MapSelectionModel: ObservableObject {
     private var activeSelectionRequestID = UUID()
     private var activeFetchTask: Task<Void, Never>?
     private var activeScaleTask: Task<Void, Never>?
+    private var resolvedPlaceProfile: ResolvedPlaceProfile?
 
     init(service: any CensusNeighborhoodServing, libraryStore: NeighborhoodLibraryStore) {
         self.service = service
@@ -117,10 +118,6 @@ final class MapSelectionModel: ObservableObject {
 
     func selectBoundaryScale(_ scale: BoundaryOverlayScale) {
         boundaryScale = scale
-        if tappedCoordinate != nil, neighborhoodBoundaries != nil, selectedZipBundle != nil {
-            isRefreshingScale = true
-        }
-
         let requestID = activeSelectionRequestID
         activeScaleTask?.cancel()
         activeScaleTask = Task { [weak self] in
@@ -168,6 +165,7 @@ final class MapSelectionModel: ObservableObject {
         selectedZipBundle = nil
         selectedBoundary = nil
         neighborhoodBoundaries = nil
+        resolvedPlaceProfile = nil
 
         activeFetchTask = Task { [weak self] in
             guard let self else { return }
@@ -177,17 +175,20 @@ final class MapSelectionModel: ObservableObject {
 
     private func fetchZipBundleMetrics(for coordinate: CLLocationCoordinate2D, requestID: UUID) async {
         do {
-            let bundle = try await service.fetchZipBundle(
+            let placeProfile = try await service.fetchPlaceProfile(
                 latitude: coordinate.latitude,
                 longitude: coordinate.longitude
             )
+            let bundle = placeProfile.zipBundle
 
             guard isSelectionRequestCurrent(requestID) else { return }
 
+            resolvedPlaceProfile = placeProfile
+
             withAnimation(.easeInOut(duration: 0.28)) {
                 selectedZipCode = bundle.zcta
-                censusMetrics = mapDemographicsToMetrics(bundle.demographics)
-                selectedDemographics = bundle.demographics
+                censusMetrics = mapDemographicsToMetrics(placeProfile.scaleDemographics.zip)
+                selectedDemographics = placeProfile.scaleDemographics.zip
                 metricsSource = .zcta
                 selectedBoundary = bundle.boundary
                 selectedZipBundle = bundle
@@ -198,17 +199,8 @@ final class MapSelectionModel: ObservableObject {
                 libraryStore.recordLookup(snapshot)
             }
 
-            let boundaries = await service.fetchNeighborhoodBoundaries(
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude,
-                tractGeoid: bundle.tract?.geoid,
-                zipBoundary: bundle.boundary
-            )
-
-            guard isSelectionRequestCurrent(requestID) else { return }
-
-            neighborhoodBoundaries = boundaries
-            selectedBoundary = boundaryOverlay(for: boundaries, scale: boundaryScale)
+            neighborhoodBoundaries = placeProfile.boundaries
+            selectedBoundary = boundaryOverlay(for: placeProfile.boundaries, scale: boundaryScale)
             isBoundaryLoading = false
 
             if boundaryScale != .zip {
@@ -226,6 +218,7 @@ final class MapSelectionModel: ObservableObject {
                 selectedBoundary = nil
                 neighborhoodBoundaries = nil
                 selectedZipBundle = nil
+                resolvedPlaceProfile = nil
                 isBoundaryLoading = false
                 mapNotice = AppStrings.Labels.noZipAvailableNotice
                 selectionFeedbackState = .noCoverage
@@ -250,8 +243,7 @@ final class MapSelectionModel: ObservableObject {
 
         guard
             let boundaries = neighborhoodBoundaries,
-            let coordinate = tappedCoordinate,
-            let bundle = selectedZipBundle
+            let placeProfile = resolvedPlaceProfile
         else {
             selectedBoundary = nil
             return
@@ -264,72 +256,31 @@ final class MapSelectionModel: ObservableObject {
             }
         }
 
-        let requestedScale: NeighborhoodScale = {
-            switch scale {
-            case .zip: return .zip
-            case .tract: return .tract
-            }
-        }()
+        let (demographics, source) = demographicsForScale(scale, profile: placeProfile)
 
-        do {
-            let (demographics, source) = try await fetchScaleDemographicsWithFallback(
-                for: requestedScale,
-                bundle: bundle,
-                coordinate: coordinate
-            )
+        guard isSelectionRequestCurrent(requestID) else { return }
 
-            guard isSelectionRequestCurrent(requestID) else { return }
-
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.9)) {
-                censusMetrics = mapDemographicsToMetrics(demographics)
-                selectedDemographics = demographics
-                metricsSource = source
-                selectionFeedbackState = nil
-            }
-        } catch is CancellationError {
-            return
-        } catch {
-            guard isSelectionRequestCurrent(requestID) else { return }
-            metricsSource = .zcta
-            censusMetrics = mapDemographicsToMetrics(bundle.demographics)
-            selectedDemographics = bundle.demographics
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.9)) {
+            censusMetrics = mapDemographicsToMetrics(demographics)
+            selectedDemographics = demographics
+            metricsSource = source
+            selectionFeedbackState = nil
         }
     }
 
-    private func fetchScaleDemographicsWithFallback(
-        for scale: NeighborhoodScale,
-        bundle: ZipLookupResult,
-        coordinate: CLLocationCoordinate2D
-    ) async throws -> (Demographics, MetricsSource) {
+    private func demographicsForScale(
+        _ scale: BoundaryOverlayScale,
+        profile: ResolvedPlaceProfile
+    ) -> (Demographics, MetricsSource) {
         switch scale {
         case .zip:
-            let demographics = try await service.fetchDemographics(
-                for: .zip,
-                zcta: bundle.zcta,
-                tractGeoid: bundle.tract?.geoid,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-            return (demographics, .zcta)
+            return (profile.scaleDemographics.zip, .zcta)
         case .tract:
-            if let demographics = try? await service.fetchDemographics(
-                for: .tract,
-                zcta: bundle.zcta,
-                tractGeoid: bundle.tract?.geoid,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            ) {
+            if let demographics = profile.scaleDemographics.tract {
                 return (demographics, .tract)
             }
 
-            let fallback = try await service.fetchDemographics(
-                for: .zip,
-                zcta: bundle.zcta,
-                tractGeoid: bundle.tract?.geoid,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-            return (fallback, .zcta)
+            return (profile.scaleDemographics.zip, .zcta)
         }
     }
 
@@ -345,6 +296,7 @@ final class MapSelectionModel: ObservableObject {
         selectedBoundary = nil
         neighborhoodBoundaries = nil
         selectedZipBundle = nil
+        resolvedPlaceProfile = nil
         isBoundaryLoading = false
         selectionFeedbackState = .sampleFallback
     }

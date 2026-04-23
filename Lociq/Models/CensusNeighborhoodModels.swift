@@ -54,6 +54,54 @@ public struct NeighborhoodBoundarySet: Sendable {
     }
 }
 
+struct ScaleDemographicsBundle: Sendable {
+    let zip: Demographics
+    let tract: Demographics?
+
+    init(zip: Demographics, tract: Demographics?) {
+        self.zip = zip
+        self.tract = tract
+    }
+}
+
+struct ResolvedPlaceProfile: Sendable {
+    let zipBundle: ZipLookupResult
+    let boundaries: NeighborhoodBoundarySet
+    let scaleDemographics: ScaleDemographicsBundle
+
+    init(
+        zipBundle: ZipLookupResult,
+        boundaries: NeighborhoodBoundarySet,
+        scaleDemographics: ScaleDemographicsBundle
+    ) {
+        self.zipBundle = zipBundle
+        self.boundaries = boundaries
+        self.scaleDemographics = scaleDemographics
+    }
+}
+
+struct ComparisonProfileResult: Sendable {
+    let id: String
+    let title: String
+    let subtitle: String
+    let demographics: Demographics
+    let metricsSource: MetricsSource
+
+    init(
+        id: String,
+        title: String,
+        subtitle: String,
+        demographics: Demographics,
+        metricsSource: MetricsSource
+    ) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+        self.demographics = demographics
+        self.metricsSource = metricsSource
+    }
+}
+
 public enum NeighborhoodScale: Sendable {
     case zip
     case tract

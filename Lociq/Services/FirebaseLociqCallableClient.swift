@@ -50,6 +50,18 @@ public final class FirebaseLociqCallableClient: @unchecked Sendable {
         self.functions = Functions.functions(region: region)
     }
 
+    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile {
+        let response: PlaceProfileResponse = try await call(
+            "getLociqPlaceProfile",
+            data: [
+                "latitude": latitude,
+                "longitude": longitude
+            ]
+        )
+
+        return response.toDomain()
+    }
+
     func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
         let response: ZipBundleResponse = try await call(
             "getLociqZipBundle",
@@ -119,6 +131,27 @@ public final class FirebaseLociqCallableClient: @unchecked Sendable {
         return response.demographics.toDomain()
     }
 
+    func fetchComparisonProfile(
+        latitude: Double,
+        longitude: Double,
+        scale: NeighborhoodScale,
+        fallbackTitle: String,
+        fallbackSubtitle: String
+    ) async throws -> ComparisonProfileResult {
+        let response: ComparisonProfileResponse = try await call(
+            "getLociqComparison",
+            data: [
+                "latitude": latitude,
+                "longitude": longitude,
+                "scale": scale == .tract ? "tract" : "zip",
+                "fallbackTitle": fallbackTitle,
+                "fallbackSubtitle": fallbackSubtitle
+            ]
+        )
+
+        return response.toDomain()
+    }
+
     private func call<Response: Decodable>(_ name: String, data: [String: Any]) async throws -> Response {
         let options = HTTPSCallableOptions(requireLimitedUseAppCheckTokens: true)
         let callable = functions.httpsCallable(name, options: options)
@@ -136,6 +169,12 @@ public final class FirebaseLociqCallableClient: @unchecked Sendable {
     #else
     private init(region: String) {
         fatalError("FirebaseFunctions is unavailable in this build.")
+    }
+
+    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile {
+        throw CensusZipDemographicsService.ServiceError.decodeFailed(
+            "FirebaseFunctions is unavailable in this build."
+        )
     }
 
     func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
@@ -166,7 +205,37 @@ public final class FirebaseLociqCallableClient: @unchecked Sendable {
             "FirebaseFunctions is unavailable in this build."
         )
     }
+
+    func fetchComparisonProfile(
+        latitude: Double,
+        longitude: Double,
+        scale: NeighborhoodScale,
+        fallbackTitle: String,
+        fallbackSubtitle: String
+    ) async throws -> ComparisonProfileResult {
+        throw CensusZipDemographicsService.ServiceError.decodeFailed(
+            "FirebaseFunctions is unavailable in this build."
+        )
+    }
     #endif
+}
+
+private struct PlaceProfileResponse: Decodable {
+    let boundaries: NeighborhoodBoundariesResponse
+    let scaleDemographics: ScaleDemographicsResponse
+    let zipBundle: ZipBundleResponse
+
+    func toDomain() -> ResolvedPlaceProfile {
+        ResolvedPlaceProfile(
+            zipBundle: zipBundle.toDomain(),
+            boundaries: NeighborhoodBoundarySet(
+                zip: boundaries.zip,
+                tract: boundaries.tract,
+                block: boundaries.block
+            ),
+            scaleDemographics: scaleDemographics.toDomain()
+        )
+    }
 }
 
 private struct ZipBundleResponse: Decodable {
@@ -214,9 +283,39 @@ private struct NeighborhoodBoundariesResponse: Decodable {
     let zip: GeoJSONFeatureCollection
 }
 
+private struct ScaleDemographicsResponse: Decodable {
+    let tract: DemographicsModelResponse?
+    let zip: DemographicsModelResponse
+
+    func toDomain() -> ScaleDemographicsBundle {
+        ScaleDemographicsBundle(
+            zip: zip.toDomain(),
+            tract: tract?.toDomain()
+        )
+    }
+}
+
 private struct DemographicsResponse: Decodable {
     let demographics: DemographicsModelResponse
     let resolvedScale: String
+}
+
+private struct ComparisonProfileResponse: Decodable {
+    let demographics: DemographicsModelResponse
+    let id: String
+    let metricsSource: String
+    let subtitle: String
+    let title: String
+
+    func toDomain() -> ComparisonProfileResult {
+        ComparisonProfileResult(
+            id: id,
+            title: title,
+            subtitle: subtitle,
+            demographics: demographics.toDomain(),
+            metricsSource: MetricsSource(responseValue: metricsSource)
+        )
+    }
 }
 
 private struct CountyInfoResponse: Decodable {
@@ -363,5 +462,18 @@ private struct InsightResponse: Decodable {
             title: title,
             detail: detail
         )
+    }
+}
+
+private extension MetricsSource {
+    init(responseValue: String) {
+        switch responseValue {
+        case "tract":
+            self = .tract
+        case "sample":
+            self = .sample
+        default:
+            self = .zcta
+        }
     }
 }

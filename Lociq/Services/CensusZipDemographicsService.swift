@@ -10,6 +10,7 @@ import Foundation
 import os
 
 protocol CensusNeighborhoodServing: Sendable {
+    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile
     func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult
     func fetchNeighborhoodBoundaries(
         latitude: Double,
@@ -24,6 +25,13 @@ protocol CensusNeighborhoodServing: Sendable {
         latitude: Double,
         longitude: Double
     ) async throws -> Demographics
+    func fetchComparisonProfile(
+        latitude: Double,
+        longitude: Double,
+        scale: NeighborhoodScale,
+        fallbackTitle: String,
+        fallbackSubtitle: String
+    ) async throws -> ComparisonProfileResult
 }
 
 public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeighborhoodServing {
@@ -54,6 +62,7 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
 
     private let directClient: DirectCensusZipDemographicsClient
     private let firebaseClient: FirebaseLociqCallableClient?
+    private let lookupCache = NeighborhoodLookupCache()
 
     public init(
         censusApiKey: String,
@@ -71,18 +80,33 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
 
     // MARK: - Public API
 
-    /// Main entry point:
-    /// lat/lon -> ZCTA + county + tract + place/incorporation -> boundary + ACS -> insights
-    public func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
+    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile {
+        let cacheKey = Self.coordinateCacheKey(latitude: latitude, longitude: longitude)
+
+        if let cached = await lookupCache.placeProfile(for: cacheKey) {
+            return cached
+        }
+
         if let firebaseClient {
             do {
-                return try await firebaseClient.fetchZipBundle(latitude: latitude, longitude: longitude)
+                let profile = try await firebaseClient.fetchPlaceProfile(latitude: latitude, longitude: longitude)
+                await lookupCache.store(placeProfile: profile, for: cacheKey)
+                return profile
             } catch {
-                Self.logger.error("Firebase zip bundle lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
+                Self.logger.error("Firebase place profile lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
             }
         }
 
-        return try await directClient.fetchZipBundle(latitude: latitude, longitude: longitude)
+        let profile = try await directClient.fetchPlaceProfile(latitude: latitude, longitude: longitude)
+        await lookupCache.store(placeProfile: profile, for: cacheKey)
+        return profile
+    }
+
+    /// Main entry point:
+    /// lat/lon -> ZCTA + county + tract + place/incorporation -> boundary + ACS -> insights
+    public func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
+        let profile = try await fetchPlaceProfile(latitude: latitude, longitude: longitude)
+        return profile.zipBundle
     }
 
     public func fetchNeighborhoodBoundaries(
@@ -91,6 +115,11 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
         tractGeoid: String?,
         zipBoundary: GeoJSONFeatureCollection
     ) async -> NeighborhoodBoundarySet {
+        let cacheKey = Self.coordinateCacheKey(latitude: latitude, longitude: longitude)
+        if let cached = await lookupCache.placeProfile(for: cacheKey) {
+            return cached.boundaries
+        }
+
         if let firebaseClient {
             do {
                 return try await firebaseClient.fetchNeighborhoodBoundaries(
@@ -119,6 +148,18 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
         latitude: Double,
         longitude: Double
     ) async throws -> Demographics {
+        let cacheKey = Self.coordinateCacheKey(latitude: latitude, longitude: longitude)
+        if let cached = await lookupCache.placeProfile(for: cacheKey) {
+            switch scale {
+            case .zip:
+                return cached.scaleDemographics.zip
+            case .tract:
+                if let tract = cached.scaleDemographics.tract {
+                    return tract
+                }
+            }
+        }
+
         if let firebaseClient {
             do {
                 return try await firebaseClient.fetchDemographics(
@@ -142,6 +183,50 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
         )
     }
 
+    func fetchComparisonProfile(
+        latitude: Double,
+        longitude: Double,
+        scale: NeighborhoodScale,
+        fallbackTitle: String,
+        fallbackSubtitle: String
+    ) async throws -> ComparisonProfileResult {
+        let cacheKey = Self.comparisonCacheKey(
+            latitude: latitude,
+            longitude: longitude,
+            scale: scale
+        )
+
+        if let cached = await lookupCache.comparisonProfile(for: cacheKey) {
+            return cached
+        }
+
+        if let firebaseClient {
+            do {
+                let comparison = try await firebaseClient.fetchComparisonProfile(
+                    latitude: latitude,
+                    longitude: longitude,
+                    scale: scale,
+                    fallbackTitle: fallbackTitle,
+                    fallbackSubtitle: fallbackSubtitle
+                )
+                await lookupCache.store(comparisonProfile: comparison, for: cacheKey)
+                return comparison
+            } catch {
+                Self.logger.error("Firebase comparison lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
+            }
+        }
+
+        let comparison = try await directClient.fetchComparisonProfile(
+            latitude: latitude,
+            longitude: longitude,
+            scale: scale,
+            fallbackTitle: fallbackTitle,
+            fallbackSubtitle: fallbackSubtitle
+        )
+        await lookupCache.store(comparisonProfile: comparison, for: cacheKey)
+        return comparison
+    }
+
     private static func extractZCTA(from boundary: GeoJSONFeatureCollection) -> String? {
         for feature in boundary.features {
             if let zcta = feature.properties?["ZCTA5"] ?? feature.properties?["GEOID"] {
@@ -150,5 +235,38 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
         }
 
         return nil
+    }
+
+    private static func coordinateCacheKey(latitude: Double, longitude: Double) -> String {
+        String(format: "%.5f,%.5f", latitude, longitude)
+    }
+
+    private static func comparisonCacheKey(
+        latitude: Double,
+        longitude: Double,
+        scale: NeighborhoodScale
+    ) -> String {
+        "\(coordinateCacheKey(latitude: latitude, longitude: longitude)):\(scale == .tract ? "tract" : "zip")"
+    }
+}
+
+private actor NeighborhoodLookupCache {
+    private var placeProfiles: [String: ResolvedPlaceProfile] = [:]
+    private var comparisonProfiles: [String: ComparisonProfileResult] = [:]
+
+    func placeProfile(for key: String) -> ResolvedPlaceProfile? {
+        placeProfiles[key]
+    }
+
+    func comparisonProfile(for key: String) -> ComparisonProfileResult? {
+        comparisonProfiles[key]
+    }
+
+    func store(placeProfile: ResolvedPlaceProfile, for key: String) {
+        placeProfiles[key] = placeProfile
+    }
+
+    func store(comparisonProfile: ComparisonProfileResult, for key: String) {
+        comparisonProfiles[key] = comparisonProfile
     }
 }

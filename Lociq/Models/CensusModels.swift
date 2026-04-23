@@ -27,7 +27,7 @@ struct CensusMetrics: Decodable {
 }
 
 /// Indicates the geography level used to source the active metrics payload.
-enum MetricsSource { case zcta, tract, sample }
+enum MetricsSource: Sendable { case zcta, tract, sample }
 
 /// Result from FCC API containing resolved census identifiers for a point.
 struct FCCBlockResponse: Decodable {

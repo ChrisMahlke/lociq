@@ -92,6 +92,8 @@ Config/GoogleService-Info.plist
 # Logs
 # =========================
 *.log
+functions/node_modules/
+functions/lib/
 
 .DS_Store
 .vscode/

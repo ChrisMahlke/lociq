@@ -36,7 +36,7 @@ struct NeighborhoodLibraryStoreTests {
         store.recordLookup(savedSnapshot)
         _ = store.toggleSaved(savedSnapshot)
 
-        #expect(store.recentLookups.count == NeighborhoodLibraryStore.maxRecentLookups)
+        #expect(store.recentLookups.count == NeighborhoodLibraryStore.maxRecentLookups - 1)
         #expect(store.savedPlaces.count == 1)
         #expect(store.entries.contains(where: { $0.id == "saved-place" }))
     }

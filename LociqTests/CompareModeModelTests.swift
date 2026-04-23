@@ -75,6 +75,18 @@ private actor StubCompareNeighborhoodService: CensusNeighborhoodServing {
         self.demographicsByScale = demographicsByScale
     }
 
+    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile {
+        let bundle = try zipBundleResult.get()
+        return ResolvedPlaceProfile(
+            zipBundle: bundle,
+            boundaries: NeighborhoodBoundarySet(zip: bundle.boundary, tract: nil, block: nil),
+            scaleDemographics: ScaleDemographicsBundle(
+                zip: demographicsByScale[.zip] ?? bundle.demographics,
+                tract: demographicsByScale[.tract]
+            )
+        )
+    }
+
     func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
         try zipBundleResult.get()
     }
@@ -100,6 +112,40 @@ private actor StubCompareNeighborhoodService: CensusNeighborhoodServing {
         }
 
         throw CensusZipDemographicsService.ServiceError.noDemographicsFound
+    }
+
+    func fetchComparisonProfile(
+        latitude: Double,
+        longitude: Double,
+        scale: NeighborhoodScale,
+        fallbackTitle: String,
+        fallbackSubtitle: String
+    ) async throws -> ComparisonProfileResult {
+        let bundle = try zipBundleResult.get()
+        let demographics: Demographics
+        let metricsSource: MetricsSource
+
+        switch scale {
+        case .zip:
+            demographics = demographicsByScale[.zip] ?? bundle.demographics
+            metricsSource = .zcta
+        case .tract:
+            if let tract = demographicsByScale[.tract] {
+                demographics = tract
+                metricsSource = .tract
+            } else {
+                demographics = demographicsByScale[.zip] ?? bundle.demographics
+                metricsSource = .zcta
+            }
+        }
+
+        return ComparisonProfileResult(
+            id: bundle.tract?.geoid ?? bundle.zcta,
+            title: bundle.place?.name ?? fallbackTitle,
+            subtitle: fallbackSubtitle,
+            demographics: demographics,
+            metricsSource: metricsSource
+        )
     }
 }
 

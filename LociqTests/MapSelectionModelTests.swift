@@ -60,7 +60,7 @@ struct MapSelectionModelTests {
         #expect(model.isBoundaryLoading == false)
     }
 
-    @Test func marksScaleRefreshWhileKeepingCurrentProfileVisible() async throws {
+    @Test func switchesToPrefetchedTractMetricsWithoutRefreshState() async throws {
         let zipBundle = makeZipBundle()
         let boundaries = makeBoundaries()
         let zipDemographics = makeDemographics(name: "ZIP Demographics", population: 42_000)
@@ -69,8 +69,7 @@ struct MapSelectionModelTests {
         let service = StubCensusNeighborhoodService(
             zipBundleResult: .success(zipBundle),
             boundaries: boundaries,
-            demographicsByScale: [.zip: zipDemographics, .tract: tractDemographics],
-            demographicsDelayNanoseconds: 200_000_000
+            demographicsByScale: [.zip: zipDemographics, .tract: tractDemographics]
         )
         let model = MapSelectionModel(service: service, libraryStore: makeLibraryStore())
 
@@ -78,13 +77,11 @@ struct MapSelectionModelTests {
         await waitUntil { model.selectedZipBundle != nil && model.isBoundaryLoading == false }
 
         model.selectBoundaryScale(.tract)
-        await waitUntil { model.isRefreshingScale }
+        await waitUntil { model.metricsSource == .tract }
 
-        #expect(model.isRefreshingScale == true)
-        #expect(model.censusMetrics?.population == zipBundle.demographics.population)
-
-        await waitUntil { model.metricsSource == .tract && model.isRefreshingScale == false }
+        #expect(model.isRefreshingScale == false)
         #expect(model.selectedDemographics?.name == "Tract Demographics")
+        #expect(model.censusMetrics?.population == tractDemographics.population)
     }
 
     @Test func recordsSuccessfulLookupsInNeighborhoodLibrary() async throws {
@@ -152,6 +149,29 @@ private actor StubCensusNeighborhoodService: CensusNeighborhoodServing {
         self.demographicsDelayNanoseconds = demographicsDelayNanoseconds
     }
 
+    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile {
+        let bundle = try zipBundleResult.get()
+        let tractDemographics: Demographics?
+
+        if let error = demographicsErrorsByScale[.tract] {
+            if error is CancellationError {
+                throw error
+            }
+            tractDemographics = nil
+        } else {
+            tractDemographics = demographicsByScale[.tract]
+        }
+
+        return ResolvedPlaceProfile(
+            zipBundle: bundle,
+            boundaries: boundaries,
+            scaleDemographics: ScaleDemographicsBundle(
+                zip: demographicsByScale[.zip] ?? bundle.demographics,
+                tract: tractDemographics
+            )
+        )
+    }
+
     func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
         try zipBundleResult.get()
     }
@@ -185,6 +205,31 @@ private actor StubCensusNeighborhoodService: CensusNeighborhoodServing {
         }
 
         throw CensusZipDemographicsService.ServiceError.noDemographicsFound
+    }
+
+    func fetchComparisonProfile(
+        latitude: Double,
+        longitude: Double,
+        scale: NeighborhoodScale,
+        fallbackTitle: String,
+        fallbackSubtitle: String
+    ) async throws -> ComparisonProfileResult {
+        let bundle = try zipBundleResult.get()
+        let demographics = try await fetchDemographics(
+            for: scale,
+            zcta: bundle.zcta,
+            tractGeoid: bundle.tract?.geoid,
+            latitude: latitude,
+            longitude: longitude
+        )
+
+        return ComparisonProfileResult(
+            id: bundle.tract?.geoid ?? bundle.zcta,
+            title: bundle.place?.name ?? fallbackTitle,
+            subtitle: fallbackSubtitle,
+            demographics: demographics,
+            metricsSource: scale == .tract ? .tract : .zcta
+        )
     }
 }
 

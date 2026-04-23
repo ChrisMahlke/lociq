@@ -76,28 +76,23 @@ final class CompareModeModel: ObservableObject {
             guard let self else { return }
 
             do {
-                let bundle = try await service.fetchZipBundle(
+                let comparison = try await service.fetchComparisonProfile(
                     latitude: target.coordinate.latitude,
-                    longitude: target.coordinate.longitude
-                )
-
-                guard isCurrentRequest(requestID) else { return }
-
-                let (demographics, source) = try await fetchDemographicsWithFallback(
-                    bundle: bundle,
-                    coordinate: target.coordinate,
-                    scale: scale
+                    longitude: target.coordinate.longitude,
+                    scale: scale == .tract ? .tract : .zip,
+                    fallbackTitle: target.fallbackTitle,
+                    fallbackSubtitle: target.fallbackSubtitle
                 )
 
                 guard isCurrentRequest(requestID) else { return }
 
                 secondaryProfile = ComparablePlaceProfile(
-                    id: bundle.tract?.geoid ?? bundle.zcta,
-                    title: makeTitle(bundle: bundle, fallbackTitle: target.fallbackTitle),
-                    subtitle: makeSubtitle(bundle: bundle, fallbackSubtitle: target.fallbackSubtitle),
-                    metrics: mapDemographicsToMetrics(demographics),
-                    demographics: demographics,
-                    metricsSource: source
+                    id: comparison.id,
+                    title: comparison.title,
+                    subtitle: comparison.subtitle,
+                    metrics: mapDemographicsToMetrics(comparison.demographics),
+                    demographics: comparison.demographics,
+                    metricsSource: comparison.metricsSource
                 )
                 pendingComparisonTitle = secondaryProfile?.title
                 isLoadingComparison = false
@@ -125,43 +120,6 @@ final class CompareModeModel: ObservableObject {
         }
     }
 
-    private func fetchDemographicsWithFallback(
-        bundle: ZipLookupResult,
-        coordinate: CLLocationCoordinate2D,
-        scale: BoundaryOverlayScale
-    ) async throws -> (Demographics, MetricsSource) {
-        switch scale {
-        case .zip:
-            let demographics = try await service.fetchDemographics(
-                for: .zip,
-                zcta: bundle.zcta,
-                tractGeoid: bundle.tract?.geoid,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-            return (demographics, .zcta)
-        case .tract:
-            if let tractDemographics = try? await service.fetchDemographics(
-                for: .tract,
-                zcta: bundle.zcta,
-                tractGeoid: bundle.tract?.geoid,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            ) {
-                return (tractDemographics, .tract)
-            }
-
-            let zipFallback = try await service.fetchDemographics(
-                for: .zip,
-                zcta: bundle.zcta,
-                tractGeoid: bundle.tract?.geoid,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-            return (zipFallback, .zcta)
-        }
-    }
-
     private func mapDemographicsToMetrics(_ demographics: Demographics) -> CensusMetrics {
         CensusMetrics(
             population: demographics.population,
@@ -173,39 +131,6 @@ final class CompareModeModel: ObservableObject {
             educationLevels: nil,
             householdIncome: nil
         )
-    }
-
-    private func makeTitle(bundle: ZipLookupResult, fallbackTitle: String) -> String {
-        if let placeName = bundle.place?.name, !placeName.isEmpty {
-            return placeName
-        }
-        if !bundle.demographics.name.isEmpty {
-            return bundle.demographics.name
-        }
-        if !bundle.zcta.isEmpty {
-            return AppStrings.Formats.zip(bundle.zcta)
-        }
-        return fallbackTitle
-    }
-
-    private func makeSubtitle(bundle: ZipLookupResult, fallbackSubtitle: String) -> String {
-        var parts: [String] = []
-
-        if let countyName = bundle.county?.name, !countyName.isEmpty {
-            parts.append(countyName)
-        }
-        if !bundle.zcta.isEmpty {
-            parts.append(AppStrings.Formats.zip(bundle.zcta))
-        }
-        if let tractCode = bundle.tract?.tractCode, !tractCode.isEmpty {
-            parts.append(AppStrings.Formats.tract(tractCode))
-        }
-
-        if !parts.isEmpty {
-            return parts.joined(separator: " · ")
-        }
-
-        return fallbackSubtitle
     }
 
     private func isCurrentRequest(_ requestID: UUID) -> Bool {

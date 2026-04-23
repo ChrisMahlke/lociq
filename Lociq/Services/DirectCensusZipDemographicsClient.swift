@@ -69,6 +69,33 @@ final class DirectCensusZipDemographicsClient: @unchecked Sendable {
         )
     }
 
+    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile {
+        let bundle = try await fetchZipBundle(latitude: latitude, longitude: longitude)
+        let boundaries = await fetchNeighborhoodBoundaries(
+            latitude: latitude,
+            longitude: longitude,
+            tractGeoid: bundle.tract?.geoid,
+            zipBoundary: bundle.boundary
+        )
+
+        let tractDemographics = try? await fetchDemographics(
+            for: .tract,
+            zcta: bundle.zcta,
+            tractGeoid: bundle.tract?.geoid,
+            latitude: latitude,
+            longitude: longitude
+        )
+
+        return ResolvedPlaceProfile(
+            zipBundle: bundle,
+            boundaries: boundaries,
+            scaleDemographics: ScaleDemographicsBundle(
+                zip: bundle.demographics,
+                tract: tractDemographics
+            )
+        )
+    }
+
     func fetchNeighborhoodBoundaries(
         latitude: Double,
         longitude: Double,
@@ -122,6 +149,46 @@ final class DirectCensusZipDemographicsClient: @unchecked Sendable {
 
             return try await fetchACSDemographics(tractGeoid: tract)
         }
+    }
+
+    func fetchComparisonProfile(
+        latitude: Double,
+        longitude: Double,
+        scale: NeighborhoodScale,
+        fallbackTitle: String,
+        fallbackSubtitle: String
+    ) async throws -> ComparisonProfileResult {
+        let bundle = try await fetchZipBundle(latitude: latitude, longitude: longitude)
+        let demographics: Demographics
+        let metricsSource: MetricsSource
+
+        switch scale {
+        case .zip:
+            demographics = bundle.demographics
+            metricsSource = .zcta
+        case .tract:
+            if let tractDemographics = try? await fetchDemographics(
+                for: .tract,
+                zcta: bundle.zcta,
+                tractGeoid: bundle.tract?.geoid,
+                latitude: latitude,
+                longitude: longitude
+            ) {
+                demographics = tractDemographics
+                metricsSource = .tract
+            } else {
+                demographics = bundle.demographics
+                metricsSource = .zcta
+            }
+        }
+
+        return ComparisonProfileResult(
+            id: bundle.tract?.geoid ?? bundle.zcta,
+            title: makeComparisonTitle(bundle: bundle, fallbackTitle: fallbackTitle),
+            subtitle: makeComparisonSubtitle(bundle: bundle, fallbackSubtitle: fallbackSubtitle),
+            demographics: demographics,
+            metricsSource: metricsSource
+        )
     }
 
     private struct GeographiesBundle: Sendable {
@@ -544,6 +611,39 @@ final class DirectCensusZipDemographicsClient: @unchecked Sendable {
 private extension DirectCensusZipDemographicsClient {
     func isValid(value: String, regex: String) -> Bool {
         value.range(of: regex, options: .regularExpression) != nil
+    }
+
+    func makeComparisonTitle(bundle: ZipLookupResult, fallbackTitle: String) -> String {
+        if let placeName = bundle.place?.name, !placeName.isEmpty {
+            return placeName
+        }
+        if !bundle.demographics.name.isEmpty {
+            return bundle.demographics.name
+        }
+        if !bundle.zcta.isEmpty {
+            return AppStrings.Formats.zip(bundle.zcta)
+        }
+        return fallbackTitle
+    }
+
+    func makeComparisonSubtitle(bundle: ZipLookupResult, fallbackSubtitle: String) -> String {
+        var parts: [String] = []
+
+        if let countyName = bundle.county?.name, !countyName.isEmpty {
+            parts.append(countyName)
+        }
+        if !bundle.zcta.isEmpty {
+            parts.append(AppStrings.Formats.zip(bundle.zcta))
+        }
+        if let tractCode = bundle.tract?.tractCode, !tractCode.isEmpty {
+            parts.append(AppStrings.Formats.tract(tractCode))
+        }
+
+        if !parts.isEmpty {
+            return parts.joined(separator: " · ")
+        }
+
+        return fallbackSubtitle
     }
 }
 
