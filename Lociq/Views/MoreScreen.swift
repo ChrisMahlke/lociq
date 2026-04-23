@@ -332,15 +332,15 @@ private struct ScaleComparisonCard: View {
 private struct WhatYouSeeCard: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    private let items: [(label: String, meaning: String, tint: Color)] = [
-        (AppStrings.Metrics.population, AppStrings.More.populationMeaning, .blue),
-        (AppStrings.Metrics.medianIncome, AppStrings.More.medianIncomeMeaning, .green),
-        (AppStrings.Metrics.medianAge, AppStrings.More.medianAgeMeaning, .indigo),
-        (AppStrings.Metrics.households, AppStrings.More.householdsMeaning, .orange),
-        ("\(AppStrings.Labels.homeValue) / \(AppStrings.Labels.grossRent)", AppStrings.More.homeValueRentMeaning, .red),
-        (AppStrings.Labels.occupancyMix, AppStrings.More.occupancyMixMeaning, .orange),
-        ("\(AppStrings.Labels.remoteWork) / \(AppStrings.Labels.poverty)", AppStrings.More.remoteWorkPovertyMeaning, .mint),
-        (AppStrings.Labels.demographicCompositionVisual, AppStrings.More.demographicCompositionMeaning, .purple)
+    private let items: [(label: String, meaning: String, icon: String, tint: Color)] = [
+        (AppStrings.Metrics.population, AppStrings.More.populationMeaning, "person.2.fill", .blue),
+        (AppStrings.Metrics.medianIncome, AppStrings.More.medianIncomeMeaning, "dollarsign.circle.fill", .green),
+        (AppStrings.Metrics.medianAge, AppStrings.More.medianAgeMeaning, "hourglass", .indigo),
+        (AppStrings.Metrics.households, AppStrings.More.householdsMeaning, "house.fill", .orange),
+        ("\(AppStrings.Labels.homeValue) / \(AppStrings.Labels.grossRent)", AppStrings.More.homeValueRentMeaning, "building.2.fill", .red),
+        (AppStrings.Labels.occupancyMix, AppStrings.More.occupancyMixMeaning, "square.split.bottomrightquarter.fill", .orange),
+        ("\(AppStrings.Labels.remoteWork) / \(AppStrings.Labels.poverty)", AppStrings.More.remoteWorkPovertyMeaning, "briefcase.fill", .mint),
+        (AppStrings.Labels.demographicCompositionVisual, AppStrings.More.demographicCompositionMeaning, "person.3.sequence.fill", .purple)
     ]
 
     var body: some View {
@@ -358,6 +358,7 @@ private struct WhatYouSeeCard: View {
                         InsightMeaningRow(
                             label: item.label,
                             detail: item.meaning,
+                            icon: item.icon,
                             tint: item.tint
                         )
                     }
@@ -597,24 +598,30 @@ private struct CalloutStrip: View {
 private struct InsightMeaningRow: View {
     let label: String
     let detail: String
+    let icon: String
     let tint: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(tint)
-                .frame(width: 10, height: 10)
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(tint)
+                    .frame(width: 28, height: 28)
+                    .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 4) {
                 Text(label)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.primary.opacity(0.72))
-                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
             }
+
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(.primary.opacity(0.72))
+                .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
         }
