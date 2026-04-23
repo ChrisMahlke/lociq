@@ -1,5 +1,6 @@
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { makeNeighborhoodInsights, type InsightResponse } from "./lociqInsights.js";
 
 type GeoJSONPosition = [number, number];
 type GeoJSONPolygonCoordinates = GeoJSONPosition[][];
@@ -77,7 +78,7 @@ type ZipBundleResponse = {
   boundary: GeoJSONFeatureCollection;
   boundaryMetrics: null;
   demographics: Demographics;
-  insights: unknown[];
+  insights: InsightResponse[];
 };
 
 type NeighborhoodBoundariesResponse = {
@@ -113,6 +114,7 @@ type CallableRequest = {
   tractGeoid?: unknown;
   fallbackTitle?: unknown;
   fallbackSubtitle?: unknown;
+  locale?: unknown;
 };
 
 type GeographiesBundle = {
@@ -252,9 +254,10 @@ export function onCallLociq<T>(
 
 export async function buildZipBundle(
   latitude: number,
-  longitude: number
+  longitude: number,
+  locale: string | null = null
 ): Promise<ZipBundleResponse> {
-  const cacheKey = `zipBundle:${coordinateKey(latitude, longitude)}`;
+  const cacheKey = `zipBundle:${coordinateKey(latitude, longitude)}:${locale ?? "default"}`;
   return withDerivedCache(cacheKey, 5 * 60_000, async () => {
     const geo = await fetchGeographiesFromCoordinate(latitude, longitude);
     const [boundary, demographics] = await Promise.all([
@@ -271,7 +274,7 @@ export async function buildZipBundle(
       boundary,
       boundaryMetrics: null,
       demographics,
-      insights: [],
+      insights: makeNeighborhoodInsights(demographics, locale),
     };
   });
 }
@@ -331,11 +334,12 @@ export async function buildDemographicsForScale(
 
 export async function buildPlaceProfile(
   latitude: number,
-  longitude: number
+  longitude: number,
+  locale: string | null = null
 ): Promise<PlaceProfileResponse> {
-  const cacheKey = `placeProfile:${coordinateKey(latitude, longitude)}`;
+  const cacheKey = `placeProfile:${coordinateKey(latitude, longitude)}:${locale ?? "default"}`;
   return withDerivedCache(cacheKey, 5 * 60_000, async () => {
-    const zipBundle = await buildZipBundle(latitude, longitude);
+    const zipBundle = await buildZipBundle(latitude, longitude, locale);
     const [boundaries, tractDemographics] = await Promise.all([
       buildNeighborhoodBoundaries(
         latitude,
@@ -394,6 +398,7 @@ function normalizeCallableRequest(data: CallableRequest): NormalizedCallableRequ
     tractGeoid: parseOptionalString(data.tractGeoid),
     fallbackTitle: parseOptionalString(data.fallbackTitle),
     fallbackSubtitle: parseOptionalString(data.fallbackSubtitle),
+    locale: parseOptionalString(data.locale),
   };
 }
 
@@ -405,6 +410,7 @@ type NormalizedCallableRequest = {
   tractGeoid: string | null;
   fallbackTitle: string | null;
   fallbackSubtitle: string | null;
+  locale: string | null;
 };
 
 function parseCoordinate(value: unknown, label: string): number {

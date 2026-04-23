@@ -55,7 +55,8 @@ public final class FirebaseLociqCallableClient: @unchecked Sendable {
             "getLociqPlaceProfile",
             data: [
                 "latitude": latitude,
-                "longitude": longitude
+                "longitude": longitude,
+                "locale": Self.currentLocaleIdentifier
             ]
         )
 
@@ -67,7 +68,8 @@ public final class FirebaseLociqCallableClient: @unchecked Sendable {
             "getLociqZipBundle",
             data: [
                 "latitude": latitude,
-                "longitude": longitude
+                "longitude": longitude,
+                "locale": Self.currentLocaleIdentifier
             ]
         )
 
@@ -218,6 +220,10 @@ public final class FirebaseLociqCallableClient: @unchecked Sendable {
         )
     }
     #endif
+
+    private static var currentLocaleIdentifier: String {
+        Locale.preferredLanguages.first ?? Locale.current.identifier
+    }
 }
 
 private struct PlaceProfileResponse: Decodable {
@@ -265,14 +271,16 @@ private struct ZipBundleResponse: Decodable {
             boundary: boundary,
             boundaryMetrics: boundaryMetricsInfo,
             demographics: demographicsModel,
-            insights: InsightEngine.makeInsights(
-                zcta: zcta,
-                county: countyInfo,
-                tract: tractInfo,
-                isIncorporatedPlace: isIncorporatedPlace,
-                boundaryMetrics: boundaryMetricsInfo,
-                demographics: demographicsModel
-            )
+            insights: insights.isEmpty
+                ? InsightEngine.makeInsights(
+                    zcta: zcta,
+                    county: countyInfo,
+                    tract: tractInfo,
+                    isIncorporatedPlace: isIncorporatedPlace,
+                    boundaryMetrics: boundaryMetricsInfo,
+                    demographics: demographicsModel
+                )
+                : insights.map { $0.toDomain() }
         )
     }
 }

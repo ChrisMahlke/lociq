@@ -8,8 +8,8 @@ import {
 } from "./lociqBackend.js";
 
 export const getLociqZipBundle = onCallLociq(async (request) => {
-  const { latitude, longitude } = request;
-  return buildZipBundle(latitude, longitude);
+  const { latitude, longitude, locale } = request;
+  return buildZipBundle(latitude, longitude, locale);
 });
 
 export const getLociqNeighborhoodBoundaries = onCallLociq(async (request) => {
@@ -23,8 +23,8 @@ export const getLociqDemographics = onCallLociq(async (request) => {
 });
 
 export const getLociqPlaceProfile = onCallLociq(async (request) => {
-  const { latitude, longitude } = request;
-  return buildPlaceProfile(latitude, longitude);
+  const { latitude, longitude, locale } = request;
+  return buildPlaceProfile(latitude, longitude, locale);
 });
 
 export const getLociqComparison = onCallLociq(async (request) => {
