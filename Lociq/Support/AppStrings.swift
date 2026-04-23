@@ -92,6 +92,9 @@ enum AppStrings {
         static var dismiss: String { L10n.tr("Dismiss") }
         static var searchPlaceholder: String { L10n.tr("Search ZIP, city, neighborhood, or address") }
         static var clearSearch: String { L10n.tr("Clear search") }
+        static var searchCancel: String { L10n.tr("Cancel") }
+        static var searchPromptTitle: String { L10n.tr("Find a place") }
+        static var searchPromptBody: String { L10n.tr("Search ZIPs, cities, neighborhoods, and street addresses to jump straight to the area on the map.") }
         static var searchingPlaces: String { L10n.tr("Searching places") }
         static var searchingPlacesBody: String { L10n.tr("Looking up matching ZIPs, cities, neighborhoods, and addresses.") }
         static var noSearchResultsTitle: String { L10n.tr("No places found") }

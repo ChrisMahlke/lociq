@@ -1,120 +1,251 @@
 import SwiftUI
 
-struct MapSearchPanel: View {
-    @ObservedObject var model: MapSearchModel
-    let onSelectResult: (PlaceSearchResult) -> Void
+struct MapSearchLauncher: View {
+    let query: String
+    let onTap: () -> Void
 
-    @FocusState private var isFieldFocused: Bool
+    private var displayText: String {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? AppStrings.Labels.searchPlaceholder : trimmed
+    }
+
+    private var isPlaceholder: Bool {
+        query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                TextField(
-                    AppStrings.Labels.searchPlaceholder,
-                    text: Binding(
-                        get: { model.query },
-                        set: { model.updateQuery($0) }
-                    )
-                )
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .submitLabel(.search)
-                .focused($isFieldFocused)
-                .onSubmit {
-                    model.submitSearch()
-                }
-                .accessibilityIdentifier("map.search.field")
+                Text(displayText)
+                    .font(.subheadline)
+                    .foregroundStyle(isPlaceholder ? .secondary : .primary)
+                    .lineLimit(1)
 
-                if model.isSearching {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .tint(.accentColor)
-                        .scaleEffect(0.85)
-                } else if !model.query.isEmpty {
-                    Button {
-                        model.clear()
-                        isFieldFocused = false
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("map.search.clear")
-                    .accessibilityLabel(AppStrings.Labels.clearSearch)
-                }
+                Spacer(minLength: 0)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color(.systemBackground).opacity(0.96))
+                    .fill(Color(.systemBackground).opacity(0.97))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(Color.primary.opacity(0.08), lineWidth: 1)
             )
             .shadow(color: .black.opacity(0.10), radius: 10, y: 4)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: 420, alignment: .leading)
+        .accessibilityIdentifier("map.search.launcher")
+    }
+}
 
-            if model.shouldShowResults {
-                VStack(alignment: .leading, spacing: 0) {
-                    if let errorMessage = model.errorMessage {
-                        SearchStatusRow(
-                            symbol: "exclamationmark.triangle.fill",
-                            title: AppStrings.Labels.searchUnavailableTitle,
-                            message: errorMessage,
-                            tint: .orange
+struct MapSearchExperienceView: View {
+    @ObservedObject var model: MapSearchModel
+    let onDismiss: () -> Void
+    let onSelectResult: (PlaceSearchResult) -> Void
+
+    @FocusState private var isFieldFocused: Bool
+    @State private var isSubmitting = false
+
+    var body: some View {
+        ZStack {
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack(alignment: .center, spacing: 12) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        TextField(
+                            AppStrings.Labels.searchPlaceholder,
+                            text: Binding(
+                                get: { model.query },
+                                set: { model.updateQuery($0) }
+                            )
                         )
-                    } else if model.isSearching {
-                        SearchStatusRow(
-                            symbol: "point.3.connected.trianglepath.dotted",
-                            title: AppStrings.Labels.searchingPlaces,
-                            message: AppStrings.Labels.searchingPlacesBody,
-                            tint: .blue
-                        )
-                    } else if model.results.isEmpty {
-                        SearchStatusRow(
-                            symbol: "mappin.slash.circle.fill",
-                            title: AppStrings.Labels.noSearchResultsTitle,
-                            message: AppStrings.Labels.noSearchResultsBody,
-                            tint: .secondary
-                        )
-                    } else {
-                        ForEach(Array(model.results.enumerated()), id: \.element.id) { index, result in
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.search)
+                        .focused($isFieldFocused)
+                        .onSubmit {
+                            submitTopResult()
+                        }
+                        .accessibilityIdentifier("map.search.field")
+
+                        if model.isSearching || isSubmitting {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(.accentColor)
+                                .scaleEffect(0.85)
+                        } else if !model.query.isEmpty {
                             Button {
-                                isFieldFocused = false
-                                onSelectResult(result)
+                                model.clear()
                             } label: {
-                                SearchResultRow(result: result)
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityIdentifier("map.search.result.\(index)")
-
-                            if index < model.results.count - 1 {
-                                Divider()
-                                    .padding(.leading, 48)
-                            }
+                            .accessibilityIdentifier("map.search.clear")
+                            .accessibilityLabel(AppStrings.Labels.clearSearch)
                         }
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Color(.systemBackground))
+                    )
+
+                    Button(AppStrings.Labels.searchCancel) {
+                        isFieldFocused = false
+                        onDismiss()
+                    }
+                    .font(.body.weight(.medium))
+                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 14)
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color(.systemBackground).opacity(0.97))
+                    Color(.systemGroupedBackground)
+                        .ignoresSafeArea(edges: .top)
                 )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
-                .transition(.move(edge: .top).combined(with: .opacity))
+
+                Divider()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if model.shouldShowResults {
+                            if let errorMessage = model.errorMessage {
+                                SearchStatusCard(
+                                    symbol: "exclamationmark.triangle.fill",
+                                    title: AppStrings.Labels.searchUnavailableTitle,
+                                    message: errorMessage,
+                                    tint: .orange
+                                )
+                            } else if model.isSearching || isSubmitting {
+                                SearchStatusCard(
+                                    symbol: "point.3.connected.trianglepath.dotted",
+                                    title: AppStrings.Labels.searchingPlaces,
+                                    message: AppStrings.Labels.searchingPlacesBody,
+                                    tint: .blue
+                                )
+                            } else if model.results.isEmpty {
+                                SearchStatusCard(
+                                    symbol: "mappin.slash.circle.fill",
+                                    title: AppStrings.Labels.noSearchResultsTitle,
+                                    message: AppStrings.Labels.noSearchResultsBody,
+                                    tint: .secondary
+                                )
+                            } else {
+                                searchResultsList
+                            }
+                        } else {
+                            SearchPromptCard()
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 18)
+                    .padding(.bottom, 32)
+                }
             }
         }
-        .frame(maxWidth: 420, alignment: .leading)
-        .animation(.easeInOut(duration: 0.2), value: model.shouldShowResults)
+        .onAppear {
+            DispatchQueue.main.async {
+                isFieldFocused = true
+            }
+        }
+    }
+
+    private var searchResultsList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(model.results.enumerated()), id: \.element.id) { index, result in
+                Button {
+                    chooseResult(result)
+                } label: {
+                    SearchResultRow(result: result)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("map.search.result.\(index)")
+
+                if index < model.results.count - 1 {
+                    Divider()
+                        .padding(.leading, 56)
+                }
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+    }
+
+    private func chooseResult(_ result: PlaceSearchResult) {
+        isFieldFocused = false
+        onSelectResult(result)
+        onDismiss()
+    }
+
+    private func submitTopResult() {
+        guard !isSubmitting else { return }
+
+        isSubmitting = true
+        Task { @MainActor in
+            let result = await model.submitSearchAndResolveTopResult()
+            isSubmitting = false
+
+            guard let result else {
+                isFieldFocused = true
+                return
+            }
+
+            chooseResult(result)
+        }
+    }
+}
+
+private struct SearchPromptCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Image(systemName: "map.circle.fill")
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundStyle(.blue)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(AppStrings.Labels.searchPromptTitle)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(AppStrings.Labels.searchPromptBody)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 20)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
     }
 }
 
@@ -122,25 +253,25 @@ private struct SearchResultRow: View {
     let result: PlaceSearchResult
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 14) {
             Circle()
                 .fill(Color.accentColor.opacity(0.14))
-                .frame(width: 32, height: 32)
+                .frame(width: 36, height: 36)
                 .overlay(
                     Image(systemName: "mappin.and.ellipse")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(Color.accentColor)
                 )
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(result.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if !result.subtitle.isEmpty {
                     Text(result.subtitle)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -148,41 +279,52 @@ private struct SearchResultRow: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
     }
 }
 
-private struct SearchStatusRow: View {
+private struct SearchStatusCard: View {
     let symbol: String
     let title: String
     let message: String
     let tint: Color
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 14) {
             Circle()
                 .fill(tint.opacity(0.14))
-                .frame(width: 32, height: 32)
+                .frame(width: 36, height: 36)
                 .overlay(
                     Image(systemName: symbol)
                         .font(.caption.weight(.bold))
                         .foregroundStyle(tint)
                 )
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                 Text(message)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 18)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
     }
 }

@@ -47,6 +47,7 @@ struct ContentView: View {
     @State private var selection: TabSelection = .map
     @State private var sheetOffset: CGFloat = 0
     @State private var showOnboarding: Bool = false
+    @State private var showSearchExperience: Bool = false
     @State private var mapFocusRequest: MapFocusRequest?
 
     init(dependencies: AppDependencies = .live) {
@@ -113,6 +114,7 @@ struct ContentView: View {
                         selection = .map
                     }
                     Haptics.selectionChanged()
+                    showSearchExperience = false
                     searchModel.dismissResults()
                 }
                 selectionModel.handleMapSelection(newValue)
@@ -139,7 +141,9 @@ struct ContentView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 if AppConfig.hasGoogleMapsAPIKey {
-                    MapSearchPanel(model: searchModel, onSelectResult: openSearchResult)
+                    MapSearchLauncher(query: searchModel.query) {
+                        showSearchExperience = true
+                    }
                         .padding(.horizontal, 12)
                         .padding(.top, 14)
                 }
@@ -236,6 +240,7 @@ struct ContentView: View {
     private func openLibraryEntry(_ entry: NeighborhoodLibraryEntry) {
         selection = .map
         hasSeenMapQuickTip = true
+        showSearchExperience = false
         searchModel.dismissResults()
         mapFocusRequest = MapFocusRequest(
             id: UUID(),
@@ -248,6 +253,7 @@ struct ContentView: View {
     private func openSearchResult(_ result: PlaceSearchResult) {
         selection = .map
         hasSeenMapQuickTip = true
+        showSearchExperience = false
         searchModel.selectResult(result)
         mapFocusRequest = MapFocusRequest(
             id: UUID(),
@@ -340,6 +346,15 @@ struct ContentView: View {
                 hasSeenOnboarding = true
                 showOnboarding = false
             }
+        }
+        .fullScreenCover(isPresented: $showSearchExperience) {
+            MapSearchExperienceView(
+                model: searchModel,
+                onDismiss: {
+                    showSearchExperience = false
+                },
+                onSelectResult: openSearchResult
+            )
         }
     }
 

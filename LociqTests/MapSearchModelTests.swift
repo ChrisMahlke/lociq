@@ -68,6 +68,34 @@ struct MapSearchModelTests {
         #expect(model.shouldShowResults == false)
     }
 
+    @Test func submitSearchResolvesTopResult() async {
+        let topResult = PlaceSearchResult(
+            title: "Mission District",
+            subtitle: "San Francisco, CA",
+            coordinate: CLLocationCoordinate2D(latitude: 37.7599, longitude: -122.4148)
+        )
+        let service = StubPlaceSearchService(
+            resultsByQuery: [
+                "Mission": [
+                    topResult,
+                    PlaceSearchResult(
+                        title: "Mission Dolores",
+                        subtitle: "San Francisco, CA",
+                        coordinate: CLLocationCoordinate2D(latitude: 37.7596, longitude: -122.4269)
+                    )
+                ]
+            ]
+        )
+        let model = MapSearchModel(service: service, debounceNanoseconds: 20_000_000)
+
+        model.updateQuery("Mission")
+        let resolvedResult = await model.submitSearchAndResolveTopResult()
+
+        #expect(resolvedResult == topResult)
+        #expect(model.results.first == topResult)
+        #expect(service.recordedQueries.contains("Mission"))
+    }
+
     private func waitUntil(
         timeoutNanoseconds: UInt64 = 1_000_000_000,
         condition: @escaping @MainActor () -> Bool

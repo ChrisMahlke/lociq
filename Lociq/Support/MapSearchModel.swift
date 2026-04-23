@@ -59,6 +59,18 @@ final class MapSearchModel: ObservableObject {
         }
     }
 
+    func submitSearchAndResolveTopResult() async -> PlaceSearchResult? {
+        let trimmed = trimmedQuery(query)
+        guard !trimmed.isEmpty else {
+            clearSearchPresentation()
+            return nil
+        }
+
+        searchTask?.cancel()
+        let searchResults = await performSearch(for: trimmed)
+        return searchResults?.first
+    }
+
     func clear() {
         query = ""
         clearSearchPresentation()
@@ -88,7 +100,8 @@ final class MapSearchModel: ObservableObject {
         }
     }
 
-    private func performSearch(for query: String, searchID: UUID? = nil) async {
+    @discardableResult
+    private func performSearch(for query: String, searchID: UUID? = nil) async -> [PlaceSearchResult]? {
         let currentSearchID = searchID ?? UUID()
         activeSearchID = currentSearchID
         isSearching = true
@@ -96,20 +109,23 @@ final class MapSearchModel: ObservableObject {
 
         do {
             let searchResults = try await service.search(query: query)
-            guard isCurrent(searchID: currentSearchID) else { return }
+            guard isCurrent(searchID: currentSearchID) else { return nil }
 
-            results = Array(searchResults.prefix(8))
+            let limitedResults = Array(searchResults.prefix(8))
+            results = limitedResults
             hasAttemptedSearch = true
             isSearching = false
+            return limitedResults
         } catch is CancellationError {
-            return
+            return nil
         } catch {
-            guard isCurrent(searchID: currentSearchID) else { return }
+            guard isCurrent(searchID: currentSearchID) else { return nil }
 
             results = []
             hasAttemptedSearch = true
             isSearching = false
             errorMessage = AppStrings.Labels.searchErrorBody
+            return nil
         }
     }
 
