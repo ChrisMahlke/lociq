@@ -98,8 +98,9 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
         }
 
         let profile = try await directClient.fetchPlaceProfile(latitude: latitude, longitude: longitude)
-        await lookupCache.store(placeProfile: profile, for: cacheKey)
-        return profile
+        let normalizedProfile = await normalizeInsights(in: profile)
+        await lookupCache.store(placeProfile: normalizedProfile, for: cacheKey)
+        return normalizedProfile
     }
 
     /// Main entry point:
@@ -247,6 +248,49 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
         scale: NeighborhoodScale
     ) -> String {
         "\(coordinateCacheKey(latitude: latitude, longitude: longitude)):\(scale == .tract ? "tract" : "zip")"
+    }
+
+    private func normalizeInsights(in profile: ResolvedPlaceProfile) async -> ResolvedPlaceProfile {
+        let normalizedInsights = await normalizedInsights(for: profile.zipBundle)
+        let normalizedBundle = ZipLookupResult(
+            zcta: profile.zipBundle.zcta,
+            county: profile.zipBundle.county,
+            tract: profile.zipBundle.tract,
+            place: profile.zipBundle.place,
+            isIncorporatedPlace: profile.zipBundle.isIncorporatedPlace,
+            boundary: profile.zipBundle.boundary,
+            boundaryMetrics: profile.zipBundle.boundaryMetrics,
+            demographics: profile.zipBundle.demographics,
+            insights: normalizedInsights
+        )
+
+        return ResolvedPlaceProfile(
+            zipBundle: normalizedBundle,
+            boundaries: profile.boundaries,
+            scaleDemographics: profile.scaleDemographics
+        )
+    }
+
+    private func normalizedInsights(for bundle: ZipLookupResult) async -> [Insight] {
+        if let firebaseClient {
+            do {
+                let insights = try await firebaseClient.fetchInsights(demographics: bundle.demographics)
+                if !insights.isEmpty {
+                    return insights
+                }
+            } catch {
+                Self.logger.error("Firebase insight generation failed; using local fallback. \(String(describing: error), privacy: .public)")
+            }
+        }
+
+        return InsightEngine.makeInsights(
+            zcta: bundle.zcta,
+            county: bundle.county,
+            tract: bundle.tract,
+            isIncorporatedPlace: bundle.isIncorporatedPlace,
+            boundaryMetrics: bundle.boundaryMetrics,
+            demographics: bundle.demographics
+        )
     }
 }
 

@@ -1,10 +1,12 @@
 import {
   buildComparisonProfile,
   buildDemographicsForScale,
+  buildInsights,
   buildNeighborhoodBoundaries,
   buildPlaceProfile,
   buildZipBundle,
   onCallLociq,
+  onCallLociqInsights,
 } from "./lociqBackend.js";
 
 export const getLociqZipBundle = onCallLociq(async (request) => {
@@ -36,4 +38,11 @@ export const getLociqComparison = onCallLociq(async (request) => {
     fallbackTitle ?? "",
     fallbackSubtitle ?? ""
   );
+});
+
+export const getLociqInsights = onCallLociqInsights(async (request) => {
+  const { demographics, locale } = request;
+  return {
+    insights: await buildInsights(demographics, locale),
+  };
 });

@@ -115,6 +115,7 @@ type CallableRequest = {
   fallbackTitle?: unknown;
   fallbackSubtitle?: unknown;
   locale?: unknown;
+  demographics?: unknown;
 };
 
 type GeographiesBundle = {
@@ -239,6 +240,19 @@ const acsExtendedVariables = [
 export function onCallLociq<T>(
   handler: (request: NormalizedCallableRequest) => Promise<T>
 ) {
+  return onCallLociqData(normalizeCallableRequest, handler);
+}
+
+export function onCallLociqInsights<T>(
+  handler: (request: NormalizedInsightRequest) => Promise<T>
+) {
+  return onCallLociqData(normalizeInsightRequest, handler);
+}
+
+function onCallLociqData<TRequest, TResponse>(
+  normalizer: (data: CallableRequest) => TRequest,
+  handler: (request: TRequest) => Promise<TResponse>
+) {
   return onCall(
     {
       region: REGION,
@@ -246,7 +260,7 @@ export function onCallLociq<T>(
       consumeAppCheckToken: false,
     },
     async (request) => {
-      const normalized = normalizeCallableRequest(request.data as CallableRequest);
+      const normalized = normalizer(request.data as CallableRequest);
       return handler(normalized);
     }
   );
@@ -363,6 +377,16 @@ export async function buildPlaceProfile(
   });
 }
 
+export async function buildInsights(
+  demographics: Demographics,
+  locale: string | null = null
+): Promise<InsightResponse[]> {
+  const cacheKey = `insights:${locale ?? "default"}:${demographicsCacheKey(demographics)}`;
+  return withDerivedCache(cacheKey, 5 * 60_000, async () =>
+    makeNeighborhoodInsights(demographics, locale)
+  );
+}
+
 export async function buildComparisonProfile(
   latitude: number,
   longitude: number,
@@ -413,6 +437,18 @@ type NormalizedCallableRequest = {
   locale: string | null;
 };
 
+type NormalizedInsightRequest = {
+  demographics: Demographics;
+  locale: string | null;
+};
+
+function normalizeInsightRequest(data: CallableRequest): NormalizedInsightRequest {
+  return {
+    demographics: parseDemographics(data.demographics),
+    locale: parseOptionalString(data.locale),
+  };
+}
+
 function parseCoordinate(value: unknown, label: string): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new HttpsError("invalid-argument", `Missing or invalid ${label}.`);
@@ -432,6 +468,84 @@ function parseOptionalString(value: unknown): string | null {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function parseDemographics(value: unknown): Demographics {
+  if (!isRecord(value)) {
+    throw new HttpsError("invalid-argument", "Missing or invalid demographics payload.");
+  }
+
+  return {
+    name: parseRequiredString(value.name, "demographics.name"),
+    population: parseOptionalNumber(value.population),
+    medianHouseholdIncome: parseOptionalNumber(value.medianHouseholdIncome),
+    medianAge: parseOptionalNumber(value.medianAge),
+    housingUnits: parseOptionalNumber(value.housingUnits),
+    medianHomeValue: parseOptionalNumber(value.medianHomeValue),
+    medianGrossRent: parseOptionalNumber(value.medianGrossRent),
+    averageHouseholdSize: parseOptionalNumber(value.averageHouseholdSize),
+    ownerOccupied: parseOptionalNumber(value.ownerOccupied),
+    renterOccupied: parseOptionalNumber(value.renterOccupied),
+    ownerOccupiedPct: parseOptionalNumber(value.ownerOccupiedPct),
+    renterOccupiedPct: parseOptionalNumber(value.renterOccupiedPct),
+    workersTotal: parseOptionalNumber(value.workersTotal),
+    workersWfh: parseOptionalNumber(value.workersWfh),
+    workersWfhPct: parseOptionalNumber(value.workersWfhPct),
+    povertyUniverse: parseOptionalNumber(value.povertyUniverse),
+    povertyBelow: parseOptionalNumber(value.povertyBelow),
+    povertyRatePct: parseOptionalNumber(value.povertyRatePct),
+    whiteAlone: parseOptionalNumber(value.whiteAlone),
+    blackAlone: parseOptionalNumber(value.blackAlone),
+    asianAlone: parseOptionalNumber(value.asianAlone),
+    hispanicOrLatino: parseOptionalNumber(value.hispanicOrLatino),
+  };
+}
+
+function parseRequiredString(value: unknown, label: string): string {
+  const parsed = parseOptionalString(value);
+  if (!parsed) {
+    throw new HttpsError("invalid-argument", `Missing or invalid ${label}.`);
+  }
+  return parsed;
+}
+
+function parseOptionalNumber(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function demographicsCacheKey(demographics: Demographics): string {
+  return JSON.stringify([
+    demographics.name,
+    demographics.population ?? null,
+    demographics.medianHouseholdIncome ?? null,
+    demographics.medianAge ?? null,
+    demographics.housingUnits ?? null,
+    demographics.medianHomeValue ?? null,
+    demographics.medianGrossRent ?? null,
+    demographics.averageHouseholdSize ?? null,
+    demographics.ownerOccupied ?? null,
+    demographics.renterOccupied ?? null,
+    demographics.ownerOccupiedPct ?? null,
+    demographics.renterOccupiedPct ?? null,
+    demographics.workersTotal ?? null,
+    demographics.workersWfh ?? null,
+    demographics.workersWfhPct ?? null,
+    demographics.povertyUniverse ?? null,
+    demographics.povertyBelow ?? null,
+    demographics.povertyRatePct ?? null,
+    demographics.whiteAlone ?? null,
+    demographics.blackAlone ?? null,
+    demographics.asianAlone ?? null,
+    demographics.hispanicOrLatino ?? null,
+  ]);
 }
 
 async function fetchGeographiesFromCoordinate(

@@ -154,6 +154,18 @@ public final class FirebaseLociqCallableClient: @unchecked Sendable {
         return response.toDomain()
     }
 
+    func fetchInsights(demographics: Demographics) async throws -> [Insight] {
+        let response: InsightsResponse = try await call(
+            "getLociqInsights",
+            data: [
+                "locale": Self.currentLocaleIdentifier,
+                "demographics": demographics.callablePayload
+            ]
+        )
+
+        return response.insights.map { $0.toDomain() }
+    }
+
     private func call<Response: Decodable>(_ name: String, data: [String: Any]) async throws -> Response {
         let options = HTTPSCallableOptions(requireLimitedUseAppCheckTokens: true)
         let callable = functions.httpsCallable(name, options: options)
@@ -215,6 +227,12 @@ public final class FirebaseLociqCallableClient: @unchecked Sendable {
         fallbackTitle: String,
         fallbackSubtitle: String
     ) async throws -> ComparisonProfileResult {
+        throw CensusZipDemographicsService.ServiceError.decodeFailed(
+            "FirebaseFunctions is unavailable in this build."
+        )
+    }
+
+    func fetchInsights(demographics: Demographics) async throws -> [Insight] {
         throw CensusZipDemographicsService.ServiceError.decodeFailed(
             "FirebaseFunctions is unavailable in this build."
         )
@@ -306,6 +324,10 @@ private struct ScaleDemographicsResponse: Decodable {
 private struct DemographicsResponse: Decodable {
     let demographics: DemographicsModelResponse
     let resolvedScale: String
+}
+
+private struct InsightsResponse: Decodable {
+    let insights: [InsightResponse]
 }
 
 private struct ComparisonProfileResponse: Decodable {
@@ -483,5 +505,35 @@ private extension MetricsSource {
         default:
             self = .zcta
         }
+    }
+}
+
+private extension Demographics {
+    var callablePayload: [String: Any] {
+        var payload: [String: Any] = ["name": name]
+
+        payload["population"] = population
+        payload["medianHouseholdIncome"] = medianHouseholdIncome
+        payload["medianAge"] = medianAge
+        payload["housingUnits"] = housingUnits
+        payload["medianHomeValue"] = medianHomeValue
+        payload["medianGrossRent"] = medianGrossRent
+        payload["averageHouseholdSize"] = averageHouseholdSize
+        payload["ownerOccupied"] = ownerOccupied
+        payload["renterOccupied"] = renterOccupied
+        payload["ownerOccupiedPct"] = ownerOccupiedPct
+        payload["renterOccupiedPct"] = renterOccupiedPct
+        payload["workersTotal"] = workersTotal
+        payload["workersWfh"] = workersWfh
+        payload["workersWfhPct"] = workersWfhPct
+        payload["povertyUniverse"] = povertyUniverse
+        payload["povertyBelow"] = povertyBelow
+        payload["povertyRatePct"] = povertyRatePct
+        payload["whiteAlone"] = whiteAlone
+        payload["blackAlone"] = blackAlone
+        payload["asianAlone"] = asianAlone
+        payload["hispanicOrLatino"] = hispanicOrLatino
+
+        return payload
     }
 }

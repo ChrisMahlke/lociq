@@ -45,16 +45,7 @@ final class DirectCensusZipDemographicsClient: @unchecked Sendable {
         let boundary = try await boundaryTask
         let demographics = try await demographicsTask
         let boundaryMetrics = BoundaryAnalyzer.metrics(from: boundary)
-
         let isIncorporated = geo.place?.type == .incorporatedPlace
-        let insights = InsightEngine.makeInsights(
-            zcta: geo.zcta,
-            county: geo.county,
-            tract: geo.tract,
-            isIncorporatedPlace: isIncorporated,
-            boundaryMetrics: boundaryMetrics,
-            demographics: demographics
-        )
 
         return ZipLookupResult(
             zcta: geo.zcta,
@@ -65,7 +56,7 @@ final class DirectCensusZipDemographicsClient: @unchecked Sendable {
             boundary: boundary,
             boundaryMetrics: boundaryMetrics,
             demographics: demographics,
-            insights: insights
+            insights: []
         )
     }
 
