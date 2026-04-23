@@ -68,6 +68,7 @@ final class NeighborhoodLibraryStore: ObservableObject {
     var recentLookups: [NeighborhoodLibraryEntry] {
         Array(
             entries
+                .filter { !$0.isSaved }
                 .sorted { $0.lastViewedAt > $1.lastViewedAt }
                 .prefix(Self.maxRecentLookups)
         )
@@ -157,6 +158,21 @@ final class NeighborhoodLibraryStore: ObservableObject {
 
     func isSaved(_ snapshot: NeighborhoodLookupSnapshot) -> Bool {
         entries.contains { $0.id == snapshot.id && $0.isSaved }
+    }
+
+    func removeSavedPlace(id: String) {
+        guard let index = entries.firstIndex(where: { $0.id == id && $0.isSaved }) else { return }
+
+        entries[index].savedAt = nil
+        trimUnsavedHistory()
+        persist()
+    }
+
+    func removeRecentLookup(id: String) {
+        guard let index = entries.firstIndex(where: { $0.id == id && !$0.isSaved }) else { return }
+
+        entries.remove(at: index)
+        persist()
     }
 
     private func trimUnsavedHistory() {

@@ -32,7 +32,11 @@ struct MoreScreen: View {
                     tint: .blue,
                     entries: libraryStore.savedPlaces,
                     emptyState: AppStrings.More.noSavedPlacesYet,
-                    onSelectPlace: onSelectPlace
+                    removeActionTitle: AppStrings.Labels.removeSavedPlace,
+                    onSelectPlace: onSelectPlace,
+                    onRemovePlace: { entry in
+                        libraryStore.removeSavedPlace(id: entry.id)
+                    }
                 )
                 NeighborhoodLibraryCard(
                     title: AppStrings.More.recentLookups,
@@ -41,7 +45,11 @@ struct MoreScreen: View {
                     tint: .teal,
                     entries: libraryStore.recentLookups,
                     emptyState: AppStrings.More.noRecentLookupsYet,
-                    onSelectPlace: onSelectPlace
+                    removeActionTitle: AppStrings.Labels.removeRecentLookup,
+                    onSelectPlace: onSelectPlace,
+                    onRemovePlace: { entry in
+                        libraryStore.removeRecentLookup(id: entry.id)
+                    }
                 )
                 QuickStartCard()
                 ScaleComparisonCard()
@@ -76,7 +84,9 @@ private struct NeighborhoodLibraryCard: View {
     let tint: Color
     let entries: [NeighborhoodLibraryEntry]
     let emptyState: String
+    let removeActionTitle: String
     let onSelectPlace: (NeighborhoodLibraryEntry) -> Void
+    let onRemovePlace: (NeighborhoodLibraryEntry) -> Void
 
     var body: some View {
         SectionPanel {
@@ -96,12 +106,17 @@ private struct NeighborhoodLibraryCard: View {
                 } else {
                     VStack(spacing: 8) {
                         ForEach(entries) { entry in
-                            Button {
-                                onSelectPlace(entry)
-                            } label: {
-                                NeighborhoodLibraryRow(entry: entry, tint: tint)
-                            }
-                            .buttonStyle(.plain)
+                            NeighborhoodLibraryRow(
+                                entry: entry,
+                                tint: tint,
+                                removeActionTitle: removeActionTitle,
+                                onSelect: {
+                                    onSelectPlace(entry)
+                                },
+                                onRemove: {
+                                    onRemovePlace(entry)
+                                }
+                            )
                         }
                     }
                 }
@@ -113,42 +128,64 @@ private struct NeighborhoodLibraryCard: View {
 private struct NeighborhoodLibraryRow: View {
     let entry: NeighborhoodLibraryEntry
     let tint: Color
+    let removeActionTitle: String
+    let onSelect: () -> Void
+    let onRemove: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: entry.isSaved ? "bookmark.fill" : "clock.arrow.circlepath")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(tint)
-                .frame(width: 28, height: 28)
-                .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            Button(action: onSelect) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: entry.isSaved ? "bookmark.fill" : "clock.arrow.circlepath")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(tint)
+                        .frame(width: 28, height: 28)
+                        .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(entry.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(entry.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                if !entry.subtitle.isEmpty {
-                    Text(entry.subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        if !entry.subtitle.isEmpty {
+                            Text(entry.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        Text(entry.preferredScale.displayTitle)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(tint)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(tint.opacity(0.12), in: Capsule())
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(tint.opacity(0.8))
+                        .padding(.top, 3)
                 }
-
-                Text(entry.preferredScale.displayTitle)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(tint)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(tint.opacity(0.12), in: Capsule())
             }
+            .buttonStyle(.plain)
 
-            Spacer(minLength: 0)
-
-            Image(systemName: "arrow.up.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(tint.opacity(0.8))
-                .padding(.top, 3)
+            Menu {
+                Button(role: .destructive, action: onRemove) {
+                    Label(removeActionTitle, systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 30)
+                    .background(Color.primary.opacity(0.06), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(AppStrings.Labels.removeLibraryItem)
         }
         .padding(12)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))

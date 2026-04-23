@@ -40,6 +40,39 @@ struct NeighborhoodLibraryStoreTests {
         #expect(store.savedPlaces.count == 1)
         #expect(store.entries.contains(where: { $0.id == "saved-place" }))
     }
+
+    @Test func removesRecentLookupWithoutAffectingSavedPlaces() {
+        let store = NeighborhoodLibraryStore(userDefaults: makeDefaults(), storageKey: "remove-recent")
+        let recentSnapshot = makeSnapshot(id: "recent-1", title: "Recent Place")
+        let savedSnapshot = makeSnapshot(id: "saved-1", title: "Saved Place")
+
+        store.recordLookup(recentSnapshot)
+        store.recordLookup(savedSnapshot)
+        _ = store.toggleSaved(savedSnapshot)
+
+        #expect(store.recentLookups.map(\.id) == ["recent-1"])
+
+        store.removeRecentLookup(id: "recent-1")
+
+        #expect(store.recentLookups.isEmpty)
+        #expect(store.savedPlaces.map(\.id) == ["saved-1"])
+    }
+
+    @Test func removingSavedPlaceKeepsItemInRecents() {
+        let store = NeighborhoodLibraryStore(userDefaults: makeDefaults(), storageKey: "remove-saved")
+        let snapshot = makeSnapshot(id: "saved-then-recent", title: "Saved Then Recent")
+
+        store.recordLookup(snapshot)
+        _ = store.toggleSaved(snapshot)
+
+        #expect(store.savedPlaces.map(\.id) == ["saved-then-recent"])
+        #expect(store.recentLookups.isEmpty)
+
+        store.removeSavedPlace(id: "saved-then-recent")
+
+        #expect(store.savedPlaces.isEmpty)
+        #expect(store.recentLookups.map(\.id) == ["saved-then-recent"])
+    }
 }
 
 @MainActor

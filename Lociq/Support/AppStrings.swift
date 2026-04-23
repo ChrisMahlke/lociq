@@ -142,6 +142,8 @@ enum AppStrings {
         static var profilesUpdateEachTime: String { L10n.tr("Profiles update each time you tap a new location") }
         static var savePlace: String { L10n.tr("Save place") }
         static var removeSavedPlace: String { L10n.tr("Remove saved place") }
+        static var removeRecentLookup: String { L10n.tr("Remove recent lookup") }
+        static var removeLibraryItem: String { L10n.tr("Remove") }
     }
 
     enum Formats {
