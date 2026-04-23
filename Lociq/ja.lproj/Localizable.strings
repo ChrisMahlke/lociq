@@ -41,7 +41,6 @@
 "Expand the bottom sheet to view housing, work, and demographic composition details." = "下部シートを広げると、住宅、就業、人口構成の詳細を確認できます。";
 "Explore neighborhoods fast" = "近隣をすばやく探索";
 "FCC Block Lookup" = "FCC ブロック検索";
-"Fast read on work patterns and economic pressure" = "就業パターンと経済的圧力をすばやく把握";
 "Fetching boundaries, Census context, and quick-read signals for your selected location." = "選択した場所の境界、Census 情報、クイックシグナルを取得しています。";
 "Finer local context" = "より細かな地域文脈";
 "Geography" = "地理";
@@ -51,7 +50,6 @@
 "Guide" = "ガイド";
 "Higher poverty rate" = "貧困率が高い";
 "Hispanic/Latino" = "ヒスパニック/ラテン系";
-"Home prices, rent, and how occupancy is split" = "住宅価格、家賃、居住形態の内訳";
 "Home value" = "住宅価値";
 "Homeownership at %@ with average household size of %@" = "持ち家率は %@、平均世帯人数は %@ です";
 "Households" = "世帯";
@@ -94,7 +92,6 @@
 "Official public data" = "公式公開データ";
 "Overview" = "概要";
 "Owner-occupied versus renter-occupied homes." = "持ち家住宅と賃貸住宅の比較です。";
-"Plain-English takeaways generated from the active profile" = "主なポイント";
 "Population" = "人口";
 "Poverty" = "貧困";
 "Poverty rate" = "貧困率";
@@ -109,7 +106,6 @@
 "Real census profile and quick-read insights" = "Census プロフィール";
 "Refresh behavior" = "更新動作";
 "Relative group counts shown as simple visual comparisons." = "各グループの相対人数をシンプルな視覚比較で表示します。";
-"Relative group sizes within the selected geography" = "グループ構成";
 "Remote work" = "在宅勤務";
 "Remote-work common" = "在宅勤務が多い";
 "Remote-work less common" = "在宅勤務が少ない";

@@ -41,7 +41,6 @@
 "Expand the bottom sheet to view housing, work, and demographic composition details." = "하단 시트를 펼치면 주거, 일, 인구 구성의 자세한 내용을 볼 수 있습니다.";
 "Explore neighborhoods fast" = "동네를 빠르게 탐색";
 "FCC Block Lookup" = "FCC 블록 조회";
-"Fast read on work patterns and economic pressure" = "근무 패턴과 경제적 압박을 빠르게 파악";
 "Fetching boundaries, Census context, and quick-read signals for your selected location." = "선택한 위치의 경계, Census 맥락, 빠른 신호를 불러오는 중입니다.";
 "Finer local context" = "더 세밀한 지역 맥락";
 "Geography" = "지리";
@@ -51,7 +50,6 @@
 "Guide" = "가이드";
 "Higher poverty rate" = "높은 빈곤율";
 "Hispanic/Latino" = "히스패닉/라틴계";
-"Home prices, rent, and how occupancy is split" = "주택 가격, 임대료, 점유 형태 구성";
 "Home value" = "주택 가치";
 "Homeownership at %@ with average household size of %@" = "자가 보유 비율은 %@이고 평균 가구원 수는 %@입니다";
 "Households" = "가구";
@@ -94,7 +92,6 @@
 "Official public data" = "공식 공개 데이터";
 "Overview" = "개요";
 "Owner-occupied versus renter-occupied homes." = "자가 거주 주택과 임차 거주 주택의 비교입니다.";
-"Plain-English takeaways generated from the active profile" = "핵심 요점";
 "Population" = "인구";
 "Poverty" = "빈곤";
 "Poverty rate" = "빈곤율";
@@ -109,7 +106,6 @@
 "Real census profile and quick-read insights" = "Census 프로필";
 "Refresh behavior" = "새로고침 동작";
 "Relative group counts shown as simple visual comparisons." = "각 그룹의 상대적 규모를 단순한 시각 비교로 보여줍니다.";
-"Relative group sizes within the selected geography" = "집단 구성";
 "Remote work" = "재택근무";
 "Remote-work common" = "재택근무 비중 높음";
 "Remote-work less common" = "재택근무 비중 낮음";

@@ -50,22 +50,18 @@ enum AppStrings {
         static var profileSubtitle: String { L10n.tr("Real census profile and quick-read insights") }
         static var neighborhoodProfile: String { L10n.tr("Neighborhood profile") }
         static var housingAffordabilityTitle: String { L10n.tr("Housing and affordability") }
-        static var housingAffordabilitySubtitle: String { L10n.tr("Home prices, rent, and how occupancy is split") }
         static var homeValue: String { L10n.tr("Home value") }
         static var grossRent: String { L10n.tr("Gross rent") }
         static var workAndHouseholdSnapshot: String { L10n.tr("Work and household snapshot") }
         static var quickSignals: String { L10n.tr("Quick signals") }
-        static var quickSignalsSubtitle: String { L10n.tr("Fast read on work patterns and economic pressure") }
         static var remoteWork: String { L10n.tr("Remote work") }
         static var poverty: String { L10n.tr("Poverty") }
         static var demographicCompositionVisual: String { L10n.tr("Demographic composition") }
-        static var demographicCompositionSubtitle: String { L10n.tr("Relative group sizes within the selected geography") }
         static var white: String { L10n.tr("White") }
         static var black: String { L10n.tr("Black") }
         static var asian: String { L10n.tr("Asian") }
         static var hispanicLatino: String { L10n.tr("Hispanic/Latino") }
         static var noGeneratedInsights: String { L10n.tr("No generated insights yet for this location.") }
-        static var generatedInsightsSubtitle: String { L10n.tr("Plain-English takeaways generated from the active profile") }
         static var occupancyMix: String { L10n.tr("Occupancy mix") }
         static var housing: String { L10n.tr("Housing") }
         static var affordability: String { L10n.tr("Affordability") }

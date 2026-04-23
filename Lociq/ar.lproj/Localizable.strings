@@ -41,7 +41,6 @@
 "Expand the bottom sheet to view housing, work, and demographic composition details." = "وسّع اللوحة السفلية لعرض تفاصيل السكن والعمل والتركيب الديموغرافي.";
 "Explore neighborhoods fast" = "استكشف الأحياء بسرعة";
 "FCC Block Lookup" = "البحث عن بلوك FCC";
-"Fast read on work patterns and economic pressure" = "قراءة سريعة لأنماط العمل والضغط الاقتصادي";
 "Fetching boundaries, Census context, and quick-read signals for your selected location." = "جارٍ جلب الحدود وسياق التعداد والمؤشرات السريعة لموقعك المحدد.";
 "Finer local context" = "سياق محلي أدق";
 "Geography" = "الجغرافيا";
@@ -51,7 +50,6 @@
 "Guide" = "الدليل";
 "Higher poverty rate" = "معدل فقر أعلى";
 "Hispanic/Latino" = "هسباني/لاتيني";
-"Home prices, rent, and how occupancy is split" = "أسعار المنازل والإيجار وكيفية توزيع الإشغال";
 "Home value" = "قيمة المنزل";
 "Homeownership at %@ with average household size of %@" = "نسبة تملك المنازل %@ مع متوسط حجم أسرة %@";
 "Households" = "الأسر";
@@ -94,7 +92,6 @@
 "Official public data" = "بيانات عامة رسمية";
 "Overview" = "نظرة عامة";
 "Owner-occupied versus renter-occupied homes." = "منازل يسكنها مالكوها مقابل منازل يسكنها مستأجرون.";
-"Plain-English takeaways generated from the active profile" = "أهم الخلاصات";
 "Population" = "السكان";
 "Poverty" = "الفقر";
 "Poverty rate" = "معدل الفقر";
@@ -109,7 +106,6 @@
 "Real census profile and quick-read insights" = "ملف التعداد";
 "Refresh behavior" = "سلوك التحديث";
 "Relative group counts shown as simple visual comparisons." = "أعداد نسبية للمجموعات معروضة كمقارنات بصرية بسيطة.";
-"Relative group sizes within the selected geography" = "توزيع المجموعات";
 "Remote work" = "العمل عن بُعد";
 "Remote-work common" = "العمل عن بُعد شائع";
 "Remote-work less common" = "العمل عن بُعد أقل شيوعًا";

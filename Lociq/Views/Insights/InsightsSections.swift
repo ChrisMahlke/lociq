@@ -204,7 +204,7 @@ struct HousingAffordabilitySection: View {
             VStack(alignment: .leading, spacing: 10) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.housingAffordabilityTitle,
-                    subtitle: AppStrings.Labels.housingAffordabilitySubtitle,
+                    subtitle: nil,
                     icon: "house.and.flag.fill",
                     tint: themeTint
                 )
@@ -244,7 +244,7 @@ struct QuickSignalsSection: View {
             VStack(alignment: .leading, spacing: 10) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.quickSignals,
-                    subtitle: AppStrings.Labels.quickSignalsSubtitle,
+                    subtitle: nil,
                     icon: "waveform.path.ecg.rectangle.fill",
                     tint: themeTint
                 )
@@ -279,7 +279,7 @@ struct DemographicCompositionSection: View {
             VStack(alignment: .leading, spacing: 10) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.demographicCompositionVisual,
-                    subtitle: AppStrings.Labels.demographicCompositionSubtitle,
+                    subtitle: nil,
                     icon: "person.3.sequence.fill",
                     tint: themeTint
                 )
@@ -326,7 +326,7 @@ struct GeneratedInsightsSection: View {
             VStack(alignment: .leading, spacing: 8) {
                 InsightSectionHeader(
                     title: AppStrings.Labels.insights,
-                    subtitle: AppStrings.Labels.generatedInsightsSubtitle,
+                    subtitle: nil,
                     icon: "text.bubble.fill",
                     tint: .indigo
                 )

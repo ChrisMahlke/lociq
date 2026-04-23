@@ -41,7 +41,6 @@
 "Expand the bottom sheet to view housing, work, and demographic composition details." = "Mở rộng bảng phía dưới để xem chi tiết về nhà ở, việc làm và thành phần nhân khẩu học.";
 "Explore neighborhoods fast" = "Khám phá khu vực nhanh chóng";
 "FCC Block Lookup" = "Tra cứu khối FCC";
-"Fast read on work patterns and economic pressure" = "Cách đọc nhanh về mô hình làm việc và áp lực kinh tế";
 "Fetching boundaries, Census context, and quick-read signals for your selected location." = "Đang tải ranh giới, bối cảnh Census và các tín hiệu nhanh cho vị trí bạn đã chọn.";
 "Finer local context" = "Bối cảnh địa phương chi tiết hơn";
 "Geography" = "Địa lý";
@@ -51,7 +50,6 @@
 "Guide" = "Hướng dẫn";
 "Higher poverty rate" = "Tỷ lệ nghèo cao hơn";
 "Hispanic/Latino" = "Hispanic/Latino";
-"Home prices, rent, and how occupancy is split" = "Giá nhà, tiền thuê và cách phân bổ loại hình cư trú";
 "Home value" = "Giá trị nhà";
 "Homeownership at %@ with average household size of %@" = "Tỷ lệ sở hữu nhà là %@ với quy mô hộ trung bình %@";
 "Households" = "Hộ gia đình";
@@ -94,7 +92,6 @@
 "Official public data" = "Dữ liệu công chính thức";
 "Overview" = "Tổng quan";
 "Owner-occupied versus renter-occupied homes." = "Nhà ở do chủ ở so với nhà ở do người thuê ở.";
-"Plain-English takeaways generated from the active profile" = "Điểm chính";
 "Population" = "Dân số";
 "Poverty" = "Nghèo";
 "Poverty rate" = "Tỷ lệ nghèo";
@@ -109,7 +106,6 @@
 "Real census profile and quick-read insights" = "Hồ sơ Census";
 "Refresh behavior" = "Cách làm mới";
 "Relative group counts shown as simple visual comparisons." = "Số lượng tương đối của các nhóm được hiển thị như các so sánh trực quan đơn giản.";
-"Relative group sizes within the selected geography" = "Cơ cấu nhóm";
 "Remote work" = "Làm việc từ xa";
 "Remote-work common" = "Làm việc từ xa phổ biến";
 "Remote-work less common" = "Làm việc từ xa ít phổ biến hơn";

@@ -41,7 +41,6 @@
 "Expand the bottom sheet to view housing, work, and demographic composition details." = "Klappe das untere Panel aus, um Details zu Wohnen, Arbeit und demografischer Zusammensetzung anzuzeigen.";
 "Explore neighborhoods fast" = "Viertel schnell erkunden";
 "FCC Block Lookup" = "FCC-Blocksuche";
-"Fast read on work patterns and economic pressure" = "Schneller Eindruck von Arbeitsmustern und wirtschaftlichem Druck";
 "Fetching boundaries, Census context, and quick-read signals for your selected location." = "Grenzen, Census-Kontext und Schnellindikatoren für deinen ausgewählten Ort werden geladen.";
 "Finer local context" = "Feinerer lokaler Kontext";
 "Geography" = "Geografie";
@@ -51,7 +50,6 @@
 "Guide" = "Leitfaden";
 "Higher poverty rate" = "Höhere Armutsquote";
 "Hispanic/Latino" = "Hispanisch/Latino";
-"Home prices, rent, and how occupancy is split" = "Hauspreise, Miete und Verteilung der Belegung";
 "Home value" = "Hauswert";
 "Homeownership at %@ with average household size of %@" = "Wohneigentum bei %@ mit einer durchschnittlichen Haushaltsgröße von %@";
 "Households" = "Haushalte";
@@ -94,7 +92,6 @@
 "Official public data" = "Offizielle öffentliche Daten";
 "Overview" = "Überblick";
 "Owner-occupied versus renter-occupied homes." = "Eigengenutzte versus gemietete Wohnungen.";
-"Plain-English takeaways generated from the active profile" = "Kernaussagen";
 "Population" = "Bevölkerung";
 "Poverty" = "Armut";
 "Poverty rate" = "Armutsquote";
@@ -109,7 +106,6 @@
 "Real census profile and quick-read insights" = "Census-Profil";
 "Refresh behavior" = "Aktualisierungsverhalten";
 "Relative group counts shown as simple visual comparisons." = "Relative Gruppengrößen als einfache visuelle Vergleiche dargestellt.";
-"Relative group sizes within the selected geography" = "Gruppenmix";
 "Remote work" = "Remote-Arbeit";
 "Remote-work common" = "Remote-Arbeit verbreitet";
 "Remote-work less common" = "Remote-Arbeit weniger verbreitet";

@@ -210,7 +210,7 @@ struct ContextPillRow: View {
 
 struct InsightSectionHeader: View {
     let title: String
-    let subtitle: String
+    let subtitle: String?
     let icon: String
     let tint: Color
 
@@ -225,9 +225,11 @@ struct InsightSectionHeader: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.headline)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.primary.opacity(0.66))
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.primary.opacity(0.66))
+                }
             }
         }
     }

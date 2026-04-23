@@ -41,7 +41,6 @@
 "Expand the bottom sheet to view housing, work, and demographic composition details." = "Konut, iş ve demografik bileşim ayrıntılarını görmek için alt paneli genişletin.";
 "Explore neighborhoods fast" = "Mahalleleri hızlıca keşfedin";
 "FCC Block Lookup" = "FCC Blok Sorgulama";
-"Fast read on work patterns and economic pressure" = "Çalışma düzenleri ve ekonomik baskı hakkında hızlı okuma";
 "Fetching boundaries, Census context, and quick-read signals for your selected location." = "Seçtiğiniz konum için sınırlar, Census bağlamı ve hızlı sinyaller getiriliyor.";
 "Finer local context" = "Daha ayrıntılı yerel bağlam";
 "Geography" = "Coğrafya";
@@ -51,7 +50,6 @@
 "Guide" = "Rehber";
 "Higher poverty rate" = "Daha yüksek yoksulluk oranı";
 "Hispanic/Latino" = "Hispanik/Latin";
-"Home prices, rent, and how occupancy is split" = "Ev fiyatları, kira ve oturum yapısının dağılımı";
 "Home value" = "Ev değeri";
 "Homeownership at %@ with average household size of %@" = "%@ düzeyinde konut sahipliği ve %@ ortalama hane büyüklüğü";
 "Households" = "Haneler";
@@ -94,7 +92,6 @@
 "Official public data" = "Resmî kamu verisi";
 "Overview" = "Genel bakış";
 "Owner-occupied versus renter-occupied homes." = "Ev sahibi oturumlu konutlar ile kiracı oturumlu konutların karşılaştırması.";
-"Plain-English takeaways generated from the active profile" = "Öne çıkanlar";
 "Population" = "Nüfus";
 "Poverty" = "Yoksulluk";
 "Poverty rate" = "Yoksulluk oranı";
@@ -109,7 +106,6 @@
 "Real census profile and quick-read insights" = "Census profili";
 "Refresh behavior" = "Yenileme davranışı";
 "Relative group counts shown as simple visual comparisons." = "Göreli grup sayıları basit görsel karşılaştırmalarla gösterilir.";
-"Relative group sizes within the selected geography" = "Grup dağılımı";
 "Remote work" = "Uzaktan çalışma";
 "Remote-work common" = "Uzaktan çalışma yaygın";
 "Remote-work less common" = "Uzaktan çalışma daha az yaygın";
