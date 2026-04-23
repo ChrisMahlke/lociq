@@ -19,7 +19,7 @@ export const getLociqNeighborhoodBoundaries = onCallLociq(async (request) => {
 
 export const getLociqDemographics = onCallLociq(async (request) => {
   const { latitude, longitude, scale, zcta, tractGeoid } = request;
-  return buildDemographicsForScale(latitude, longitude, scale, zcta, tractGeoid ?? null);
+  return buildDemographicsForScale(latitude, longitude, scale, zcta ?? null, tractGeoid ?? null);
 });
 
 export const getLociqPlaceProfile = onCallLociq(async (request) => {

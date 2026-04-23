@@ -1,4 +1,4 @@
-import { logger } from "firebase-functions/logger";
+import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 type GeoJSONPosition = [number, number];
@@ -165,6 +165,51 @@ const ZIP_REGEX = /^[0-9]{5}$/;
 const TRACT_REGEX = /^[0-9]{11}$/;
 const BLOCK_REGEX = /^[0-9]{15}$/;
 
+class TTLCache<T> {
+  private readonly values = new Map<string, { expiresAt: number; value: T }>();
+  private readonly inflight = new Map<string, Promise<T>>();
+
+  async getOrSet(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
+    const now = Date.now();
+    const existing = this.values.get(key);
+    if (existing && existing.expiresAt > now) {
+      return existing.value;
+    }
+
+    const pending = this.inflight.get(key);
+    if (pending) {
+      return pending;
+    }
+
+    const created = loader()
+      .then((value) => {
+        this.values.set(key, {
+          expiresAt: Date.now() + ttlMs,
+          value,
+        });
+        this.inflight.delete(key);
+        this.evictExpired();
+        return value;
+      })
+      .catch((error) => {
+        this.inflight.delete(key);
+        throw error;
+      });
+
+    this.inflight.set(key, created);
+    return created;
+  }
+
+  private evictExpired() {
+    const now = Date.now();
+    for (const [key, entry] of this.values.entries()) {
+      if (entry.expiresAt <= now) {
+        this.values.delete(key);
+      }
+    }
+  }
+}
+
 const externalApiCache = new TTLCache<unknown>();
 const derivedResponseCache = new TTLCache<unknown>();
 
@@ -258,12 +303,13 @@ export async function buildDemographicsForScale(
   latitude: number,
   longitude: number,
   scale: "zip" | "tract",
-  zcta: string,
+  zcta: string | null,
   tractGeoid: string | null
 ): Promise<{ demographics: Demographics; resolvedScale: "zip" | "tract" }> {
   if (scale === "zip") {
+    const resolvedZcta = zcta ?? (await fetchGeographiesFromCoordinate(latitude, longitude)).zcta;
     return {
-      demographics: await fetchAcsDemographicsForZip(zcta),
+      demographics: await fetchAcsDemographicsForZip(resolvedZcta),
       resolvedScale: "zip",
     };
   }
@@ -743,7 +789,7 @@ function normalizeFeatureCollection(raw: {
 }): GeoJSONFeatureCollection {
   const features = Array.isArray(raw.features) ? raw.features : [];
   return {
-    type: raw.type || "FeatureCollection",
+    type: "FeatureCollection",
     features: features
       .map((feature): GeoJSONFeature | null => {
         if (!feature || typeof feature !== "object") {
@@ -844,7 +890,7 @@ async function withExternalCache<T>(
   ttlMs: number,
   loader: () => Promise<T>
 ): Promise<T> {
-  return externalApiCache.getOrSet(key, ttlMs, loader);
+  return externalApiCache.getOrSet(key, ttlMs, loader) as Promise<T>;
 }
 
 async function withDerivedCache<T>(
@@ -852,50 +898,5 @@ async function withDerivedCache<T>(
   ttlMs: number,
   loader: () => Promise<T>
 ): Promise<T> {
-  return derivedResponseCache.getOrSet(key, ttlMs, loader);
-}
-
-class TTLCache<T> {
-  private readonly values = new Map<string, { expiresAt: number; value: T }>();
-  private readonly inflight = new Map<string, Promise<T>>();
-
-  async getOrSet(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
-    const now = Date.now();
-    const existing = this.values.get(key);
-    if (existing && existing.expiresAt > now) {
-      return existing.value;
-    }
-
-    const pending = this.inflight.get(key);
-    if (pending) {
-      return pending;
-    }
-
-    const created = loader()
-      .then((value) => {
-        this.values.set(key, {
-          expiresAt: Date.now() + ttlMs,
-          value,
-        });
-        this.inflight.delete(key);
-        this.evictExpired();
-        return value;
-      })
-      .catch((error) => {
-        this.inflight.delete(key);
-        throw error;
-      });
-
-    this.inflight.set(key, created);
-    return created;
-  }
-
-  private evictExpired() {
-    const now = Date.now();
-    for (const [key, entry] of this.values.entries()) {
-      if (entry.expiresAt <= now) {
-        this.values.delete(key);
-      }
-    }
-  }
+  return derivedResponseCache.getOrSet(key, ttlMs, loader) as Promise<T>;
 }
