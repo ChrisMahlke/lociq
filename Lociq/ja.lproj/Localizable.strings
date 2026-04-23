@@ -94,7 +94,7 @@
 "Official public data" = "公式公開データ";
 "Overview" = "概要";
 "Owner-occupied versus renter-occupied homes." = "持ち家住宅と賃貸住宅の比較です。";
-"Plain-English takeaways generated from the active profile" = "現在のプロフィールから生成された平易な要点";
+"Plain-English takeaways generated from the active profile" = "主なポイント";
 "Population" = "人口";
 "Poverty" = "貧困";
 "Poverty rate" = "貧困率";
@@ -106,10 +106,10 @@
 "Quick camera actions while exploring" = "探索中に使えるクイック操作";
 "Quick signals" = "クイックシグナル";
 "Read the profile" = "プロフィールを見る";
-"Real census profile and quick-read insights" = "実際の Census プロフィールと素早く読めるインサイト";
+"Real census profile and quick-read insights" = "Census プロフィール";
 "Refresh behavior" = "更新動作";
 "Relative group counts shown as simple visual comparisons." = "各グループの相対人数をシンプルな視覚比較で表示します。";
-"Relative group sizes within the selected geography" = "選択した地域内での各グループの相対的な大きさ";
+"Relative group sizes within the selected geography" = "グループ構成";
 "Remote work" = "在宅勤務";
 "Remote-work common" = "在宅勤務が多い";
 "Remote-work less common" = "在宅勤務が少ない";
@@ -135,7 +135,7 @@
 "Tap any spot" = "任意の場所をタップ";
 "Tap any spot on the map to load local Census context in seconds." = "地図上の任意の場所をタップすると、数秒で地域の Census 情報を読み込みます。";
 "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance." = "どこでもタップすると近隣プロフィールを読み込み、ZIP とトラクト表示を比較し、そのエリアをひと目で把握できます。";
-"Tap on map · swipe up for neighborhood profile" = "地図をタップ · 上にスワイプして近隣プロフィール";
+"Tap on map · swipe up for neighborhood profile" = "上にスワイプして近隣プロフィール";
 "Tap the map" = "地図をタップ";
 "Tap the map to load ZIP and tract context." = "地図をタップして ZIP とトラクトの情報を読み込みます。";
 "Tap to explore" = "タップして探索";

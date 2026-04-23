@@ -94,7 +94,7 @@
 "Official public data" = "Official public data";
 "Overview" = "Overview";
 "Owner-occupied versus renter-occupied homes." = "Owner-occupied versus renter-occupied homes.";
-"Plain-English takeaways generated from the active profile" = "Plain-English takeaways generated from the active profile";
+"Plain-English takeaways generated from the active profile" = "Key takeaways";
 "Population" = "Population";
 "Poverty" = "Poverty";
 "Poverty rate" = "Poverty rate";
@@ -106,10 +106,10 @@
 "Quick camera actions while exploring" = "Quick camera actions while exploring";
 "Quick signals" = "Quick signals";
 "Read the profile" = "Read the profile";
-"Real census profile and quick-read insights" = "Real census profile and quick-read insights";
+"Real census profile and quick-read insights" = "Census profile";
 "Refresh behavior" = "Refresh behavior";
 "Relative group counts shown as simple visual comparisons." = "Relative group counts shown as simple visual comparisons.";
-"Relative group sizes within the selected geography" = "Relative group sizes within the selected geography";
+"Relative group sizes within the selected geography" = "Group mix";
 "Remote work" = "Remote work";
 "Remote-work common" = "Remote-work common";
 "Remote-work less common" = "Remote-work less common";
@@ -135,7 +135,7 @@
 "Tap any spot" = "Tap any spot";
 "Tap any spot on the map to load local Census context in seconds." = "Tap any spot on the map to load local Census context in seconds.";
 "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance." = "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance.";
-"Tap on map · swipe up for neighborhood profile" = "Tap on map · swipe up for neighborhood profile";
+"Tap on map · swipe up for neighborhood profile" = "Swipe up for neighborhood profile";
 "Tap the map" = "Tap the map";
 "Tap the map to load ZIP and tract context." = "Tap the map to load ZIP and tract context.";
 "Tap to explore" = "Tap to explore";

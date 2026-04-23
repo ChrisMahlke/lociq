@@ -94,7 +94,7 @@
 "Official public data" = "Offizielle öffentliche Daten";
 "Overview" = "Überblick";
 "Owner-occupied versus renter-occupied homes." = "Eigengenutzte versus gemietete Wohnungen.";
-"Plain-English takeaways generated from the active profile" = "Einfach formulierte Erkenntnisse aus dem aktiven Profil";
+"Plain-English takeaways generated from the active profile" = "Kernaussagen";
 "Population" = "Bevölkerung";
 "Poverty" = "Armut";
 "Poverty rate" = "Armutsquote";
@@ -106,10 +106,10 @@
 "Quick camera actions while exploring" = "Schnelle Kartenaktionen beim Erkunden";
 "Quick signals" = "Schnelle Signale";
 "Read the profile" = "Profil lesen";
-"Real census profile and quick-read insights" = "Echtes Census-Profil und schnell erfassbare Insights";
+"Real census profile and quick-read insights" = "Census-Profil";
 "Refresh behavior" = "Aktualisierungsverhalten";
 "Relative group counts shown as simple visual comparisons." = "Relative Gruppengrößen als einfache visuelle Vergleiche dargestellt.";
-"Relative group sizes within the selected geography" = "Relative Gruppengrößen innerhalb der ausgewählten Geografie";
+"Relative group sizes within the selected geography" = "Gruppenmix";
 "Remote work" = "Remote-Arbeit";
 "Remote-work common" = "Remote-Arbeit verbreitet";
 "Remote-work less common" = "Remote-Arbeit weniger verbreitet";
@@ -135,7 +135,7 @@
 "Tap any spot" = "Beliebigen Punkt antippen";
 "Tap any spot on the map to load local Census context in seconds." = "Tippe auf einen beliebigen Punkt auf der Karte, um in Sekunden lokalen Census-Kontext zu laden.";
 "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance." = "Tippe irgendwo, um ein Viertelprofil zu laden, ZIP- und Tract-Ansichten zu vergleichen und den Bereich auf einen Blick zu lesen.";
-"Tap on map · swipe up for neighborhood profile" = "Auf Karte tippen · nach oben wischen für Viertelprofil";
+"Tap on map · swipe up for neighborhood profile" = "Nach oben wischen für Viertelprofil";
 "Tap the map" = "Karte antippen";
 "Tap the map to load ZIP and tract context." = "Tippe auf die Karte, um ZIP- und Tract-Kontext zu laden.";
 "Tap to explore" = "Zum Erkunden tippen";

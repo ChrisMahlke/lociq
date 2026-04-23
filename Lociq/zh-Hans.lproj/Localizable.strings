@@ -94,7 +94,7 @@
 "Official public data" = "官方公共数据";
 "Overview" = "概览";
 "Owner-occupied versus renter-occupied homes." = "自住房与租住房的对比。";
-"Plain-English takeaways generated from the active profile" = "根据当前资料生成的通俗结论";
+"Plain-English takeaways generated from the active profile" = "重点结论";
 "Population" = "人口";
 "Poverty" = "贫困";
 "Poverty rate" = "贫困率";
@@ -106,10 +106,10 @@
 "Quick camera actions while exploring" = "探索时可用的快速视图操作";
 "Quick signals" = "快速信号";
 "Read the profile" = "查看资料";
-"Real census profile and quick-read insights" = "真实的人口普查资料与快速洞察";
+"Real census profile and quick-read insights" = "人口普查资料";
 "Refresh behavior" = "刷新行为";
 "Relative group counts shown as simple visual comparisons." = "以简单可视化对比显示各群体的相对数量。";
-"Relative group sizes within the selected geography" = "所选地理范围内各群体的相对规模";
+"Relative group sizes within the selected geography" = "群体构成";
 "Remote work" = "远程办公";
 "Remote-work common" = "远程办公较常见";
 "Remote-work less common" = "远程办公较少见";
@@ -135,7 +135,7 @@
 "Tap any spot" = "点按任意位置";
 "Tap any spot on the map to load local Census context in seconds." = "在地图上点按任意位置，即可在几秒内加载本地人口普查背景。";
 "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance." = "点按任意位置即可加载社区资料，比较 ZIP 与普查区视图，并快速了解该区域。";
-"Tap on map · swipe up for neighborhood profile" = "点按地图 · 上滑查看社区资料";
+"Tap on map · swipe up for neighborhood profile" = "上滑查看社区资料";
 "Tap the map" = "点按地图";
 "Tap the map to load ZIP and tract context." = "点按地图以加载 ZIP 和普查区背景。";
 "Tap to explore" = "点按探索";

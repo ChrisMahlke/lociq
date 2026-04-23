@@ -94,7 +94,7 @@
 "Official public data" = "Dữ liệu công chính thức";
 "Overview" = "Tổng quan";
 "Owner-occupied versus renter-occupied homes." = "Nhà ở do chủ ở so với nhà ở do người thuê ở.";
-"Plain-English takeaways generated from the active profile" = "Các điểm rút ra bằng ngôn ngữ đơn giản từ hồ sơ hiện tại";
+"Plain-English takeaways generated from the active profile" = "Điểm chính";
 "Population" = "Dân số";
 "Poverty" = "Nghèo";
 "Poverty rate" = "Tỷ lệ nghèo";
@@ -106,10 +106,10 @@
 "Quick camera actions while exploring" = "Thao tác bản đồ nhanh khi khám phá";
 "Quick signals" = "Tín hiệu nhanh";
 "Read the profile" = "Đọc hồ sơ";
-"Real census profile and quick-read insights" = "Hồ sơ Census thực và các điểm đọc nhanh";
+"Real census profile and quick-read insights" = "Hồ sơ Census";
 "Refresh behavior" = "Cách làm mới";
 "Relative group counts shown as simple visual comparisons." = "Số lượng tương đối của các nhóm được hiển thị như các so sánh trực quan đơn giản.";
-"Relative group sizes within the selected geography" = "Quy mô tương đối của các nhóm trong khu vực đã chọn";
+"Relative group sizes within the selected geography" = "Cơ cấu nhóm";
 "Remote work" = "Làm việc từ xa";
 "Remote-work common" = "Làm việc từ xa phổ biến";
 "Remote-work less common" = "Làm việc từ xa ít phổ biến hơn";
@@ -135,7 +135,7 @@
 "Tap any spot" = "Chạm vào bất kỳ điểm nào";
 "Tap any spot on the map to load local Census context in seconds." = "Chạm vào bất kỳ điểm nào trên bản đồ để tải bối cảnh Census địa phương trong vài giây.";
 "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance." = "Chạm vào bất cứ đâu để tải hồ sơ khu vực, so sánh chế độ xem ZIP và tract, và đọc nhanh khu vực đó.";
-"Tap on map · swipe up for neighborhood profile" = "Chạm trên bản đồ · vuốt lên để xem hồ sơ khu vực";
+"Tap on map · swipe up for neighborhood profile" = "Vuốt lên để xem hồ sơ khu vực";
 "Tap the map" = "Chạm vào bản đồ";
 "Tap the map to load ZIP and tract context." = "Chạm vào bản đồ để tải bối cảnh ZIP và tract.";
 "Tap to explore" = "Chạm để khám phá";

@@ -94,7 +94,7 @@
 "Official public data" = "공식 공개 데이터";
 "Overview" = "개요";
 "Owner-occupied versus renter-occupied homes." = "자가 거주 주택과 임차 거주 주택의 비교입니다.";
-"Plain-English takeaways generated from the active profile" = "현재 프로필에서 생성된 쉬운 요약";
+"Plain-English takeaways generated from the active profile" = "핵심 요점";
 "Population" = "인구";
 "Poverty" = "빈곤";
 "Poverty rate" = "빈곤율";
@@ -106,10 +106,10 @@
 "Quick camera actions while exploring" = "탐색 중 빠른 지도 조작";
 "Quick signals" = "빠른 신호";
 "Read the profile" = "프로필 읽기";
-"Real census profile and quick-read insights" = "실제 Census 프로필과 빠른 인사이트";
+"Real census profile and quick-read insights" = "Census 프로필";
 "Refresh behavior" = "새로고침 동작";
 "Relative group counts shown as simple visual comparisons." = "각 그룹의 상대적 규모를 단순한 시각 비교로 보여줍니다.";
-"Relative group sizes within the selected geography" = "선택한 지역 안에서의 상대적 그룹 규모";
+"Relative group sizes within the selected geography" = "집단 구성";
 "Remote work" = "재택근무";
 "Remote-work common" = "재택근무 비중 높음";
 "Remote-work less common" = "재택근무 비중 낮음";
@@ -135,7 +135,7 @@
 "Tap any spot" = "아무 곳이나 탭";
 "Tap any spot on the map to load local Census context in seconds." = "지도에서 아무 지점이나 탭하면 몇 초 안에 지역 Census 맥락을 불러옵니다.";
 "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance." = "어디든 탭해 동네 프로필을 불러오고, ZIP과 트랙트 보기를 비교하며, 지역을 한눈에 파악하세요.";
-"Tap on map · swipe up for neighborhood profile" = "지도 탭 · 위로 스와이프해 동네 프로필 보기";
+"Tap on map · swipe up for neighborhood profile" = "위로 스와이프해 동네 프로필 보기";
 "Tap the map" = "지도 탭";
 "Tap the map to load ZIP and tract context." = "지도를 탭해 ZIP과 트랙트 정보를 불러오세요.";
 "Tap to explore" = "탭하여 탐색";

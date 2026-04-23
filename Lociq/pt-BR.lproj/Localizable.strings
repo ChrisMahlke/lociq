@@ -94,7 +94,7 @@
 "Official public data" = "Dados públicos oficiais";
 "Overview" = "Visão geral";
 "Owner-occupied versus renter-occupied homes." = "Moradias ocupadas por proprietários versus moradias alugadas.";
-"Plain-English takeaways generated from the active profile" = "Resumo em linguagem simples gerado a partir do perfil ativo";
+"Plain-English takeaways generated from the active profile" = "Pontos-chave";
 "Population" = "População";
 "Poverty" = "Pobreza";
 "Poverty rate" = "Taxa de pobreza";
@@ -106,10 +106,10 @@
 "Quick camera actions while exploring" = "Ações rápidas de câmera durante a exploração";
 "Quick signals" = "Sinais rápidos";
 "Read the profile" = "Leia o perfil";
-"Real census profile and quick-read insights" = "Perfil real do Census e insights de leitura rápida";
+"Real census profile and quick-read insights" = "Perfil do Census";
 "Refresh behavior" = "Comportamento de atualização";
 "Relative group counts shown as simple visual comparisons." = "Contagens relativas de grupos mostradas como comparações visuais simples.";
-"Relative group sizes within the selected geography" = "Tamanhos relativos de grupos dentro da geografia selecionada";
+"Relative group sizes within the selected geography" = "Composição dos grupos";
 "Remote work" = "Trabalho remoto";
 "Remote-work common" = "Trabalho remoto comum";
 "Remote-work less common" = "Trabalho remoto menos comum";
@@ -135,7 +135,7 @@
 "Tap any spot" = "Toque em qualquer ponto";
 "Tap any spot on the map to load local Census context in seconds." = "Toque em qualquer ponto do mapa para carregar o contexto local do Census em segundos.";
 "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance." = "Toque em qualquer lugar para carregar um perfil da vizinhança, comparar as visões ZIP e tract e entender a área rapidamente.";
-"Tap on map · swipe up for neighborhood profile" = "Toque no mapa · deslize para cima para ver o perfil da vizinhança";
+"Tap on map · swipe up for neighborhood profile" = "Deslize para cima para ver o perfil da vizinhança";
 "Tap the map" = "Toque no mapa";
 "Tap the map to load ZIP and tract context." = "Toque no mapa para carregar o contexto de ZIP e tract.";
 "Tap to explore" = "Toque para explorar";

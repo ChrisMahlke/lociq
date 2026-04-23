@@ -94,7 +94,7 @@
 "Official public data" = "Resmî kamu verisi";
 "Overview" = "Genel bakış";
 "Owner-occupied versus renter-occupied homes." = "Ev sahibi oturumlu konutlar ile kiracı oturumlu konutların karşılaştırması.";
-"Plain-English takeaways generated from the active profile" = "Etkin profilden üretilen sade dilde özetler";
+"Plain-English takeaways generated from the active profile" = "Öne çıkanlar";
 "Population" = "Nüfus";
 "Poverty" = "Yoksulluk";
 "Poverty rate" = "Yoksulluk oranı";
@@ -106,10 +106,10 @@
 "Quick camera actions while exploring" = "Keşfederken hızlı harita işlemleri";
 "Quick signals" = "Hızlı sinyaller";
 "Read the profile" = "Profili okuyun";
-"Real census profile and quick-read insights" = "Gerçek Census profili ve hızlı okunabilir içgörüler";
+"Real census profile and quick-read insights" = "Census profili";
 "Refresh behavior" = "Yenileme davranışı";
 "Relative group counts shown as simple visual comparisons." = "Göreli grup sayıları basit görsel karşılaştırmalarla gösterilir.";
-"Relative group sizes within the selected geography" = "Seçilen coğrafyadaki göreli grup büyüklükleri";
+"Relative group sizes within the selected geography" = "Grup dağılımı";
 "Remote work" = "Uzaktan çalışma";
 "Remote-work common" = "Uzaktan çalışma yaygın";
 "Remote-work less common" = "Uzaktan çalışma daha az yaygın";
@@ -135,7 +135,7 @@
 "Tap any spot" = "Herhangi bir noktaya dokunun";
 "Tap any spot on the map to load local Census context in seconds." = "Yerel Census bağlamını saniyeler içinde yüklemek için haritada herhangi bir noktaya dokunun.";
 "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance." = "Mahalle profilini yüklemek, ZIP ve tract görünümlerini karşılaştırmak ve alanı bir bakışta okumak için herhangi bir yere dokunun.";
-"Tap on map · swipe up for neighborhood profile" = "Haritaya dokunun · mahalle profili için yukarı kaydırın";
+"Tap on map · swipe up for neighborhood profile" = "Mahalle profili için yukarı kaydırın";
 "Tap the map" = "Haritaya dokunun";
 "Tap the map to load ZIP and tract context." = "ZIP ve tract bağlamını yüklemek için haritaya dokunun.";
 "Tap to explore" = "Keşfetmek için dokunun";

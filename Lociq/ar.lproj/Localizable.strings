@@ -94,7 +94,7 @@
 "Official public data" = "بيانات عامة رسمية";
 "Overview" = "نظرة عامة";
 "Owner-occupied versus renter-occupied homes." = "منازل يسكنها مالكوها مقابل منازل يسكنها مستأجرون.";
-"Plain-English takeaways generated from the active profile" = "خلاصات بلغة بسيطة مولدة من الملف الحالي";
+"Plain-English takeaways generated from the active profile" = "أهم الخلاصات";
 "Population" = "السكان";
 "Poverty" = "الفقر";
 "Poverty rate" = "معدل الفقر";
@@ -106,10 +106,10 @@
 "Quick camera actions while exploring" = "إجراءات سريعة أثناء الاستكشاف";
 "Quick signals" = "إشارات سريعة";
 "Read the profile" = "اقرأ الملف";
-"Real census profile and quick-read insights" = "ملف تعداد حقيقي ورؤى سريعة القراءة";
+"Real census profile and quick-read insights" = "ملف التعداد";
 "Refresh behavior" = "سلوك التحديث";
 "Relative group counts shown as simple visual comparisons." = "أعداد نسبية للمجموعات معروضة كمقارنات بصرية بسيطة.";
-"Relative group sizes within the selected geography" = "الأحجام النسبية للمجموعات ضمن الجغرافيا المحددة";
+"Relative group sizes within the selected geography" = "توزيع المجموعات";
 "Remote work" = "العمل عن بُعد";
 "Remote-work common" = "العمل عن بُعد شائع";
 "Remote-work less common" = "العمل عن بُعد أقل شيوعًا";
@@ -135,7 +135,7 @@
 "Tap any spot" = "اضغط على أي موضع";
 "Tap any spot on the map to load local Census context in seconds." = "اضغط على أي موضع على الخريطة لتحميل سياق التعداد المحلي خلال ثوانٍ.";
 "Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance." = "اضغط في أي مكان لتحميل ملف الحي، وقارن بين عرض ZIP وtract، وافهم المنطقة بسرعة.";
-"Tap on map · swipe up for neighborhood profile" = "اضغط على الخريطة · اسحب لأعلى لملف الحي";
+"Tap on map · swipe up for neighborhood profile" = "اسحب لأعلى لملف الحي";
 "Tap the map" = "اضغط على الخريطة";
 "Tap the map to load ZIP and tract context." = "اضغط على الخريطة لتحميل سياق ZIP وtract.";
 "Tap to explore" = "اضغط للاستكشاف";
