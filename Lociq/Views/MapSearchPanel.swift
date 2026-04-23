@@ -47,6 +47,8 @@ struct MapSearchLauncher: View {
 
 struct MapSearchExperienceView: View {
     @ObservedObject var model: MapSearchModel
+    let promptTitle: String
+    let promptBody: String
     let onDismiss: () -> Void
     let onSelectResult: (PlaceSearchResult) -> Void
 
@@ -151,7 +153,10 @@ struct MapSearchExperienceView: View {
                                 searchResultsList
                             }
                         } else {
-                            SearchPromptCard()
+                            SearchPromptCard(
+                                title: promptTitle,
+                                message: promptBody
+                            )
                         }
                     }
                     .padding(.horizontal, 16)
@@ -219,6 +224,9 @@ struct MapSearchExperienceView: View {
 }
 
 private struct SearchPromptCard: View {
+    let title: String
+    let message: String
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Image(systemName: "map.circle.fill")
@@ -226,10 +234,10 @@ private struct SearchPromptCard: View {
                 .foregroundStyle(.blue)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(AppStrings.Labels.searchPromptTitle)
+                Text(title)
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.primary)
-                Text(AppStrings.Labels.searchPromptBody)
+                Text(message)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

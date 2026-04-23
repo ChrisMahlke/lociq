@@ -82,7 +82,9 @@ struct ExpandedInsightsHeaderRow: View {
     let zipCode: String?
     let metricsSource: MetricsSource?
     let isFallbackToZIP: Bool
+    let isComparing: Bool
     let isCurrentPlaceSaved: Bool
+    let onStartCompare: () -> Void
     let onToggleSaved: () -> Void
     let shareAsset: NeighborhoodShareCardAsset?
     @Binding var boundaryScale: BoundaryOverlayScale
@@ -107,6 +109,26 @@ struct ExpandedInsightsHeaderRow: View {
                 }
 
                 Spacer()
+
+                if !isComparing {
+                    Button(action: onStartCompare) {
+                        Image(systemName: "rectangle.split.2x1")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(boundaryScale.themeColor)
+                            .frame(width: 38, height: 38)
+                            .background(
+                                Circle()
+                                    .fill(boundaryScale.themeColor.opacity(0.12))
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(boundaryScale.themeColor.opacity(0.2), lineWidth: 0.9)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("insights.compare")
+                    .accessibilityLabel(AppStrings.Labels.compareAction)
+                }
 
                 Button(action: onToggleSaved) {
                     Image(systemName: isCurrentPlaceSaved ? "bookmark.fill" : "bookmark")

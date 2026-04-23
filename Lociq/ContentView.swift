@@ -43,16 +43,21 @@ struct ContentView: View {
 
     @StateObject private var selectionModel: MapSelectionModel
     @StateObject private var searchModel: MapSearchModel
+    @StateObject private var compareSearchModel: MapSearchModel
+    @StateObject private var compareModel: CompareModeModel
     @StateObject private var libraryStore: NeighborhoodLibraryStore
     @State private var selection: TabSelection = .map
     @State private var sheetOffset: CGFloat = 0
     @State private var showOnboarding: Bool = false
     @State private var showSearchExperience: Bool = false
+    @State private var showComparePicker: Bool = false
     @State private var mapFocusRequest: MapFocusRequest?
 
     init(dependencies: AppDependencies = .live) {
         _libraryStore = StateObject(wrappedValue: dependencies.neighborhoodLibraryStore)
         _searchModel = StateObject(wrappedValue: MapSearchModel(service: dependencies.makePlaceSearchService()))
+        _compareSearchModel = StateObject(wrappedValue: MapSearchModel(service: dependencies.makePlaceSearchService()))
+        _compareModel = StateObject(wrappedValue: CompareModeModel(service: dependencies.makeCensusLookupService()))
         _selectionModel = StateObject(
             wrappedValue: MapSelectionModel(
                 service: dependencies.makeCensusLookupService(),
@@ -115,6 +120,8 @@ struct ContentView: View {
                     }
                     Haptics.selectionChanged()
                     showSearchExperience = false
+                    showComparePicker = false
+                    compareModel.clear()
                     searchModel.dismissResults()
                 }
                 selectionModel.handleMapSelection(newValue)
@@ -220,6 +227,13 @@ struct ContentView: View {
                     selectionFeedbackState: selectionModel.selectionFeedbackState,
                     isRefreshingScale: selectionModel.isRefreshingScale,
                     onRetrySelection: selectionModel.retryCurrentSelection,
+                    comparisonProfile: compareModel.secondaryProfile,
+                    pendingComparisonTitle: compareModel.pendingComparisonTitle,
+                    isLoadingComparison: compareModel.isLoadingComparison,
+                    comparisonErrorMessage: compareModel.comparisonErrorMessage,
+                    onStartCompare: openComparePicker,
+                    onReplaceCompare: openComparePicker,
+                    onClearCompare: compareModel.clear,
                     isCurrentPlaceSaved: selectionModel.isCurrentPlaceSaved,
                     onToggleSaved: selectionModel.toggleSavedCurrentPlace,
                     boundaryScale: boundaryScaleBinding,
@@ -241,6 +255,8 @@ struct ContentView: View {
         selection = .map
         hasSeenMapQuickTip = true
         showSearchExperience = false
+        showComparePicker = false
+        compareModel.clear()
         searchModel.dismissResults()
         mapFocusRequest = MapFocusRequest(
             id: UUID(),
@@ -254,6 +270,8 @@ struct ContentView: View {
         selection = .map
         hasSeenMapQuickTip = true
         showSearchExperience = false
+        showComparePicker = false
+        compareModel.clear()
         searchModel.selectResult(result)
         mapFocusRequest = MapFocusRequest(
             id: UUID(),
@@ -261,6 +279,17 @@ struct ContentView: View {
             minimumZoom: 13
         )
         selectionModel.handleMapSelection(result.coordinate)
+    }
+
+    private func openComparePicker() {
+        compareSearchModel.clear()
+        showComparePicker = true
+    }
+
+    private func chooseComparisonResult(_ result: PlaceSearchResult) {
+        showComparePicker = false
+        compareSearchModel.selectResult(result)
+        compareModel.beginComparison(with: result, scale: selectionModel.boundaryScale)
     }
 
     var body: some View {
@@ -309,6 +338,13 @@ struct ContentView: View {
                                 selectionFeedbackState: selectionModel.selectionFeedbackState,
                                 isRefreshingScale: selectionModel.isRefreshingScale,
                                 onRetrySelection: selectionModel.retryCurrentSelection,
+                                comparisonProfile: compareModel.secondaryProfile,
+                                pendingComparisonTitle: compareModel.pendingComparisonTitle,
+                                isLoadingComparison: compareModel.isLoadingComparison,
+                                comparisonErrorMessage: compareModel.comparisonErrorMessage,
+                                onStartCompare: openComparePicker,
+                                onReplaceCompare: openComparePicker,
+                                onClearCompare: compareModel.clear,
                                 isCurrentPlaceSaved: selectionModel.isCurrentPlaceSaved,
                                 onToggleSaved: selectionModel.toggleSavedCurrentPlace,
                                 boundaryScale: boundaryScaleBinding,
@@ -341,6 +377,9 @@ struct ContentView: View {
                 showOnboarding = true
             }
         }
+        .onChange(of: selectionModel.boundaryScale) { newScale in
+            compareModel.refreshComparison(for: newScale)
+        }
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingExperienceView {
                 hasSeenOnboarding = true
@@ -350,10 +389,23 @@ struct ContentView: View {
         .fullScreenCover(isPresented: $showSearchExperience) {
             MapSearchExperienceView(
                 model: searchModel,
+                promptTitle: AppStrings.Labels.searchPromptTitle,
+                promptBody: AppStrings.Labels.searchPromptBody,
                 onDismiss: {
                     showSearchExperience = false
                 },
                 onSelectResult: openSearchResult
+            )
+        }
+        .fullScreenCover(isPresented: $showComparePicker) {
+            MapSearchExperienceView(
+                model: compareSearchModel,
+                promptTitle: AppStrings.Labels.comparePickerTitle,
+                promptBody: AppStrings.Labels.comparePickerBody,
+                onDismiss: {
+                    showComparePicker = false
+                },
+                onSelectResult: chooseComparisonResult
             )
         }
     }

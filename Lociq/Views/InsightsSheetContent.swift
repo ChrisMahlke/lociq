@@ -11,6 +11,13 @@ struct InsightsSheetContent: View {
     let selectionFeedbackState: SelectionFeedbackState?
     let isRefreshingScale: Bool
     let onRetrySelection: () -> Void
+    let comparisonProfile: ComparablePlaceProfile?
+    let pendingComparisonTitle: String?
+    let isLoadingComparison: Bool
+    let comparisonErrorMessage: String?
+    let onStartCompare: () -> Void
+    let onReplaceCompare: () -> Void
+    let onClearCompare: () -> Void
     let isCurrentPlaceSaved: Bool
     let onToggleSaved: () -> Void
     @Binding var boundaryScale: BoundaryOverlayScale
@@ -18,6 +25,52 @@ struct InsightsSheetContent: View {
 
     @State private var hintVisible: Bool = true
     @State private var shareAsset: NeighborhoodShareCardAsset?
+
+    init(
+        zipCode: String?,
+        metrics: CensusMetrics?,
+        demographics: Demographics?,
+        zipBundle: ZipLookupResult?,
+        metricsSource: MetricsSource?,
+        hasActiveSelection: Bool,
+        isLoadingSelection: Bool,
+        selectionFeedbackState: SelectionFeedbackState?,
+        isRefreshingScale: Bool,
+        onRetrySelection: @escaping () -> Void,
+        comparisonProfile: ComparablePlaceProfile? = nil,
+        pendingComparisonTitle: String? = nil,
+        isLoadingComparison: Bool = false,
+        comparisonErrorMessage: String? = nil,
+        onStartCompare: @escaping () -> Void = {},
+        onReplaceCompare: @escaping () -> Void = {},
+        onClearCompare: @escaping () -> Void = {},
+        isCurrentPlaceSaved: Bool,
+        onToggleSaved: @escaping () -> Void,
+        boundaryScale: Binding<BoundaryOverlayScale>,
+        sheetOffset: Binding<CGFloat>
+    ) {
+        self.zipCode = zipCode
+        self.metrics = metrics
+        self.demographics = demographics
+        self.zipBundle = zipBundle
+        self.metricsSource = metricsSource
+        self.hasActiveSelection = hasActiveSelection
+        self.isLoadingSelection = isLoadingSelection
+        self.selectionFeedbackState = selectionFeedbackState
+        self.isRefreshingScale = isRefreshingScale
+        self.onRetrySelection = onRetrySelection
+        self.comparisonProfile = comparisonProfile
+        self.pendingComparisonTitle = pendingComparisonTitle
+        self.isLoadingComparison = isLoadingComparison
+        self.comparisonErrorMessage = comparisonErrorMessage
+        self.onStartCompare = onStartCompare
+        self.onReplaceCompare = onReplaceCompare
+        self.onClearCompare = onClearCompare
+        self.isCurrentPlaceSaved = isCurrentPlaceSaved
+        self.onToggleSaved = onToggleSaved
+        self._boundaryScale = boundaryScale
+        self._sheetOffset = sheetOffset
+    }
 
     private var insights: [Insight] { zipBundle?.insights ?? [] }
 
@@ -105,6 +158,31 @@ struct InsightsSheetContent: View {
         boundaryScale == .tract && metricsSource == .zcta
     }
 
+    private var isCompareModeActive: Bool {
+        comparisonProfile != nil || isLoadingComparison || comparisonErrorMessage != nil
+    }
+
+    private var primaryComparisonProfile: ComparablePlaceProfile? {
+        guard
+            hasActiveSelection,
+            !showsNoCoverageState,
+            !showsSampleFallbackState,
+            let metrics,
+            let metricsSource
+        else {
+            return nil
+        }
+
+        return ComparablePlaceProfile(
+            id: zipBundle?.tract?.geoid ?? zipCode ?? areaTitle,
+            title: areaTitle,
+            subtitle: areaSubtitle,
+            metrics: metrics,
+            demographics: demographics,
+            metricsSource: metricsSource
+        )
+    }
+
     private var showsNoCoverageState: Bool {
         selectionFeedbackState == .noCoverage
     }
@@ -139,6 +217,13 @@ struct InsightsSheetContent: View {
                             message: AppStrings.Labels.sampleFallbackBody,
                             systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90",
                             tint: .indigo
+                        )
+                    } else if isCompareModeActive {
+                        CollapsedComparisonPreviewCard(
+                            primaryTitle: areaTitle,
+                            secondaryTitle: comparisonProfile?.title ?? pendingComparisonTitle,
+                            isLoadingSecondary: isLoadingComparison,
+                            boundaryScale: boundaryScale
                         )
                     } else if hasActiveSelection || isLoadingSelection {
                         CollapsedInsightsMetricsGrid(metrics: metrics)
@@ -200,7 +285,9 @@ struct InsightsSheetContent: View {
                                 zipCode: zipCode,
                                 metricsSource: metricsSource,
                                 isFallbackToZIP: isFallbackToZIP,
+                                isComparing: isCompareModeActive,
                                 isCurrentPlaceSaved: isCurrentPlaceSaved,
+                                onStartCompare: onStartCompare,
                                 onToggleSaved: onToggleSaved,
                                 shareAsset: shareAsset,
                                 boundaryScale: $boundaryScale
@@ -208,24 +295,37 @@ struct InsightsSheetContent: View {
                             .id("header-\(refreshAnimationKey)")
                             .transition(.opacity.combined(with: .move(edge: .top)))
 
-                            KeyMetricsGrid(metrics: metrics)
-                                .id("metrics-\(refreshAnimationKey)")
-                                .transition(.opacity.combined(with: .scale(scale: 0.98)))
-
-                            if let demographics {
-                                QuickSignalsSection(demographics: demographics, themeTint: themeTint)
-                                HousingAffordabilitySection(demographics: demographics, themeTint: themeTint)
-                                DemographicCompositionSection(
-                                    demographics: demographics,
-                                    totalPopulation: metrics?.population,
-                                    themeTint: themeTint
+                            if isCompareModeActive, let primaryComparisonProfile {
+                                PlaceComparisonSection(
+                                    primary: primaryComparisonProfile,
+                                    secondary: comparisonProfile,
+                                    pendingSecondaryTitle: pendingComparisonTitle,
+                                    isLoadingSecondary: isLoadingComparison,
+                                    comparisonErrorMessage: comparisonErrorMessage,
+                                    boundaryScale: boundaryScale,
+                                    onReplaceComparison: onReplaceCompare,
+                                    onClearComparison: onClearCompare
                                 )
-                            }
+                            } else {
+                                KeyMetricsGrid(metrics: metrics)
+                                    .id("metrics-\(refreshAnimationKey)")
+                                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
 
-                            if zipBundle != nil {
-                                GeneratedInsightsSection(insights: insights, isLoading: false)
-                            } else if metrics == nil {
-                                GeneratedInsightsSection(insights: [], isLoading: true)
+                                if let demographics {
+                                    QuickSignalsSection(demographics: demographics, themeTint: themeTint)
+                                    HousingAffordabilitySection(demographics: demographics, themeTint: themeTint)
+                                    DemographicCompositionSection(
+                                        demographics: demographics,
+                                        totalPopulation: metrics?.population,
+                                        themeTint: themeTint
+                                    )
+                                }
+
+                                if zipBundle != nil {
+                                    GeneratedInsightsSection(insights: insights, isLoading: false)
+                                } else if metrics == nil {
+                                    GeneratedInsightsSection(insights: [], isLoading: true)
+                                }
                             }
                         }
                     }

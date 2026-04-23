@@ -85,6 +85,19 @@ enum AppStrings {
         static var overview: String { L10n.tr("Overview") }
         static var currentScale: String { L10n.tr("Current scale") }
         static var share: String { L10n.tr("Share") }
+        static var compareAction: String { L10n.tr("Compare") }
+        static var compareModeTitle: String { L10n.tr("Compare places") }
+        static var compareZipDetail: String { L10n.tr("Side-by-side ZIP metrics for two selected places.") }
+        static var compareTractDetail: String { L10n.tr("Side-by-side tract metrics for two selected places.") }
+        static var compareReplace: String { L10n.tr("Change") }
+        static var compareDone: String { L10n.tr("Done comparing") }
+        static var compareVersus: String { L10n.tr("vs") }
+        static var compareLoadingTitle: String { L10n.tr("Loading place") }
+        static var compareUnavailableTitle: String { L10n.tr("Could not load comparison") }
+        static var compareLoadFailedBody: String { L10n.tr("Lociq could not load metrics for the comparison place right now. Try another place or try again in a moment.") }
+        static var compareNoCoverageBody: String { L10n.tr("That place does not map to a ZIP-backed neighborhood profile that Lociq can compare.") }
+        static var comparePickerTitle: String { L10n.tr("Choose another place") }
+        static var comparePickerBody: String { L10n.tr("Search for a second ZIP, city, neighborhood, or address to compare beside the current profile.") }
         static var tractFallbackTitle: String { L10n.tr("ZIP fallback active") }
         static var tractFallbackBody: String { L10n.tr("Tract data is unavailable for this selection, so the profile is showing ZIP-level Census data.") }
         static var mapTipTitle: String { L10n.tr("Tap to explore") }
@@ -146,6 +159,10 @@ enum AppStrings {
 
         static func step(_ value: Int) -> String {
             L10n.format("%d", fallback: "%d", value)
+        }
+
+        static func compareLoadingInline(_ value: String) -> String {
+            L10n.format("Comparing %@ with another place...", fallback: "Comparing %@ with another place...", value)
         }
 
         static func ownerOccupied(_ owner: String, renter: String) -> String {
