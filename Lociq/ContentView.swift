@@ -187,10 +187,7 @@ struct ContentView: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        MapFloatingControls(
-                            onFocusMyArea: focusMapOnUserArea,
-                            onResetMap: resetMapView
-                        )
+                        MapFloatingControls(onFocusMyArea: focusMapOnUserArea)
                     }
                 }
                 .padding(.trailing, 12)
@@ -313,17 +310,6 @@ struct ContentView: View {
     private func focusMapOnUserArea() {
         hasSeenMapQuickTip = true
         GoogleMapViewRepresentable.focusOnUserOrSelection(selection: selectionModel.tappedCoordinate)
-    }
-
-    private func resetMapView() {
-        hasSeenMapQuickTip = true
-        showSearchExperience = false
-        showComparePicker = false
-        searchModel.dismissResults()
-        compareModel.clear()
-        selectionModel.clearSelection()
-        mapFocusRequest = nil
-        GoogleMapViewRepresentable.resetCamera()
     }
 
     private func chooseComparisonResult(_ result: PlaceSearchResult) {
@@ -468,21 +454,13 @@ private enum Haptics {
 
 private struct MapFloatingControls: View {
     let onFocusMyArea: () -> Void
-    let onResetMap: () -> Void
 
     var body: some View {
-        VStack(spacing: 10) {
-            button(
-                icon: "location.fill",
-                title: AppStrings.More.myArea,
-                action: onFocusMyArea
-            )
-            button(
-                icon: "scope",
-                title: AppStrings.More.resetMap,
-                action: onResetMap
-            )
-        }
+        button(
+            icon: "location.fill",
+            title: AppStrings.More.myArea,
+            action: onFocusMyArea
+        )
     }
 
     private func button(icon: String, title: String, action: @escaping () -> Void) -> some View {

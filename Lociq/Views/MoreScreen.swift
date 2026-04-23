@@ -394,13 +394,6 @@ private struct MapControlsCard: View {
                         detail: AppStrings.More.myAreaDetail,
                         tint: .blue
                     )
-
-                    ControlExplanationRow(
-                        icon: "scope",
-                        title: AppStrings.More.resetMap,
-                        detail: AppStrings.More.resetMapDetail,
-                        tint: .teal
-                    )
                 }
             }
         }
