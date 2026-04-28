@@ -78,11 +78,10 @@ private final class LociqAppCheckProviderFactory: NSObject, AppCheckProviderFact
         #if targetEnvironment(simulator)
         return AppCheckDebugProvider(app: app)
         #else
-        if #available(iOS 14.0, *) {
-            return AppAttestProvider(app: app)
-        } else {
-            return DeviceCheckProvider(app: app)
-        }
+        // The Firebase project is currently configured with Device Check, so
+        // use that provider on real devices. Simulator builds continue to use
+        // the debug provider via FIREBASE_APP_CHECK_DEBUG_TOKEN.
+        return DeviceCheckProvider(app: app)
         #endif
     }
 }

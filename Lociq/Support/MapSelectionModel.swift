@@ -82,6 +82,7 @@ final class MapSelectionModel: ObservableObject {
     private var activeSelectionRequestID = UUID()
     private var activeFetchTask: Task<Void, Never>?
     private var activeScaleTask: Task<Void, Never>?
+    private var resolvedCoordinate: CLLocationCoordinate2D?
     private var resolvedPlaceProfile: ResolvedPlaceProfile?
 
     init(service: any CensusNeighborhoodServing, libraryStore: NeighborhoodLibraryStore) {
@@ -149,6 +150,7 @@ final class MapSelectionModel: ObservableObject {
         selectedBoundary = nil
         neighborhoodBoundaries = nil
         selectedZipBundle = nil
+        resolvedCoordinate = nil
         resolvedPlaceProfile = nil
         isBoundaryLoading = false
         isRefreshingScale = false
@@ -178,13 +180,6 @@ final class MapSelectionModel: ObservableObject {
         isRefreshingScale = false
         mapNotice = nil
         selectionFeedbackState = nil
-        censusMetrics = nil
-        selectedDemographics = nil
-        metricsSource = nil
-        selectedZipBundle = nil
-        selectedBoundary = nil
-        neighborhoodBoundaries = nil
-        resolvedPlaceProfile = nil
 
         activeFetchTask = Task { [weak self] in
             guard let self else { return }
@@ -202,28 +197,26 @@ final class MapSelectionModel: ObservableObject {
 
             guard isSelectionRequestCurrent(requestID) else { return }
 
+            let (demographics, source) = demographicsForScale(boundaryScale, profile: placeProfile)
+            let boundary = boundaryOverlay(for: placeProfile.boundaries, scale: boundaryScale)
+
             resolvedPlaceProfile = placeProfile
+            resolvedCoordinate = coordinate
 
             withAnimation(.easeInOut(duration: 0.28)) {
                 selectedZipCode = bundle.zcta
-                censusMetrics = mapDemographicsToMetrics(placeProfile.scaleDemographics.zip)
-                selectedDemographics = placeProfile.scaleDemographics.zip
-                metricsSource = .zcta
-                selectedBoundary = bundle.boundary
+                censusMetrics = mapDemographicsToMetrics(demographics)
+                selectedDemographics = demographics
+                metricsSource = source
+                selectedBoundary = boundary
                 selectedZipBundle = bundle
+                neighborhoodBoundaries = placeProfile.boundaries
+                isBoundaryLoading = false
                 selectionFeedbackState = nil
             }
 
             if let snapshot = makeLookupSnapshot(bundle: bundle, coordinate: coordinate) {
                 libraryStore.recordLookup(snapshot)
-            }
-
-            neighborhoodBoundaries = placeProfile.boundaries
-            selectedBoundary = boundaryOverlay(for: placeProfile.boundaries, scale: boundaryScale)
-            isBoundaryLoading = false
-
-            if boundaryScale != .zip {
-                await updateBoundaryAndDataForScale(boundaryScale, requestID: requestID)
             }
         } catch is CancellationError {
             return
@@ -233,10 +226,12 @@ final class MapSelectionModel: ObservableObject {
             if case .noZCTAFound = serviceError {
                 selectedZipCode = nil
                 censusMetrics = nil
+                selectedDemographics = nil
                 metricsSource = nil
                 selectedBoundary = nil
                 neighborhoodBoundaries = nil
                 selectedZipBundle = nil
+                resolvedCoordinate = nil
                 resolvedPlaceProfile = nil
                 isBoundaryLoading = false
                 mapNotice = AppStrings.Labels.noZipAvailableNotice
@@ -315,6 +310,7 @@ final class MapSelectionModel: ObservableObject {
         selectedBoundary = nil
         neighborhoodBoundaries = nil
         selectedZipBundle = nil
+        resolvedCoordinate = nil
         resolvedPlaceProfile = nil
         isBoundaryLoading = false
         selectionFeedbackState = .sampleFallback
@@ -346,7 +342,7 @@ final class MapSelectionModel: ObservableObject {
     }
 
     private var currentLookupSnapshot: NeighborhoodLookupSnapshot? {
-        guard let coordinate = tappedCoordinate, let bundle = selectedZipBundle else { return nil }
+        guard let coordinate = resolvedCoordinate, let bundle = selectedZipBundle else { return nil }
         return makeLookupSnapshot(bundle: bundle, coordinate: coordinate)
     }
 

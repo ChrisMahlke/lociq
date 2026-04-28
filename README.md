@@ -71,6 +71,7 @@ The Firebase callable path also requires:
 - `Config/GoogleService-Info.plist` from Firebase for bundle id `io.chrismahlke.lociq`
 - Firebase App Check to be registered for the iOS app
 - Firebase Authentication Anonymous sign-in to be enabled for the project
+- Lociq uses `DeviceCheckProvider` on physical devices and `AppCheckDebugProvider` on the simulator
 
 Only the resolved runtime values are written into the built app's `Info.plist`; the local `.xcconfig` files themselves are not copied into the app bundle.
 

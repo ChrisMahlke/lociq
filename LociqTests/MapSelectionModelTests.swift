@@ -102,6 +102,55 @@ struct MapSelectionModelTests {
         #expect(model.savedPlaces.count == 1)
     }
 
+    @Test func keepsExistingSelectionVisibleWhileRefreshingNewSelection() async throws {
+        let firstCoordinate = CLLocationCoordinate2D(latitude: 37.78, longitude: -122.4)
+        let secondCoordinate = CLLocationCoordinate2D(latitude: 34.05, longitude: -118.24)
+        let firstBundle = makeZipBundle(
+            zcta: "94107",
+            countyName: "San Francisco County",
+            tractGeoid: "06075022900",
+            tractCode: "022900",
+            placeName: "San Francisco",
+            demographicsName: "San Francisco ZIP Demographics",
+            population: 41_000
+        )
+        let secondBundle = makeZipBundle(
+            zcta: "90012",
+            countyName: "Los Angeles County",
+            tractGeoid: "06037207500",
+            tractCode: "207500",
+            placeName: "Los Angeles",
+            demographicsName: "Los Angeles ZIP Demographics",
+            population: 24_000
+        )
+        let service = DelayedProfileCensusNeighborhoodService(
+            profilesByCoordinate: [
+                coordinateKey(firstCoordinate): makeResolvedPlaceProfile(bundle: firstBundle),
+                coordinateKey(secondCoordinate): makeResolvedPlaceProfile(bundle: secondBundle)
+            ],
+            delaysByCoordinate: [
+                coordinateKey(secondCoordinate): 150_000_000
+            ]
+        )
+        let model = MapSelectionModel(service: service, libraryStore: makeLibraryStore())
+
+        model.handleMapSelection(firstCoordinate)
+        await waitUntil { model.selectedZipCode == "94107" && model.isBoundaryLoading == false }
+
+        model.handleMapSelection(secondCoordinate)
+        try? await Task.sleep(nanoseconds: 40_000_000)
+
+        #expect(model.isBoundaryLoading == true)
+        #expect(model.selectedZipCode == "94107")
+        #expect(model.selectedZipBundle?.place?.name == "San Francisco")
+        #expect(model.censusMetrics?.population == 41_000)
+
+        await waitUntil { model.selectedZipCode == "90012" && model.isBoundaryLoading == false }
+
+        #expect(model.selectedZipBundle?.place?.name == "Los Angeles")
+        #expect(model.censusMetrics?.population == 24_000)
+    }
+
     private func waitUntil(
         timeoutNanoseconds: UInt64 = 1_000_000_000,
         condition: @escaping @MainActor () -> Bool
@@ -233,28 +282,142 @@ private actor StubCensusNeighborhoodService: CensusNeighborhoodServing {
     }
 }
 
-private func makeZipBundle() -> ZipLookupResult {
-    let zipBoundary = makePolygonFeatureCollection(propertyKey: "ZCTA5", propertyValue: "94107")
+private actor DelayedProfileCensusNeighborhoodService: CensusNeighborhoodServing {
+    let profilesByCoordinate: [String: ResolvedPlaceProfile]
+    let delaysByCoordinate: [String: UInt64]
+
+    init(
+        profilesByCoordinate: [String: ResolvedPlaceProfile],
+        delaysByCoordinate: [String: UInt64] = [:]
+    ) {
+        self.profilesByCoordinate = profilesByCoordinate
+        self.delaysByCoordinate = delaysByCoordinate
+    }
+
+    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile {
+        let key = coordinateKey(latitude: latitude, longitude: longitude)
+
+        if let delay = delaysByCoordinate[key], delay > 0 {
+            try await Task.sleep(nanoseconds: delay)
+        }
+
+        guard let profile = profilesByCoordinate[key] else {
+            throw CensusZipDemographicsService.ServiceError.noZCTAFound
+        }
+
+        return profile
+    }
+
+    func fetchZipBundle(latitude: Double, longitude: Double) async throws -> ZipLookupResult {
+        try await fetchPlaceProfile(latitude: latitude, longitude: longitude).zipBundle
+    }
+
+    func fetchNeighborhoodBoundaries(
+        latitude: Double,
+        longitude: Double,
+        tractGeoid: String?,
+        zipBoundary: GeoJSONFeatureCollection
+    ) async -> NeighborhoodBoundarySet {
+        let key = coordinateKey(latitude: latitude, longitude: longitude)
+        return profilesByCoordinate[key]?.boundaries
+            ?? NeighborhoodBoundarySet(zip: zipBoundary, tract: nil, block: nil)
+    }
+
+    func fetchDemographics(
+        for scale: NeighborhoodScale,
+        zcta: String,
+        tractGeoid: String?,
+        latitude: Double,
+        longitude: Double
+    ) async throws -> Demographics {
+        let profile = try await fetchPlaceProfile(latitude: latitude, longitude: longitude)
+
+        switch scale {
+        case .zip:
+            return profile.scaleDemographics.zip
+        case .tract:
+            if let tract = profile.scaleDemographics.tract {
+                return tract
+            }
+            throw CensusZipDemographicsService.ServiceError.noDemographicsFound
+        }
+    }
+
+    func fetchComparisonProfile(
+        latitude: Double,
+        longitude: Double,
+        scale: NeighborhoodScale,
+        fallbackTitle: String,
+        fallbackSubtitle: String
+    ) async throws -> ComparisonProfileResult {
+        let profile = try await fetchPlaceProfile(latitude: latitude, longitude: longitude)
+        let demographics = try await fetchDemographics(
+            for: scale,
+            zcta: profile.zipBundle.zcta,
+            tractGeoid: profile.zipBundle.tract?.geoid,
+            latitude: latitude,
+            longitude: longitude
+        )
+
+        return ComparisonProfileResult(
+            id: profile.zipBundle.tract?.geoid ?? profile.zipBundle.zcta,
+            title: profile.zipBundle.place?.name ?? fallbackTitle,
+            subtitle: fallbackSubtitle,
+            demographics: demographics,
+            metricsSource: scale == .tract ? .tract : .zcta
+        )
+    }
+}
+
+private func makeZipBundle(
+    zcta: String = "94107",
+    countyName: String = "San Francisco County",
+    tractGeoid: String = "06075022900",
+    tractCode: String = "022900",
+    placeName: String = "San Francisco",
+    demographicsName: String = "ZIP Demographics",
+    population: Int = 41_000
+) -> ZipLookupResult {
+    let zipBoundary = makePolygonFeatureCollection(propertyKey: "ZCTA5", propertyValue: zcta)
 
     return ZipLookupResult(
-        zcta: "94107",
-        county: CountyInfo(name: "San Francisco County", stateFIPS: "06", countyFIPS: "075", geoid: "06075"),
-        tract: TractInfo(name: "Tract 022900", geoid: "06075022900", stateFIPS: "06", countyFIPS: "075", tractCode: "022900"),
-        place: PlaceInfo(name: "San Francisco", stateFIPS: "06", placeFIPS: "67000", type: .incorporatedPlace),
+        zcta: zcta,
+        county: CountyInfo(name: countyName, stateFIPS: "06", countyFIPS: "075", geoid: "06075"),
+        tract: TractInfo(name: "Tract \(tractCode)", geoid: tractGeoid, stateFIPS: "06", countyFIPS: "075", tractCode: tractCode),
+        place: PlaceInfo(name: placeName, stateFIPS: "06", placeFIPS: "67000", type: .incorporatedPlace),
         isIncorporatedPlace: true,
         boundary: zipBoundary,
         boundaryMetrics: nil,
-        demographics: makeDemographics(name: "ZIP Demographics", population: 41_000),
+        demographics: makeDemographics(name: demographicsName, population: population),
         insights: []
     )
 }
 
-private func makeBoundaries() -> NeighborhoodBoundarySet {
+private func makeResolvedPlaceProfile(bundle: ZipLookupResult) -> ResolvedPlaceProfile {
+    ResolvedPlaceProfile(
+        zipBundle: bundle,
+        boundaries: makeBoundaries(tractGeoid: bundle.tract?.geoid ?? "06075022900"),
+        scaleDemographics: ScaleDemographicsBundle(
+            zip: bundle.demographics,
+            tract: nil
+        )
+    )
+}
+
+private func makeBoundaries(tractGeoid: String = "06075022900") -> NeighborhoodBoundarySet {
     NeighborhoodBoundarySet(
         zip: makePolygonFeatureCollection(propertyKey: "ZCTA5", propertyValue: "94107"),
-        tract: makePolygonFeatureCollection(propertyKey: "GEOID", propertyValue: "06075022900"),
+        tract: makePolygonFeatureCollection(propertyKey: "GEOID", propertyValue: tractGeoid),
         block: nil
     )
+}
+
+private func coordinateKey(_ coordinate: CLLocationCoordinate2D) -> String {
+    coordinateKey(latitude: coordinate.latitude, longitude: coordinate.longitude)
+}
+
+private func coordinateKey(latitude: Double, longitude: Double) -> String {
+    String(format: "%.5f,%.5f", latitude, longitude)
 }
 
 private func makePolygonFeatureCollection(propertyKey: String, propertyValue: String) -> GeoJSONFeatureCollection {
