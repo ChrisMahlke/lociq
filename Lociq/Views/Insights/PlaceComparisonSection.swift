@@ -9,6 +9,9 @@ struct PlaceComparisonSection: View {
     let boundaryScale: BoundaryOverlayScale
     let onReplaceComparison: () -> Void
     let onClearComparison: () -> Void
+    let isComparisonSaved: Bool
+    let onSaveComparison: () -> Void
+    let shareAsset: ComparisonShareCardAsset?
 
     private let primaryTint: Color = .blue
     private let secondaryTint: Color = .orange
@@ -121,6 +124,34 @@ struct PlaceComparisonSection: View {
             }
             .buttonStyle(.bordered)
             .accessibilityIdentifier("compare.replace")
+
+            Button(action: onSaveComparison) {
+                Image(systemName: isComparisonSaved ? "bookmark.fill" : "bookmark")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.orange)
+                    .frame(width: 34, height: 34)
+                    .background(Color.orange.opacity(0.12), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("compare.save")
+            .accessibilityLabel(isComparisonSaved ? AppStrings.Labels.removeSavedComparison : AppStrings.Labels.saveComparison)
+
+            if let shareAsset {
+                ShareLink(
+                    item: shareAsset,
+                    subject: Text(AppStrings.Labels.compareModeTitle),
+                    preview: SharePreview(shareAsset.title, image: shareAsset.previewImage)
+                ) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.orange)
+                        .frame(width: 34, height: 34)
+                        .background(Color.orange.opacity(0.12), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("compare.share")
+                .accessibilityLabel(AppStrings.Labels.comparisonShare)
+            }
 
             Button(action: onClearComparison) {
                 Image(systemName: "xmark.circle.fill")

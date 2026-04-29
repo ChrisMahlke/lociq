@@ -67,6 +67,54 @@ struct NeighborhoodShareSummaryFormatterTests {
         #expect(!summary.contains("\(AppStrings.Metrics.households):"))
         #expect(!summary.contains("\n\(AppStrings.Labels.insights)\n"))
     }
+
+    @Test func buildsComparisonSummaryWithSideBySideMetrics() {
+        let summary = ComparisonShareSummaryFormatter.makeSummary(
+            title: "San Francisco vs Oakland",
+            boundaryScale: .zip,
+            primary: ComparablePlaceProfile(
+                id: "primary",
+                title: "San Francisco",
+                subtitle: "San Francisco County · ZIP 94107",
+                metrics: CensusMetrics(
+                    population: 41_000,
+                    medianIncome: 120_000,
+                    medianAge: 36.4,
+                    households: 16_000,
+                    populationTrend: nil,
+                    ageBuckets: nil,
+                    educationLevels: nil,
+                    householdIncome: nil
+                ),
+                demographics: makeShareDemographics(),
+                metricsSource: .zcta
+            ),
+            secondary: ComparablePlaceProfile(
+                id: "secondary",
+                title: "Oakland",
+                subtitle: "Alameda County · ZIP 94607",
+                metrics: CensusMetrics(
+                    population: 30_000,
+                    medianIncome: 92_000,
+                    medianAge: 35.1,
+                    households: 12_000,
+                    populationTrend: nil,
+                    ageBuckets: nil,
+                    educationLevels: nil,
+                    householdIncome: nil
+                ),
+                demographics: makeShareDemographics(),
+                metricsSource: .tract
+            )
+        )
+
+        #expect(summary.contains(AppStrings.Labels.compareModeTitle))
+        #expect(summary.contains("San Francisco vs Oakland"))
+        #expect(summary.contains("\(AppStrings.Labels.currentScale): \(BoundaryOverlayScale.zip.displayTitle)"))
+        #expect(summary.contains("• San Francisco: \(InsightsFormatting.number(41_000))"))
+        #expect(summary.contains("• Oakland: \(InsightsFormatting.currency(92_000))"))
+        #expect(summary.contains("\(AppStrings.Labels.latestACSDataset): \(AppStrings.Release.latestACS5YearDataset)"))
+    }
 }
 
 private func makeShareDemographics() -> Demographics {

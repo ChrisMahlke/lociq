@@ -20,14 +20,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CensusAPIKey</key>
 	<string>$(CENSUS_API_KEY)</string>
-	<key>FirebaseAppCheckDebugToken</key>
-	<string>$(FIREBASE_APP_CHECK_DEBUG_TOKEN)</string>
-	<key>FirebaseFunctionsRegion</key>
-	<string>$(FIREBASE_FUNCTIONS_REGION)</string>
 	<key>GoogleMapsAPIKey</key>
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
-	<key>UseFirebaseLociqBackend</key>
-	<string>$(USE_FIREBASE_LOCIQ_BACKEND)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>

@@ -93,6 +93,7 @@ struct ExpandedInsightsHeaderRow: View {
     let isCurrentPlaceSaved: Bool
     let onStartCompare: () -> Void
     let onToggleSaved: () -> Void
+    let onEditLibraryEntry: () -> Void
     let shareAsset: NeighborhoodShareCardAsset?
     @Binding var boundaryScale: BoundaryOverlayScale
 
@@ -154,6 +155,24 @@ struct ExpandedInsightsHeaderRow: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("insights.save")
                 .accessibilityLabel(isCurrentPlaceSaved ? AppStrings.Labels.removeSavedPlace : AppStrings.Labels.savePlace)
+
+                Button(action: onEditLibraryEntry) {
+                    Image(systemName: "square.and.pencil")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(boundaryScale.themeColor)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            Circle()
+                                .fill(boundaryScale.themeColor.opacity(0.12))
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(boundaryScale.themeColor.opacity(0.2), lineWidth: 0.9)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("insights.library")
+                .accessibilityLabel(AppStrings.Labels.addNotesOrLabel)
 
                 if let shareAsset {
                     ShareLink(

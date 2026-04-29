@@ -15,7 +15,6 @@ Lociq is a SwiftUI iOS app for exploring neighborhood context on an interactive 
 - Swift
 - SwiftUI
 - Google Maps SDK for iOS
-- Optional Firebase callable backend for shared Census logic
 - U.S. Census Bureau APIs
 
 ## Project Structure
@@ -53,25 +52,8 @@ The project uses local configuration files so the real Google Maps key is not ha
 - Committed example: [`Config/GoogleMaps.example.xcconfig`](/Users/chrismahlke/ios/lociq/Config/GoogleMaps.example.xcconfig)
 - Local file for your real key: `Config/GoogleMaps.xcconfig`
 - Optional local secrets file: `Config/Secrets.xcconfig`
-- Optional Firebase bundle file: `Config/GoogleService-Info.plist`
 
 The app reads configuration through [`AppConfig.swift`](/Users/chrismahlke/ios/lociq/Lociq/AppConfig.swift), and Google Maps is initialized at startup in [`LociqApp.swift`](/Users/chrismahlke/ios/lociq/Lociq/LociqApp.swift).
-
-To enable the shared Firebase backend, add these keys to `Config/Secrets.xcconfig`:
-
-```xcconfig
-USE_FIREBASE_LOCIQ_BACKEND = true
-FIREBASE_FUNCTIONS_REGION = us-central1
-```
-
-When that flag is on, `CensusZipDemographicsService` will attempt the shared Firebase callable path first and fall back to the direct Census/FCC/TIGERweb path if Firebase is unavailable or the call fails.
-
-The Firebase callable path also requires:
-
-- `Config/GoogleService-Info.plist` from Firebase for bundle id `io.chrismahlke.lociq`
-- Firebase App Check to be registered for the iOS app
-- Firebase Authentication Anonymous sign-in to be enabled for the project
-- Lociq uses `DeviceCheckProvider` on physical devices and `AppCheckDebugProvider` on the simulator
 
 Only the resolved runtime values are written into the built app's `Info.plist`; the local `.xcconfig` files themselves are not copied into the app bundle.
 
@@ -96,13 +78,6 @@ io.chrismahlke.lociq
 - U.S. Census Bureau ACS 5-Year estimates
 - TIGERweb / TIGER boundary geometry
 - FCC Census Block API
-- Firebase callable wrappers for shared Census lookup logic
-
-## Firebase Migration Notes
-
-- `fetchZipBundle`, `fetchNeighborhoodBoundaries`, and `fetchDemographics` now have an optional Firebase client path.
-- The direct REST implementation is still present as a fallback so the app remains usable during migration.
-- Apple geocoding should stay local for now. It is UI-native and separate from the shared Census backend logic.
 
 ## Development Notes
 
@@ -120,7 +95,7 @@ xcodebuild test -project Lociq.xcodeproj -scheme Lociq -destination 'platform=iO
 ## Security Notes
 
 - Do not commit `Config/GoogleMaps.xcconfig`.
-- Do not commit `Config/Secrets.xcconfig` or `Config/GoogleService-Info.plist`.
+- Do not commit `Config/Secrets.xcconfig`.
 - Treat the key as deployable client configuration, not as a server secret.
 - Real protection comes from Google Cloud restrictions on bundle ID and API scope.
 

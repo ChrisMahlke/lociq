@@ -60,21 +60,6 @@ enum AppConfig {
         value(forAnyOf: ["CENSUS_API_KEY", "CensusAPIKey"])
     }
 
-    /// Enables the Firebase callable backend for shared Census logic when the app is configured.
-    static var useFirebaseLociqBackend: Bool {
-        booleanValue(forAnyOf: ["USE_FIREBASE_LOCIQ_BACKEND", "UseFirebaseLociqBackend"])
-    }
-
-    /// Region used by the deployed callable Functions backend.
-    static var firebaseFunctionsRegion: String {
-        value(forAnyOf: ["FIREBASE_FUNCTIONS_REGION", "FirebaseFunctionsRegion"]).ifEmpty("us-central1")
-    }
-
-    /// Optional App Check debug token for local simulator use.
-    static var firebaseAppCheckDebugToken: String {
-        value(forAnyOf: ["FIREBASE_APP_CHECK_DEBUG_TOKEN", "FirebaseAppCheckDebugToken"])
-    }
-
     private static func value(forAnyOf keys: [String]) -> String {
         for key in keys {
             let resolved = value(for: key)
@@ -83,11 +68,6 @@ enum AppConfig {
             }
         }
         return ""
-    }
-
-    private static func booleanValue(forAnyOf keys: [String]) -> Bool {
-        let normalized = value(forAnyOf: keys).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return ["1", "true", "yes", "on"].contains(normalized)
     }
 
     private static func value(for key: String) -> String {
@@ -101,11 +81,5 @@ enum AppConfig {
         }
 
         return ""
-    }
-}
-
-private extension String {
-    func ifEmpty(_ fallback: String) -> String {
-        isEmpty ? fallback : self
     }
 }

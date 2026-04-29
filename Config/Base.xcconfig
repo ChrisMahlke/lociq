@@ -6,9 +6,6 @@
 // 3) Keep Config/GoogleMaps.xcconfig out of git
 GOOGLE_MAPS_API_KEY = 
 CENSUS_API_KEY =
-USE_FIREBASE_LOCIQ_BACKEND = true
-FIREBASE_FUNCTIONS_REGION = us-central1
-FIREBASE_APP_CHECK_DEBUG_TOKEN =
 
 #include? "Secrets.xcconfig"
 #include? "GoogleMaps.xcconfig"

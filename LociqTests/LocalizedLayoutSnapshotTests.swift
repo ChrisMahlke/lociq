@@ -40,12 +40,24 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
             SnapshotCase(
                 name: "more-compact",
                 size: CGSize(width: 320, height: 1400),
-                view: AnyView(MoreScreen(libraryStore: libraryStore, onSelectPlace: { _ in }))
+                view: AnyView(
+                    MoreScreen(
+                        libraryStore: libraryStore,
+                        onSelectPlace: { _ in },
+                        onSelectComparison: { _ in }
+                    )
+                )
             ),
             SnapshotCase(
                 name: "more-regular",
                 size: CGSize(width: 834, height: 1194),
-                view: AnyView(MoreScreen(libraryStore: libraryStore, onSelectPlace: { _ in }))
+                view: AnyView(
+                    MoreScreen(
+                        libraryStore: libraryStore,
+                        onSelectPlace: { _ in },
+                        onSelectComparison: { _ in }
+                    )
+                )
             ),
             SnapshotCase(
                 name: "insights-compact",
@@ -64,6 +76,10 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
                         onRetrySelection: {},
                         isCurrentPlaceSaved: true,
                         onToggleSaved: {},
+                        currentLibraryEntry: nil,
+                        onSavePlaceDetails: { _, _, _ in },
+                        isCurrentComparisonSaved: false,
+                        onSaveComparison: {},
                         boundaryScale: .constant(.tract),
                         sheetOffset: .constant(1000)
                     )
@@ -86,6 +102,10 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
                         onRetrySelection: {},
                         isCurrentPlaceSaved: true,
                         onToggleSaved: {},
+                        currentLibraryEntry: nil,
+                        onSavePlaceDetails: { _, _, _ in },
+                        isCurrentComparisonSaved: false,
+                        onSaveComparison: {},
                         boundaryScale: .constant(.tract),
                         sheetOffset: .constant(1000)
                     )

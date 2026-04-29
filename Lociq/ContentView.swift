@@ -226,7 +226,8 @@ struct ContentView: View {
             case .more:
                 MoreScreen(
                     libraryStore: libraryStore,
-                    onSelectPlace: openLibraryEntry
+                    onSelectPlace: openLibraryEntry,
+                    onSelectComparison: openSavedComparison
                 )
             }
         }
@@ -257,6 +258,10 @@ struct ContentView: View {
                     onClearCompare: compareModel.clear,
                     isCurrentPlaceSaved: selectionModel.isCurrentPlaceSaved,
                     onToggleSaved: selectionModel.toggleSavedCurrentPlace,
+                    currentLibraryEntry: selectionModel.currentLibraryEntry,
+                    onSavePlaceDetails: selectionModel.saveCurrentPlaceWithMetadata,
+                    isCurrentComparisonSaved: isCurrentComparisonSaved,
+                    onSaveComparison: saveCurrentComparison,
                     boundaryScale: boundaryScaleBinding,
                     sheetOffset: .constant(1000)
                 )
@@ -266,7 +271,8 @@ struct ContentView: View {
             case .more:
                 MoreScreen(
                     libraryStore: libraryStore,
-                    onSelectPlace: openLibraryEntry
+                    onSelectPlace: openLibraryEntry,
+                    onSelectComparison: openSavedComparison
                 )
             }
         }
@@ -285,6 +291,37 @@ struct ContentView: View {
             minimumZoom: 13
         )
         selectionModel.openLibraryEntry(entry)
+    }
+
+    private func openSavedComparison(_ entry: SavedComparisonEntry) {
+        selection = .map
+        hasSeenMapQuickTip = true
+        showSearchExperience = false
+        showComparePicker = false
+        searchModel.dismissResults()
+        selectionModel.boundaryScale = entry.boundaryScale
+        compareModel.clear()
+
+        let primaryCoordinate = CLLocationCoordinate2D(
+            latitude: entry.primaryLatitude,
+            longitude: entry.primaryLongitude
+        )
+        mapFocusRequest = MapFocusRequest(
+            id: UUID(),
+            coordinate: primaryCoordinate,
+            minimumZoom: 13
+        )
+        selectionModel.handleMapSelection(primaryCoordinate)
+
+        let comparisonResult = PlaceSearchResult(
+            title: entry.secondaryTitle,
+            subtitle: entry.secondarySubtitle,
+            coordinate: CLLocationCoordinate2D(
+                latitude: entry.secondaryLatitude,
+                longitude: entry.secondaryLongitude
+            )
+        )
+        compareModel.beginComparison(with: comparisonResult, scale: entry.boundaryScale)
     }
 
     private func openSearchResult(_ result: PlaceSearchResult) {
@@ -316,6 +353,28 @@ struct ContentView: View {
         showComparePicker = false
         compareSearchModel.selectResult(result)
         compareModel.beginComparison(with: result, scale: selectionModel.boundaryScale)
+    }
+
+    private var currentComparisonSnapshot: SavedComparisonSnapshot? {
+        guard let primarySnapshot = selectionModel.currentLookupSnapshot else { return nil }
+        return compareModel.makeSavedComparisonSnapshot(
+            primary: primarySnapshot,
+            scale: selectionModel.boundaryScale
+        )
+    }
+
+    private var isCurrentComparisonSaved: Bool {
+        guard let currentComparisonSnapshot else { return false }
+        return libraryStore.isComparisonSaved(id: currentComparisonSnapshot.id)
+    }
+
+    private func saveCurrentComparison() {
+        guard let currentComparisonSnapshot else { return }
+        if libraryStore.isComparisonSaved(id: currentComparisonSnapshot.id) {
+            libraryStore.removeSavedComparison(id: currentComparisonSnapshot.id)
+        } else {
+            libraryStore.saveComparison(currentComparisonSnapshot)
+        }
     }
 
     var body: some View {
@@ -373,6 +432,10 @@ struct ContentView: View {
                                 onClearCompare: compareModel.clear,
                                 isCurrentPlaceSaved: selectionModel.isCurrentPlaceSaved,
                                 onToggleSaved: selectionModel.toggleSavedCurrentPlace,
+                                currentLibraryEntry: selectionModel.currentLibraryEntry,
+                                onSavePlaceDetails: selectionModel.saveCurrentPlaceWithMetadata,
+                                isCurrentComparisonSaved: isCurrentComparisonSaved,
+                                onSaveComparison: saveCurrentComparison,
                                 boundaryScale: boundaryScaleBinding,
                                 sheetOffset: $sheetOffset
                             )

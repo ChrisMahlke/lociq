@@ -19,12 +19,18 @@ struct InsightsSheetContent: View {
     let onReplaceCompare: () -> Void
     let onClearCompare: () -> Void
     let isCurrentPlaceSaved: Bool
+    let currentLibraryEntry: NeighborhoodLibraryEntry?
     let onToggleSaved: () -> Void
+    let onSavePlaceDetails: (String, String, Bool) -> Void
+    let isCurrentComparisonSaved: Bool
+    let onSaveComparison: () -> Void
     @Binding var boundaryScale: BoundaryOverlayScale
     @Binding var sheetOffset: CGFloat
 
     @State private var hintVisible: Bool = true
     @State private var shareAsset: NeighborhoodShareCardAsset?
+    @State private var comparisonShareAsset: ComparisonShareCardAsset?
+    @State private var libraryEditorDraft: EditableNeighborhoodLibraryEntry?
 
     init(
         zipCode: String?,
@@ -46,6 +52,10 @@ struct InsightsSheetContent: View {
         onClearCompare: @escaping () -> Void = {},
         isCurrentPlaceSaved: Bool,
         onToggleSaved: @escaping () -> Void,
+        currentLibraryEntry: NeighborhoodLibraryEntry?,
+        onSavePlaceDetails: @escaping (String, String, Bool) -> Void,
+        isCurrentComparisonSaved: Bool,
+        onSaveComparison: @escaping () -> Void,
         boundaryScale: Binding<BoundaryOverlayScale>,
         sheetOffset: Binding<CGFloat>
     ) {
@@ -68,6 +78,10 @@ struct InsightsSheetContent: View {
         self.onClearCompare = onClearCompare
         self.isCurrentPlaceSaved = isCurrentPlaceSaved
         self.onToggleSaved = onToggleSaved
+        self.currentLibraryEntry = currentLibraryEntry
+        self.onSavePlaceDetails = onSavePlaceDetails
+        self.isCurrentComparisonSaved = isCurrentComparisonSaved
+        self.onSaveComparison = onSaveComparison
         self._boundaryScale = boundaryScale
         self._sheetOffset = sheetOffset
     }
@@ -151,6 +165,20 @@ struct InsightsSheetContent: View {
             householdsValue,
             ageValue,
             visibleInsightTitles
+        ].joined(separator: "::")
+    }
+
+    private var comparisonShareExportIdentity: String {
+        guard let primaryComparisonProfile, let comparisonProfile else { return "disabled" }
+
+        return [
+            boundaryScale.rawValue,
+            primaryComparisonProfile.id,
+            comparisonProfile.id,
+            InsightsFormatting.number(primaryComparisonProfile.metrics.population),
+            InsightsFormatting.number(comparisonProfile.metrics.population),
+            InsightsFormatting.currency(primaryComparisonProfile.metrics.medianIncome),
+            InsightsFormatting.currency(comparisonProfile.metrics.medianIncome)
         ].joined(separator: "::")
     }
 
@@ -289,6 +317,15 @@ struct InsightsSheetContent: View {
                                 isCurrentPlaceSaved: isCurrentPlaceSaved,
                                 onStartCompare: onStartCompare,
                                 onToggleSaved: onToggleSaved,
+                                onEditLibraryEntry: {
+                                    libraryEditorDraft = EditableNeighborhoodLibraryEntry(
+                                        id: currentLibraryEntry?.id ?? zipBundle?.tract?.geoid ?? areaTitle,
+                                        defaultTitle: currentLibraryEntry?.title ?? areaTitle,
+                                        customLabel: currentLibraryEntry?.normalizedCustomLabel ?? "",
+                                        note: currentLibraryEntry?.normalizedNote ?? "",
+                                        isPinned: currentLibraryEntry?.isPinned ?? false
+                                    )
+                                },
                                 shareAsset: shareAsset,
                                 boundaryScale: $boundaryScale
                             )
@@ -304,7 +341,10 @@ struct InsightsSheetContent: View {
                                     comparisonErrorMessage: comparisonErrorMessage,
                                     boundaryScale: boundaryScale,
                                     onReplaceComparison: onReplaceCompare,
-                                    onClearComparison: onClearCompare
+                                    onClearComparison: onClearCompare,
+                                    isComparisonSaved: isCurrentComparisonSaved,
+                                    onSaveComparison: onSaveComparison,
+                                    shareAsset: comparisonShareAsset
                                 )
                             } else {
                                 KeyMetricsGrid(metrics: metrics)
@@ -352,6 +392,30 @@ struct InsightsSheetContent: View {
                 metrics: metrics,
                 demographics: demographics,
                 insights: insights
+            )
+        }
+        .task(id: comparisonShareExportIdentity) {
+            guard let primaryComparisonProfile, let comparisonProfile else {
+                comparisonShareAsset = nil
+                return
+            }
+
+            comparisonShareAsset = ComparisonShareCardExporter.makeAsset(
+                boundaryScale: boundaryScale,
+                primary: primaryComparisonProfile,
+                secondary: comparisonProfile
+            )
+        }
+        .sheet(item: $libraryEditorDraft) { draft in
+            NeighborhoodLibraryEditorSheet(
+                draft: draft,
+                onSave: { updatedDraft in
+                    onSavePlaceDetails(
+                        updatedDraft.customLabel,
+                        updatedDraft.note,
+                        updatedDraft.isPinned
+                    )
+                }
             )
         }
         .animation(.easeInOut(duration: 0.3), value: refreshAnimationKey)

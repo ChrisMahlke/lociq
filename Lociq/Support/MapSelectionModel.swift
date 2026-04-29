@@ -82,12 +82,16 @@ final class MapSelectionModel: ObservableObject {
     private var activeSelectionRequestID = UUID()
     private var activeFetchTask: Task<Void, Never>?
     private var activeScaleTask: Task<Void, Never>?
+    private var libraryStoreCancellable: AnyCancellable?
     private var resolvedCoordinate: CLLocationCoordinate2D?
     private var resolvedPlaceProfile: ResolvedPlaceProfile?
 
     init(service: any CensusNeighborhoodServing, libraryStore: NeighborhoodLibraryStore) {
         self.service = service
         self.libraryStore = libraryStore
+        libraryStoreCancellable = libraryStore.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
 
     var hasActiveSelection: Bool {
@@ -109,6 +113,16 @@ final class MapSelectionModel: ObservableObject {
     var isCurrentPlaceSaved: Bool {
         guard let currentLookupSnapshot else { return false }
         return libraryStore.isSaved(currentLookupSnapshot)
+    }
+
+    var currentLookupSnapshot: NeighborhoodLookupSnapshot? {
+        guard let coordinate = resolvedCoordinate, let bundle = selectedZipBundle else { return nil }
+        return makeLookupSnapshot(bundle: bundle, coordinate: coordinate)
+    }
+
+    var currentLibraryEntry: NeighborhoodLibraryEntry? {
+        guard let currentLookupSnapshot else { return nil }
+        return libraryStore.entry(id: currentLookupSnapshot.id)
     }
 
     func handleMapSelection(_ coordinate: CLLocationCoordinate2D?) {
@@ -161,6 +175,21 @@ final class MapSelectionModel: ObservableObject {
     func toggleSavedCurrentPlace() {
         guard let currentLookupSnapshot else { return }
         _ = libraryStore.toggleSaved(currentLookupSnapshot)
+        objectWillChange.send()
+    }
+
+    func saveCurrentPlaceWithMetadata(
+        customLabel: String,
+        note: String,
+        isPinned: Bool
+    ) {
+        guard let currentLookupSnapshot else { return }
+        libraryStore.saveWithMetadata(
+            currentLookupSnapshot,
+            customLabel: customLabel,
+            note: note,
+            isPinned: isPinned
+        )
         objectWillChange.send()
     }
 
@@ -339,11 +368,6 @@ final class MapSelectionModel: ObservableObject {
         case .tract:
             return boundaries.tract
         }
-    }
-
-    private var currentLookupSnapshot: NeighborhoodLookupSnapshot? {
-        guard let coordinate = resolvedCoordinate, let bundle = selectedZipBundle else { return nil }
-        return makeLookupSnapshot(bundle: bundle, coordinate: coordinate)
     }
 
     private func makeLookupSnapshot(

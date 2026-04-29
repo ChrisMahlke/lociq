@@ -140,6 +140,19 @@ enum AppStrings {
         static var removeSavedPlace: String { L10n.tr("Remove saved place") }
         static var removeRecentLookup: String { L10n.tr("Remove recent lookup") }
         static var removeLibraryItem: String { L10n.tr("Remove") }
+        static var libraryDetails: String { L10n.tr("Library details") }
+        static var customLabel: String { L10n.tr("Custom label") }
+        static var notes: String { L10n.tr("Notes") }
+        static var pinNeighborhood: String { L10n.tr("Pin neighborhood") }
+        static var unpinNeighborhood: String { L10n.tr("Unpin neighborhood") }
+        static var pinned: String { L10n.tr("Pinned") }
+        static var saveDetails: String { L10n.tr("Save details") }
+        static var comparisonShare: String { L10n.tr("Share comparison") }
+        static var saveComparison: String { L10n.tr("Save comparison") }
+        static var removeSavedComparison: String { L10n.tr("Remove saved comparison") }
+        static var savedComparisons: String { L10n.tr("Saved comparisons") }
+        static var editLibraryEntry: String { L10n.tr("Edit library entry") }
+        static var addNotesOrLabel: String { L10n.tr("Add notes or label") }
     }
 
     enum Formats {
@@ -272,6 +285,14 @@ enum AppStrings {
         static var recentLookups: String { L10n.tr("Recent lookups") }
         static var recentLookupsSubtitle: String { L10n.tr("Jump back to neighborhoods you explored recently") }
         static var noRecentLookupsYet: String { L10n.tr("Recent places will appear here after you explore the map.") }
+        static var pinnedNeighborhoods: String { L10n.tr("Pinned neighborhoods") }
+        static var pinnedNeighborhoodsSubtitle: String { L10n.tr("Keep a short list of places you want to revisit first") }
+        static var noPinnedNeighborhoodsYet: String { L10n.tr("Pin a saved place to keep it at the top of your library.") }
+        static var savedComparisonsSubtitle: String { L10n.tr("Reopen side-by-side place comparisons without searching again") }
+        static var noSavedComparisonsYet: String { L10n.tr("Save an active comparison from the profile sheet to keep it in your library.") }
+        static var notesPlaceholder: String { L10n.tr("Capture why this place matters, what stood out, or what you want to revisit later.") }
+        static var labelPlaceholder: String { L10n.tr("Optional short label") }
+        static var comparisonLibraryHint: String { L10n.tr("Tap a saved comparison to reopen it in the map view.") }
     }
 
     enum Network {

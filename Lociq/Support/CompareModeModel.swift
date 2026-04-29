@@ -45,14 +45,50 @@ final class CompareModeModel: ObservableObject {
         let target = ComparisonTarget(
             coordinate: result.coordinate,
             fallbackTitle: result.title,
-            fallbackSubtitle: result.subtitle
+            fallbackSubtitle: result.subtitle,
+            scale: scale
         )
         selectedTarget = target
         loadComparison(for: target, scale: scale, resetsVisibleProfile: true)
     }
 
+    func makeSavedComparisonSnapshot(
+        primary: NeighborhoodLookupSnapshot,
+        scale: BoundaryOverlayScale
+    ) -> SavedComparisonSnapshot? {
+        guard let secondaryProfile, let selectedTarget else { return nil }
+
+        let secondarySnapshot = NeighborhoodLookupSnapshot(
+            id: secondaryProfile.id,
+            title: secondaryProfile.title,
+            subtitle: secondaryProfile.subtitle,
+            zipCode: nil,
+            latitude: selectedTarget.coordinate.latitude,
+            longitude: selectedTarget.coordinate.longitude,
+            preferredScale: scale
+        )
+
+        let title = "\(primary.title) \(AppStrings.Labels.compareVersus) \(secondaryProfile.title)"
+
+        return SavedComparisonSnapshot(
+            id: Self.comparisonID(primaryID: primary.id, secondaryID: secondaryProfile.id, scale: scale),
+            title: title,
+            summary: "\(scale.displayTitle) · \(primary.subtitle) · \(secondaryProfile.subtitle)",
+            boundaryScale: scale,
+            primary: primary,
+            secondary: secondarySnapshot
+        )
+    }
+
     func refreshComparison(for scale: BoundaryOverlayScale) {
-        guard let selectedTarget else { return }
+        guard var selectedTarget else { return }
+        selectedTarget = ComparisonTarget(
+            coordinate: selectedTarget.coordinate,
+            fallbackTitle: selectedTarget.fallbackTitle,
+            fallbackSubtitle: selectedTarget.fallbackSubtitle,
+            scale: scale
+        )
+        self.selectedTarget = selectedTarget
         loadComparison(for: selectedTarget, scale: scale, resetsVisibleProfile: false)
     }
 
@@ -136,10 +172,19 @@ final class CompareModeModel: ObservableObject {
     private func isCurrentRequest(_ requestID: UUID) -> Bool {
         activeRequestID == requestID
     }
+
+    private static func comparisonID(
+        primaryID: String,
+        secondaryID: String,
+        scale: BoundaryOverlayScale
+    ) -> String {
+        "\(primaryID)::\(secondaryID)::\(scale.rawValue)"
+    }
 }
 
 private struct ComparisonTarget {
     let coordinate: CLLocationCoordinate2D
     let fallbackTitle: String
     let fallbackSubtitle: String
+    let scale: BoundaryOverlayScale
 }

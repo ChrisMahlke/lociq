@@ -4,6 +4,8 @@ struct MoreScreen: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var libraryStore: NeighborhoodLibraryStore
     let onSelectPlace: (NeighborhoodLibraryEntry) -> Void
+    let onSelectComparison: (SavedComparisonEntry) -> Void
+    @State private var editingEntry: EditableNeighborhoodLibraryEntry?
 
     private var backgroundWashColors: [Color] {
         if colorScheme == .dark {
@@ -26,14 +28,49 @@ struct MoreScreen: View {
             VStack(alignment: .leading, spacing: 14) {
                 MoreHeroCard()
                 NeighborhoodLibraryCard(
+                    title: AppStrings.More.pinnedNeighborhoods,
+                    subtitle: AppStrings.More.pinnedNeighborhoodsSubtitle,
+                    icon: "pin.fill",
+                    tint: .indigo,
+                    entries: libraryStore.pinnedPlaces,
+                    emptyState: AppStrings.More.noPinnedNeighborhoodsYet,
+                    removeActionTitle: AppStrings.Labels.removeSavedPlace,
+                    onSelectPlace: onSelectPlace,
+                    onEditPlace: { entry in
+                        editingEntry = EditableNeighborhoodLibraryEntry(entry: entry)
+                    },
+                    onTogglePinned: { entry in
+                        libraryStore.updatePlaceMetadata(
+                            id: entry.id,
+                            customLabel: entry.normalizedCustomLabel ?? "",
+                            note: entry.normalizedNote,
+                            isPinned: !entry.isPinned
+                        )
+                    },
+                    onRemovePlace: { entry in
+                        libraryStore.removeSavedPlace(id: entry.id)
+                    }
+                )
+                NeighborhoodLibraryCard(
                     title: AppStrings.More.savedPlaces,
                     subtitle: AppStrings.More.savedPlacesSubtitle,
                     icon: "bookmark.fill",
                     tint: .blue,
-                    entries: libraryStore.savedPlaces,
+                    entries: libraryStore.unpinnedSavedPlaces,
                     emptyState: AppStrings.More.noSavedPlacesYet,
                     removeActionTitle: AppStrings.Labels.removeSavedPlace,
                     onSelectPlace: onSelectPlace,
+                    onEditPlace: { entry in
+                        editingEntry = EditableNeighborhoodLibraryEntry(entry: entry)
+                    },
+                    onTogglePinned: { entry in
+                        libraryStore.updatePlaceMetadata(
+                            id: entry.id,
+                            customLabel: entry.normalizedCustomLabel ?? "",
+                            note: entry.normalizedNote,
+                            isPinned: !entry.isPinned
+                        )
+                    },
                     onRemovePlace: { entry in
                         libraryStore.removeSavedPlace(id: entry.id)
                     }
@@ -47,8 +84,26 @@ struct MoreScreen: View {
                     emptyState: AppStrings.More.noRecentLookupsYet,
                     removeActionTitle: AppStrings.Labels.removeRecentLookup,
                     onSelectPlace: onSelectPlace,
+                    onEditPlace: { entry in
+                        editingEntry = EditableNeighborhoodLibraryEntry(entry: entry)
+                    },
+                    onTogglePinned: { entry in
+                        libraryStore.updatePlaceMetadata(
+                            id: entry.id,
+                            customLabel: entry.normalizedCustomLabel ?? "",
+                            note: entry.normalizedNote,
+                            isPinned: !entry.isPinned
+                        )
+                    },
                     onRemovePlace: { entry in
                         libraryStore.removeRecentLookup(id: entry.id)
+                    }
+                )
+                SavedComparisonsCard(
+                    entries: libraryStore.savedComparisons,
+                    onSelectComparison: onSelectComparison,
+                    onRemoveComparison: { entry in
+                        libraryStore.removeSavedComparison(id: entry.id)
                     }
                 )
                 QuickStartCard()
@@ -74,6 +129,19 @@ struct MoreScreen: View {
                 .blur(radius: 10)
             }
         )
+        .sheet(item: $editingEntry) { draft in
+            NeighborhoodLibraryEditorSheet(
+                draft: draft,
+                onSave: { updatedDraft in
+                    libraryStore.updatePlaceMetadata(
+                        id: updatedDraft.id,
+                        customLabel: updatedDraft.customLabel,
+                        note: updatedDraft.note,
+                        isPinned: updatedDraft.isPinned
+                    )
+                }
+            )
+        }
     }
 }
 
@@ -86,6 +154,8 @@ private struct NeighborhoodLibraryCard: View {
     let emptyState: String
     let removeActionTitle: String
     let onSelectPlace: (NeighborhoodLibraryEntry) -> Void
+    let onEditPlace: (NeighborhoodLibraryEntry) -> Void
+    let onTogglePinned: (NeighborhoodLibraryEntry) -> Void
     let onRemovePlace: (NeighborhoodLibraryEntry) -> Void
 
     var body: some View {
@@ -113,6 +183,12 @@ private struct NeighborhoodLibraryCard: View {
                                 onSelect: {
                                     onSelectPlace(entry)
                                 },
+                                onEdit: {
+                                    onEditPlace(entry)
+                                },
+                                onTogglePinned: {
+                                    onTogglePinned(entry)
+                                },
                                 onRemove: {
                                     onRemovePlace(entry)
                                 }
@@ -130,6 +206,8 @@ private struct NeighborhoodLibraryRow: View {
     let tint: Color
     let removeActionTitle: String
     let onSelect: () -> Void
+    let onEdit: () -> Void
+    let onTogglePinned: () -> Void
     let onRemove: () -> Void
 
     var body: some View {
@@ -143,10 +221,17 @@ private struct NeighborhoodLibraryRow: View {
                         .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(entry.title)
+                        Text(entry.displayTitle)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
                             .fixedSize(horizontal: false, vertical: true)
+
+                        if let supportingTitle = entry.supportingTitle {
+                            Text(supportingTitle)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(tint)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
 
                         if !entry.subtitle.isEmpty {
                             Text(entry.subtitle)
@@ -155,12 +240,31 @@ private struct NeighborhoodLibraryRow: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
 
-                        Text(entry.preferredScale.displayTitle)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(tint)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(tint.opacity(0.12), in: Capsule())
+                        if !entry.normalizedNote.isEmpty {
+                            Text(entry.normalizedNote)
+                                .font(.caption)
+                                .foregroundStyle(.primary.opacity(0.72))
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        HStack(spacing: 6) {
+                            Text(entry.preferredScale.displayTitle)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(tint)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(tint.opacity(0.12), in: Capsule())
+
+                            if entry.isPinned {
+                                Label(AppStrings.Labels.pinned, systemImage: "pin.fill")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.indigo)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.indigo.opacity(0.12), in: Capsule())
+                            }
+                        }
                     }
 
                     Spacer(minLength: 0)
@@ -174,6 +278,17 @@ private struct NeighborhoodLibraryRow: View {
             .buttonStyle(.plain)
 
             Menu {
+                Button(action: onEdit) {
+                    Label(AppStrings.Labels.editLibraryEntry, systemImage: "pencil")
+                }
+
+                Button(action: onTogglePinned) {
+                    Label(
+                        entry.isPinned ? AppStrings.Labels.unpinNeighborhood : AppStrings.Labels.pinNeighborhood,
+                        systemImage: entry.isPinned ? "pin.slash" : "pin"
+                    )
+                }
+
                 Button(role: .destructive, action: onRemove) {
                     Label(removeActionTitle, systemImage: "trash")
                 }
@@ -189,6 +304,217 @@ private struct NeighborhoodLibraryRow: View {
         }
         .padding(12)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct SavedComparisonsCard: View {
+    let entries: [SavedComparisonEntry]
+    let onSelectComparison: (SavedComparisonEntry) -> Void
+    let onRemoveComparison: (SavedComparisonEntry) -> Void
+
+    var body: some View {
+        SectionPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeading(
+                    title: AppStrings.Labels.savedComparisons,
+                    subtitle: AppStrings.More.savedComparisonsSubtitle,
+                    icon: "rectangle.split.2x1.fill",
+                    tint: .orange
+                )
+
+                if entries.isEmpty {
+                    Text(AppStrings.More.noSavedComparisonsYet)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text(AppStrings.More.comparisonLibraryHint)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    VStack(spacing: 8) {
+                        ForEach(entries) { entry in
+                            SavedComparisonRow(
+                                entry: entry,
+                                onSelect: {
+                                    onSelectComparison(entry)
+                                },
+                                onRemove: {
+                                    onRemoveComparison(entry)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct SavedComparisonRow: View {
+    let entry: SavedComparisonEntry
+    let onSelect: () -> Void
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Button(action: onSelect) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "rectangle.split.2x1.fill")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.orange)
+                        .frame(width: 28, height: 28)
+                        .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(entry.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(entry.summary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(entry.boundaryScale.displayTitle)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.orange.opacity(0.12), in: Capsule())
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.orange.opacity(0.8))
+                        .padding(.top, 3)
+                }
+            }
+            .buttonStyle(.plain)
+
+            Menu {
+                Button(role: .destructive, action: onRemove) {
+                    Label(AppStrings.Labels.removeSavedComparison, systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 30)
+                    .background(Color.primary.opacity(0.06), in: Circle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+struct EditableNeighborhoodLibraryEntry: Identifiable {
+    let id: String
+    let defaultTitle: String
+    var customLabel: String
+    var note: String
+    var isPinned: Bool
+
+    init(
+        id: String,
+        defaultTitle: String,
+        customLabel: String,
+        note: String,
+        isPinned: Bool
+    ) {
+        self.id = id
+        self.defaultTitle = defaultTitle
+        self.customLabel = customLabel
+        self.note = note
+        self.isPinned = isPinned
+    }
+
+    init(entry: NeighborhoodLibraryEntry) {
+        id = entry.id
+        defaultTitle = entry.title
+        customLabel = entry.normalizedCustomLabel ?? ""
+        note = entry.normalizedNote
+        isPinned = entry.isPinned
+    }
+}
+
+struct NeighborhoodLibraryEditorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var customLabel: String
+    @State private var note: String
+    @State private var isPinned: Bool
+
+    let draft: EditableNeighborhoodLibraryEntry
+    let onSave: (EditableNeighborhoodLibraryEntry) -> Void
+
+    init(
+        draft: EditableNeighborhoodLibraryEntry,
+        onSave: @escaping (EditableNeighborhoodLibraryEntry) -> Void
+    ) {
+        self.draft = draft
+        self.onSave = onSave
+        _customLabel = State(initialValue: draft.customLabel)
+        _note = State(initialValue: draft.note)
+        _isPinned = State(initialValue: draft.isPinned)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(draft.defaultTitle)
+                        .font(.headline)
+                }
+
+                Section(header: Text(AppStrings.Labels.customLabel)) {
+                    TextField(AppStrings.More.labelPlaceholder, text: $customLabel)
+                }
+
+                Section(header: Text(AppStrings.Labels.notes)) {
+                    TextField(
+                        AppStrings.More.notesPlaceholder,
+                        text: $note,
+                        axis: .vertical
+                    )
+                    .lineLimit(4...8)
+                }
+
+                Section {
+                    Toggle(AppStrings.Labels.pinNeighborhood, isOn: $isPinned)
+                }
+            }
+            .navigationTitle(AppStrings.Labels.libraryDetails)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(AppStrings.Labels.dismiss) {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(AppStrings.Labels.saveDetails) {
+                        onSave(
+                            EditableNeighborhoodLibraryEntry(
+                                id: draft.id,
+                                defaultTitle: draft.defaultTitle,
+                                customLabel: customLabel,
+                                note: note,
+                                isPinned: isPinned
+                            )
+                        )
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 

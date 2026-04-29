@@ -73,6 +73,50 @@ struct NeighborhoodLibraryStoreTests {
         #expect(store.savedPlaces.isEmpty)
         #expect(store.recentLookups.map(\.id) == ["saved-then-recent"])
     }
+
+    @Test func persistsCustomLabelsNotesAndPinnedPlaces() {
+        let defaults = makeDefaults()
+        let store = NeighborhoodLibraryStore(userDefaults: defaults, storageKey: "metadata")
+        let snapshot = makeSnapshot(id: "06075022900", title: "San Francisco")
+
+        store.saveWithMetadata(
+            snapshot,
+            customLabel: "Shortlist",
+            note: "Great transit and strong income profile.",
+            isPinned: true
+        )
+
+        #expect(store.pinnedPlaces.map(\.id) == [snapshot.id])
+        #expect(store.savedPlaces.first?.displayTitle == "Shortlist")
+        #expect(store.savedPlaces.first?.normalizedNote == "Great transit and strong income profile.")
+
+        let reloaded = NeighborhoodLibraryStore(userDefaults: defaults, storageKey: "metadata")
+        #expect(reloaded.pinnedPlaces.map(\.id) == [snapshot.id])
+        #expect(reloaded.savedPlaces.first?.displayTitle == "Shortlist")
+    }
+
+    @Test func savesAndReloadsComparisonLibraryEntries() {
+        let defaults = makeDefaults()
+        let store = NeighborhoodLibraryStore(userDefaults: defaults, storageKey: "comparisons")
+        let snapshot = SavedComparisonSnapshot(
+            id: "a::b::ZIP",
+            title: "San Francisco vs Oakland",
+            summary: "ZIP · San Francisco County · Alameda County",
+            boundaryScale: .zip,
+            primary: makeSnapshot(id: "primary", title: "San Francisco"),
+            secondary: makeSnapshot(id: "secondary", title: "Oakland")
+        )
+
+        store.saveComparison(snapshot)
+
+        #expect(store.savedComparisons.count == 1)
+        #expect(store.savedComparisons.first?.title == "San Francisco vs Oakland")
+        #expect(store.isComparisonSaved(id: snapshot.id) == true)
+
+        let reloaded = NeighborhoodLibraryStore(userDefaults: defaults, storageKey: "comparisons")
+        #expect(reloaded.savedComparisons.count == 1)
+        #expect(reloaded.savedComparisons.first?.secondaryTitle == "Oakland")
+    }
 }
 
 @MainActor

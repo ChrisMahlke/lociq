@@ -31,6 +31,50 @@ struct NeighborhoodShareCardExporterTests {
         #expect(asset?.summary.contains("San Francisco") == true)
         #expect(asset?.imageData.starts(with: Data([0x89, 0x50, 0x4E, 0x47])) == true)
     }
+
+    @Test func rendersComparisonShareCardAssetWithPNGDataAndSummary() {
+        let asset = ComparisonShareCardExporter.makeAsset(
+            boundaryScale: .tract,
+            primary: ComparablePlaceProfile(
+                id: "primary",
+                title: "San Francisco",
+                subtitle: "San Francisco County · ZIP 94107",
+                metrics: CensusMetrics(
+                    population: 41_000,
+                    medianIncome: 120_000,
+                    medianAge: 36.4,
+                    households: 16_000,
+                    populationTrend: nil,
+                    ageBuckets: nil,
+                    educationLevels: nil,
+                    householdIncome: nil
+                ),
+                demographics: makeShareCardDemographics(),
+                metricsSource: .zcta
+            ),
+            secondary: ComparablePlaceProfile(
+                id: "secondary",
+                title: "Oakland",
+                subtitle: "Alameda County · ZIP 94607",
+                metrics: CensusMetrics(
+                    population: 30_000,
+                    medianIncome: 92_000,
+                    medianAge: 35.1,
+                    households: 12_000,
+                    populationTrend: nil,
+                    ageBuckets: nil,
+                    educationLevels: nil,
+                    householdIncome: nil
+                ),
+                demographics: makeShareCardDemographics(),
+                metricsSource: .tract
+            )
+        )
+
+        #expect(asset != nil)
+        #expect(asset?.summary.contains("San Francisco vs Oakland") == true)
+        #expect(asset?.imageData.starts(with: Data([0x89, 0x50, 0x4E, 0x47])) == true)
+    }
 }
 
 private func makeShareCardDemographics() -> Demographics {

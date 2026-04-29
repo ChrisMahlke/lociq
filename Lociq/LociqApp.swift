@@ -17,15 +17,11 @@ struct LociqApp: App {
     /// Initializes app-level SDK configuration before the first view appears.
     init() {
         configureGoogleMaps()
-        LociqFirebaseBootstrap.configureIfAvailable()
     }
 
     var body: some Scene {
         WindowGroup {
             ContentView(dependencies: dependencies)
-                .task {
-                    await LociqAuthSession.restoreIfPossible()
-                }
         }
     }
 

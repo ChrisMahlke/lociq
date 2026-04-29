@@ -2,12 +2,10 @@
 //  CensusZipDemographicsService.swift
 //  Lociq
 //
-//  Coordinator that prefers the Firebase callable backend and falls back to
-//  the direct Census client when needed.
+//  Coordinator for Census-backed neighborhood lookup and normalization.
 //
 
 import Foundation
-import os
 
 protocol CensusNeighborhoodServing: Sendable {
     func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile
@@ -35,11 +33,6 @@ protocol CensusNeighborhoodServing: Sendable {
 }
 
 public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeighborhoodServing {
-    private static let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "io.chrismahlke.lociq",
-        category: "CensusZipDemographicsService"
-    )
-
     public enum ServiceError: Error, LocalizedError {
         case invalidURL
         case requestFailed(status: Int, bodySnippet: String)
@@ -61,21 +54,18 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
     }
 
     private let directClient: DirectCensusZipDemographicsClient
-    private let firebaseClient: FirebaseLociqCallableClient?
     private let lookupCache = NeighborhoodLookupCache()
 
     public init(
         censusApiKey: String,
         acsYear: Int = 2024,
-        session: URLSession = .shared,
-        firebaseClient: FirebaseLociqCallableClient? = nil
+        session: URLSession = .shared
     ) {
         self.directClient = DirectCensusZipDemographicsClient(
             censusApiKey: censusApiKey,
             acsYear: acsYear,
             session: session
         )
-        self.firebaseClient = firebaseClient ?? FirebaseLociqCallableClient.makeDefaultIfAvailable()
     }
 
     // MARK: - Public API
@@ -85,16 +75,6 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
 
         if let cached = await lookupCache.placeProfile(for: cacheKey) {
             return cached
-        }
-
-        if let firebaseClient {
-            do {
-                let profile = try await firebaseClient.fetchPlaceProfile(latitude: latitude, longitude: longitude)
-                await lookupCache.store(placeProfile: profile, for: cacheKey)
-                return profile
-            } catch {
-                Self.logger.error("Firebase place profile lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
-            }
         }
 
         let profile = try await directClient.fetchPlaceProfile(latitude: latitude, longitude: longitude)
@@ -119,19 +99,6 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
         let cacheKey = Self.coordinateCacheKey(latitude: latitude, longitude: longitude)
         if let cached = await lookupCache.placeProfile(for: cacheKey) {
             return cached.boundaries
-        }
-
-        if let firebaseClient {
-            do {
-                return try await firebaseClient.fetchNeighborhoodBoundaries(
-                    latitude: latitude,
-                    longitude: longitude,
-                    tractGeoid: tractGeoid,
-                    zcta: Self.extractZCTA(from: zipBoundary)
-                )
-            } catch {
-                Self.logger.error("Firebase boundary lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
-            }
         }
 
         return await directClient.fetchNeighborhoodBoundaries(
@@ -161,20 +128,6 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
             }
         }
 
-        if let firebaseClient {
-            do {
-                return try await firebaseClient.fetchDemographics(
-                    scale: scale,
-                    zcta: zcta,
-                    tractGeoid: tractGeoid,
-                    latitude: latitude,
-                    longitude: longitude
-                )
-            } catch {
-                Self.logger.error("Firebase demographics lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
-            }
-        }
-
         return try await directClient.fetchDemographics(
             for: scale,
             zcta: zcta,
@@ -201,22 +154,6 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
             return cached
         }
 
-        if let firebaseClient {
-            do {
-                let comparison = try await firebaseClient.fetchComparisonProfile(
-                    latitude: latitude,
-                    longitude: longitude,
-                    scale: scale,
-                    fallbackTitle: fallbackTitle,
-                    fallbackSubtitle: fallbackSubtitle
-                )
-                await lookupCache.store(comparisonProfile: comparison, for: cacheKey)
-                return comparison
-            } catch {
-                Self.logger.error("Firebase comparison lookup failed; falling back to direct APIs. \(String(describing: error), privacy: .public)")
-            }
-        }
-
         let comparison = try await directClient.fetchComparisonProfile(
             latitude: latitude,
             longitude: longitude,
@@ -226,16 +163,6 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
         )
         await lookupCache.store(comparisonProfile: comparison, for: cacheKey)
         return comparison
-    }
-
-    private static func extractZCTA(from boundary: GeoJSONFeatureCollection) -> String? {
-        for feature in boundary.features {
-            if let zcta = feature.properties?["ZCTA5"] ?? feature.properties?["GEOID"] {
-                return zcta
-            }
-        }
-
-        return nil
     }
 
     private static func coordinateCacheKey(latitude: Double, longitude: Double) -> String {
@@ -272,17 +199,6 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
     }
 
     private func normalizedInsights(for bundle: ZipLookupResult) async -> [Insight] {
-        if let firebaseClient {
-            do {
-                let insights = try await firebaseClient.fetchInsights(demographics: bundle.demographics)
-                if !insights.isEmpty {
-                    return insights
-                }
-            } catch {
-                Self.logger.error("Firebase insight generation failed; using local fallback. \(String(describing: error), privacy: .public)")
-            }
-        }
-
         return InsightEngine.makeInsights(
             zcta: bundle.zcta,
             county: bundle.county,
