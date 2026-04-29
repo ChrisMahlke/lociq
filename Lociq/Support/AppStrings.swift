@@ -170,6 +170,20 @@ enum AppStrings {
         static var savedComparisons: String { L10n.tr("Saved comparisons") }
         static var editLibraryEntry: String { L10n.tr("Edit library entry") }
         static var addNotesOrLabel: String { L10n.tr("Add notes or label") }
+        static var discoveryTitle: String { L10n.tr("Discovery mode") }
+        static var discoverySubtitle: String { L10n.tr("Find nearby hidden gems, similar areas, and a fresh weekly stretch pick.") }
+        static var discoveryRefresh: String { L10n.tr("Refresh picks") }
+        static var discoveryUsingCurrentPlace: String { L10n.tr("Using your current place") }
+        static var discoveryUsingRecentPlace: String { L10n.tr("Using your most recent place") }
+        static var discoveryNeedsPlaceTitle: String { L10n.tr("Start from a place first") }
+        static var discoveryNeedsPlaceBody: String { L10n.tr("Open a neighborhood on the map, or revisit a recent place, to generate discovery recommendations.") }
+        static var discoveryLoadFailedBody: String { L10n.tr("Lociq could not generate discovery recommendations right now. Try again in a moment.") }
+        static var discoveryNoCandidatesBody: String { L10n.tr("Lociq could not find enough nearby candidates to recommend from this place.") }
+        static var discoverySourceGemini: String { L10n.tr("Gemini") }
+        static var discoverySourceLocal: String { L10n.tr("Local ranking") }
+        static var discoveryHiddenGemTitle: String { L10n.tr("Hidden gem nearby") }
+        static var discoverySimilarTitle: String { L10n.tr("Similar to this place") }
+        static var discoveryWeeklyTitle: String { L10n.tr("Weekly stretch pick") }
     }
 
     enum Formats {
@@ -227,6 +241,50 @@ enum AppStrings {
 
         static func compareAgeDetail(_ place: String, _ value: String, _ otherValue: String) -> String {
             L10n.format("%@ has a median age of %@ versus %@ in the other place, which changes how established or younger the area may feel.", fallback: "%@ has a median age of %@ versus %@ in the other place, which changes how established or younger the area may feel.", place, value, otherValue)
+        }
+
+        static func discoverySummarySingle(_ seed: String, _ first: String) -> String {
+            L10n.format("Starting from %@, %@ is the strongest nearby discovery pick right now.", fallback: "Starting from %@, %@ is the strongest nearby discovery pick right now.", seed, first)
+        }
+
+        static func discoverySummaryPair(_ seed: String, _ first: String, _ second: String) -> String {
+            L10n.format("Starting from %@, %@ and %@ stand out as the strongest nearby discoveries right now.", fallback: "Starting from %@, %@ and %@ stand out as the strongest nearby discoveries right now.", seed, first, second)
+        }
+
+        static func discoverySummaryTriple(_ seed: String, _ first: String, _ second: String, _ third: String) -> String {
+            L10n.format("Starting from %@, %@, %@, and %@ stand out as the strongest nearby discoveries right now.", fallback: "Starting from %@, %@, %@, and %@ stand out as the strongest nearby discoveries right now.", seed, first, second, third)
+        }
+
+        static func discoveryHiddenGemFallback(_ seed: String) -> String {
+            L10n.format("A nearby pick that looks more under-the-radar than %@ while still holding up on the core signals.", fallback: "A nearby pick that looks more under-the-radar than %@ while still holding up on the core signals.", seed)
+        }
+
+        static func discoverySimilarFallback(_ seed: String) -> String {
+            L10n.format("The nearby place that stays closest to %@ across the main demographic and housing signals.", fallback: "The nearby place that stays closest to %@ across the main demographic and housing signals.", seed)
+        }
+
+        static func discoveryWeeklyFallback(_ seed: String) -> String {
+            L10n.format("A nearby stretch from %@ if you want to try a different neighborhood feel this week.", fallback: "A nearby stretch from %@ if you want to try a different neighborhood feel this week.", seed)
+        }
+
+        static func discoveryLowerRent(_ place: String) -> String {
+            L10n.format("%@ lower rent", fallback: "%@ lower rent", place)
+        }
+
+        static func discoveryHigherIncome(_ place: String) -> String {
+            L10n.format("%@ higher income", fallback: "%@ higher income", place)
+        }
+
+        static func discoveryRemoteWork(_ place: String) -> String {
+            L10n.format("%@ more remote work", fallback: "%@ more remote work", place)
+        }
+
+        static func discoveryLowerPoverty(_ place: String) -> String {
+            L10n.format("%@ lower poverty", fallback: "%@ lower poverty", place)
+        }
+
+        static func discoverySimilarVibe(_ place: String) -> String {
+            L10n.format("%@ similar vibe", fallback: "%@ similar vibe", place)
         }
 
         static func ownerOccupied(_ owner: String, renter: String) -> String {
@@ -346,6 +404,7 @@ enum AppStrings {
         static var notesPlaceholder: String { L10n.tr("Capture why this place matters, what stood out, or what you want to revisit later.") }
         static var labelPlaceholder: String { L10n.tr("Optional short label") }
         static var comparisonLibraryHint: String { L10n.tr("Tap a saved comparison to reopen it in the map view.") }
+        static var discoveryHint: String { L10n.tr("Tap a recommendation to reopen it in the map view.") }
     }
 
     enum Network {

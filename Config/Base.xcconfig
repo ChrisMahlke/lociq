@@ -6,6 +6,8 @@
 // 3) Keep Config/GoogleMaps.xcconfig out of git
 GOOGLE_MAPS_API_KEY = 
 CENSUS_API_KEY =
+GEMINI_API_KEY =
+GEMINI_MODEL = gemini-2.5-flash
 
 #include? "Secrets.xcconfig"
 #include? "GoogleMaps.xcconfig"

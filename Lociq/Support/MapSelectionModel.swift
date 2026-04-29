@@ -120,6 +120,10 @@ final class MapSelectionModel: ObservableObject {
         return makeLookupSnapshot(bundle: bundle, coordinate: coordinate)
     }
 
+    var currentResolvedPlaceProfile: ResolvedPlaceProfile? {
+        resolvedPlaceProfile
+    }
+
     var currentLibraryEntry: NeighborhoodLibraryEntry? {
         guard let currentLookupSnapshot else { return nil }
         return libraryStore.entry(id: currentLookupSnapshot.id)

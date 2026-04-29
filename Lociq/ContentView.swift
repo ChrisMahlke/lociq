@@ -45,6 +45,7 @@ struct ContentView: View {
     @StateObject private var searchModel: MapSearchModel
     @StateObject private var compareSearchModel: MapSearchModel
     @StateObject private var compareModel: CompareModeModel
+    @StateObject private var discoveryModel: NeighborhoodDiscoveryModel
     @StateObject private var libraryStore: NeighborhoodLibraryStore
     @State private var selection: TabSelection = .map
     @State private var sheetOffset: CGFloat = 0
@@ -58,6 +59,12 @@ struct ContentView: View {
         _searchModel = StateObject(wrappedValue: MapSearchModel(service: dependencies.makePlaceSearchService()))
         _compareSearchModel = StateObject(wrappedValue: MapSearchModel(service: dependencies.makePlaceSearchService()))
         _compareModel = StateObject(wrappedValue: CompareModeModel(service: dependencies.makeCensusLookupService()))
+        _discoveryModel = StateObject(
+            wrappedValue: NeighborhoodDiscoveryModel(
+                service: dependencies.makeNeighborhoodDiscoveryService(),
+                libraryStore: dependencies.neighborhoodLibraryStore
+            )
+        )
         _selectionModel = StateObject(
             wrappedValue: MapSelectionModel(
                 service: dependencies.makeCensusLookupService(),
@@ -226,6 +233,10 @@ struct ContentView: View {
             case .more:
                 MoreScreen(
                     libraryStore: libraryStore,
+                    discoveryModel: discoveryModel,
+                    hasCurrentDiscoverySeed: currentDiscoverySeed != nil,
+                    onRefreshDiscovery: refreshDiscovery,
+                    onSelectDiscoveryRecommendation: openDiscoveryRecommendation,
                     onSelectPlace: openLibraryEntry,
                     onSelectComparison: openSavedComparison
                 )
@@ -271,6 +282,10 @@ struct ContentView: View {
             case .more:
                 MoreScreen(
                     libraryStore: libraryStore,
+                    discoveryModel: discoveryModel,
+                    hasCurrentDiscoverySeed: currentDiscoverySeed != nil,
+                    onRefreshDiscovery: refreshDiscovery,
+                    onSelectDiscoveryRecommendation: openDiscoveryRecommendation,
                     onSelectPlace: openLibraryEntry,
                     onSelectComparison: openSavedComparison
                 )
@@ -322,6 +337,41 @@ struct ContentView: View {
             )
         )
         compareModel.beginComparison(with: comparisonResult, scale: entry.boundaryScale)
+    }
+
+    private var currentDiscoverySeed: NeighborhoodDiscoverySeed? {
+        guard let snapshot = selectionModel.currentLookupSnapshot else { return nil }
+        return NeighborhoodDiscoverySeed(
+            snapshot: snapshot,
+            profile: selectionModel.currentResolvedPlaceProfile
+        )
+    }
+
+    private func refreshDiscovery() {
+        discoveryModel.refresh(
+            currentSeed: currentDiscoverySeed,
+            fallbackEntry: libraryStore.recentLookups.first
+        )
+    }
+
+    private func openDiscoveryRecommendation(_ recommendation: NeighborhoodDiscoveryRecommendation) {
+        selection = .map
+        hasSeenMapQuickTip = true
+        showSearchExperience = false
+        showComparePicker = false
+        compareModel.clear()
+        searchModel.dismissResults()
+        selectionModel.boundaryScale = recommendation.destination.preferredScale
+        let coordinate = CLLocationCoordinate2D(
+            latitude: recommendation.destination.latitude,
+            longitude: recommendation.destination.longitude
+        )
+        mapFocusRequest = MapFocusRequest(
+            id: UUID(),
+            coordinate: coordinate,
+            minimumZoom: 13
+        )
+        selectionModel.handleMapSelection(coordinate)
     }
 
     private func openSearchResult(_ result: PlaceSearchResult) {
@@ -468,6 +518,11 @@ struct ContentView: View {
         }
         .onChange(of: selectionModel.boundaryScale) { newScale in
             compareModel.refreshComparison(for: newScale)
+        }
+        .onChange(of: selection) { newSelection in
+            if newSelection == .more, discoveryModel.result == nil, !discoveryModel.isLoading {
+                refreshDiscovery()
+            }
         }
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingExperienceView {

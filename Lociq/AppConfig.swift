@@ -60,6 +60,17 @@ enum AppConfig {
         value(forAnyOf: ["CENSUS_API_KEY", "CensusAPIKey"])
     }
 
+    /// Optional Gemini API key used for AI-assisted discovery recommendations.
+    static var geminiAPIKey: String {
+        value(forAnyOf: ["GEMINI_API_KEY", "GeminiAPIKey"])
+    }
+
+    /// Gemini model used for AI-assisted discovery recommendations.
+    static var geminiModel: String {
+        let value = value(forAnyOf: ["GEMINI_MODEL", "GeminiModel"]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? "gemini-2.5-flash" : value
+    }
+
     private static func value(forAnyOf keys: [String]) -> String {
         for key in keys {
             let resolved = value(for: key)

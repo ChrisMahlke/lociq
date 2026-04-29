@@ -3,6 +3,10 @@ import SwiftUI
 struct MoreScreen: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var libraryStore: NeighborhoodLibraryStore
+    @ObservedObject var discoveryModel: NeighborhoodDiscoveryModel
+    let hasCurrentDiscoverySeed: Bool
+    let onRefreshDiscovery: () -> Void
+    let onSelectDiscoveryRecommendation: (NeighborhoodDiscoveryRecommendation) -> Void
     let onSelectPlace: (NeighborhoodLibraryEntry) -> Void
     let onSelectComparison: (SavedComparisonEntry) -> Void
     @State private var editingEntry: EditableNeighborhoodLibraryEntry?
@@ -27,6 +31,12 @@ struct MoreScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 MoreHeroCard()
+                DiscoveryModeCard(
+                    model: discoveryModel,
+                    hasCurrentSeed: hasCurrentDiscoverySeed,
+                    onRefresh: onRefreshDiscovery,
+                    onSelectRecommendation: onSelectDiscoveryRecommendation
+                )
                 NeighborhoodLibraryCard(
                     title: AppStrings.More.pinnedNeighborhoods,
                     subtitle: AppStrings.More.pinnedNeighborhoodsSubtitle,
@@ -142,6 +152,233 @@ struct MoreScreen: View {
                 }
             )
         }
+    }
+}
+
+private struct DiscoveryModeCard: View {
+    @ObservedObject var model: NeighborhoodDiscoveryModel
+    let hasCurrentSeed: Bool
+    let onRefresh: () -> Void
+    let onSelectRecommendation: (NeighborhoodDiscoveryRecommendation) -> Void
+
+    var body: some View {
+        SectionPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    SectionHeading(
+                        title: AppStrings.Labels.discoveryTitle,
+                        subtitle: AppStrings.Labels.discoverySubtitle,
+                        icon: "sparkles",
+                        tint: .purple
+                    )
+
+                    Spacer(minLength: 0)
+
+                    Button(action: onRefresh) {
+                        Label(AppStrings.Labels.discoveryRefresh, systemImage: "arrow.clockwise")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.purple)
+                }
+
+                sourceLine
+
+                if model.isLoading {
+                    ProgressView()
+                        .tint(.purple)
+                        .padding(.vertical, 8)
+                } else if let errorMessage = model.errorMessage {
+                    DiscoveryEmptyState(
+                        title: AppStrings.Labels.discoveryNeedsPlaceTitle,
+                        message: errorMessage
+                    )
+                } else if let result = model.result {
+                    if !result.summary.isEmpty {
+                        Text(result.summary)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Text(AppStrings.More.discoveryHint)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    VStack(spacing: 10) {
+                        ForEach(result.recommendations) { recommendation in
+                            DiscoveryRecommendationRow(
+                                recommendation: recommendation,
+                                onSelect: { onSelectRecommendation(recommendation) }
+                            )
+                        }
+                    }
+                } else {
+                    DiscoveryEmptyState(
+                        title: AppStrings.Labels.discoveryNeedsPlaceTitle,
+                        message: AppStrings.Labels.discoveryNeedsPlaceBody
+                    )
+                }
+            }
+        }
+    }
+
+    private var sourceLine: some View {
+        HStack(spacing: 8) {
+            Text(hasCurrentSeed ? AppStrings.Labels.discoveryUsingCurrentPlace : AppStrings.Labels.discoveryUsingRecentPlace)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            if let result = model.result {
+                Text(result.source == .gemini ? AppStrings.Labels.discoverySourceGemini : AppStrings.Labels.discoverySourceLocal)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(result.source == .gemini ? .purple : .indigo)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background((result.source == .gemini ? Color.purple : Color.indigo).opacity(0.12), in: Capsule())
+            }
+        }
+    }
+}
+
+private struct DiscoveryRecommendationRow: View {
+    let recommendation: NeighborhoodDiscoveryRecommendation
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: iconName)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(tint)
+                    .frame(width: 30, height: 30)
+                    .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(kindTitle)
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(tint)
+
+                        Text(recommendation.destination.preferredScale.displayTitle)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text(recommendation.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(recommendation.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(recommendation.summary)
+                        .font(.caption)
+                        .foregroundStyle(.primary.opacity(0.78))
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if !recommendation.highlights.isEmpty {
+                        FlexibleHighlightWrap(items: recommendation.highlights, tint: tint)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "arrow.up.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(tint.opacity(0.8))
+                    .padding(.top, 3)
+            }
+            .padding(12)
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var kindTitle: String {
+        switch recommendation.kind {
+        case .hiddenGem:
+            return AppStrings.Labels.discoveryHiddenGemTitle
+        case .similar:
+            return AppStrings.Labels.discoverySimilarTitle
+        case .weekly:
+            return AppStrings.Labels.discoveryWeeklyTitle
+        }
+    }
+
+    private var iconName: String {
+        switch recommendation.kind {
+        case .hiddenGem:
+            return "sparkles"
+        case .similar:
+            return "square.on.square"
+        case .weekly:
+            return "calendar"
+        }
+    }
+
+    private var tint: Color {
+        switch recommendation.kind {
+        case .hiddenGem:
+            return .purple
+        case .similar:
+            return .blue
+        case .weekly:
+            return .teal
+        }
+    }
+}
+
+private struct FlexibleHighlightWrap: View {
+    let items: [String]
+    let tint: Color
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                ForEach(items, id: \.self) { item in
+                    highlightChip(item)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(items, id: \.self) { item in
+                    highlightChip(item)
+                }
+            }
+        }
+    }
+
+    private func highlightChip(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.12), in: Capsule())
+    }
+}
+
+private struct DiscoveryEmptyState: View {
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

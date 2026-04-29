@@ -16,6 +16,7 @@ Lociq is a SwiftUI iOS app for exploring neighborhood context on an interactive 
 - SwiftUI
 - Google Maps SDK for iOS
 - U.S. Census Bureau APIs
+- Gemini Developer API for optional AI-assisted discovery recommendations
 
 ## Project Structure
 
@@ -29,6 +30,7 @@ Lociq is a SwiftUI iOS app for exploring neighborhood context on an interactive 
 - Xcode 16 or newer
 - iOS 16.0 or newer
 - A Google Maps SDK for iOS API key
+- Optional Gemini API key for AI-assisted discovery mode
 
 ## Getting Started
 
@@ -43,6 +45,8 @@ Example local config:
 ```xcconfig
 // Local-only Google Maps SDK for iOS key. Do not commit this file.
 GOOGLE_MAPS_API_KEY = YOUR_GOOGLE_MAPS_API_KEY
+GEMINI_API_KEY = YOUR_GEMINI_API_KEY
+GEMINI_MODEL = gemini-2.5-flash
 ```
 
 ## Local Configuration
@@ -56,6 +60,8 @@ The project uses local configuration files so the real Google Maps key is not ha
 The app reads configuration through [`AppConfig.swift`](/Users/chrismahlke/ios/lociq/Lociq/AppConfig.swift), and Google Maps is initialized at startup in [`LociqApp.swift`](/Users/chrismahlke/ios/lociq/Lociq/LociqApp.swift).
 
 Only the resolved runtime values are written into the built app's `Info.plist`; the local `.xcconfig` files themselves are not copied into the app bundle.
+
+If `GEMINI_API_KEY` is blank, Lociq falls back to local heuristic discovery picks and still works without AI.
 
 ## Google Maps Setup
 
