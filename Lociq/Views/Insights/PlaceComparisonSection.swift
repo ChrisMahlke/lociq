@@ -16,45 +16,8 @@ struct PlaceComparisonSection: View {
     private let primaryTint: Color = .blue
     private let secondaryTint: Color = .orange
 
-    private var rows: [ComparisonMetricRowModel] {
-        [
-            ComparisonMetricRowModel(
-                label: AppStrings.Metrics.population,
-                primaryValue: InsightsFormatting.number(primary.metrics.population),
-                secondaryValue: secondary.map { InsightsFormatting.number($0.metrics.population) }
-            ),
-            ComparisonMetricRowModel(
-                label: AppStrings.Metrics.medianIncome,
-                primaryValue: InsightsFormatting.currency(primary.metrics.medianIncome),
-                secondaryValue: secondary.map { InsightsFormatting.currency($0.metrics.medianIncome) }
-            ),
-            ComparisonMetricRowModel(
-                label: AppStrings.Metrics.medianAge,
-                primaryValue: primary.metrics.medianAge.map { String(format: AppStrings.Symbols.oneDecimalFormat, $0) } ?? AppStrings.Symbols.emDash,
-                secondaryValue: secondary.map {
-                    $0.metrics.medianAge.map { String(format: AppStrings.Symbols.oneDecimalFormat, $0) } ?? AppStrings.Symbols.emDash
-                }
-            ),
-            ComparisonMetricRowModel(
-                label: AppStrings.Metrics.households,
-                primaryValue: InsightsFormatting.number(primary.metrics.households),
-                secondaryValue: secondary.map { InsightsFormatting.number($0.metrics.households) }
-            ),
-            ComparisonMetricRowModel(
-                label: AppStrings.Labels.remoteWork,
-                primaryValue: InsightsFormatting.percent(primary.demographics?.workersWfhPct, suffixCount: nil),
-                secondaryValue: secondary.map {
-                    InsightsFormatting.percent($0.demographics?.workersWfhPct, suffixCount: nil)
-                }
-            ),
-            ComparisonMetricRowModel(
-                label: AppStrings.Labels.poverty,
-                primaryValue: InsightsFormatting.percent(primary.demographics?.povertyRatePct, suffixCount: nil),
-                secondaryValue: secondary.map {
-                    InsightsFormatting.percent($0.demographics?.povertyRatePct, suffixCount: nil)
-                }
-            )
-        ]
+    private var presentation: PlaceComparisonPresentation {
+        PlaceComparisonInsightsBuilder.make(primary: primary, secondary: secondary)
     }
 
     private var scaleDetail: String {
@@ -71,20 +34,67 @@ struct PlaceComparisonSection: View {
             VStack(alignment: .leading, spacing: 16) {
                 comparisonHeader
                 comparisonSummary
+                comparisonHighlights
 
                 if let comparisonErrorMessage {
                     ComparisonErrorBanner(message: comparisonErrorMessage)
                 } else {
-                    VStack(spacing: 10) {
-                        ForEach(rows) { row in
-                            ComparisonMetricRow(
-                                row: row,
-                                primaryTint: primaryTint,
-                                secondaryTint: secondaryTint,
-                                isSecondaryLoading: isLoadingSecondary && secondary == nil
-                            )
+                    VStack(alignment: .leading, spacing: 14) {
+                        VStack(spacing: 10) {
+                            ForEach(presentation.metricRows) { row in
+                                ComparisonMetricRow(
+                                    row: row,
+                                    primaryTint: primaryTint,
+                                    secondaryTint: secondaryTint,
+                                    isSecondaryLoading: isLoadingSecondary && secondary == nil
+                                )
+                            }
+                        }
+
+                        if !presentation.callouts.isEmpty {
+                            comparisonCallouts
                         }
                     }
+                }
+            }
+        }
+    }
+
+    private var comparisonHighlights: some View {
+        Group {
+            if let summary = presentation.summary, !summary.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(AppStrings.Labels.compareHighlightsTitle)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+
+                    Text(summary)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.primary.opacity(0.06), lineWidth: 0.9)
+                )
+            }
+        }
+    }
+
+    private var comparisonCallouts: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(AppStrings.Labels.compareWhyDiffersTitle)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 10) {
+                ForEach(presentation.callouts) { callout in
+                    ComparisonCalloutCard(callout: callout)
                 }
             }
         }
@@ -311,7 +321,7 @@ private struct ComparisonPlaceCard: View {
 }
 
 private struct ComparisonMetricRow: View {
-    let row: ComparisonMetricRowModel
+    let row: ComparisonMetricPresentation
     let primaryTint: Color
     let secondaryTint: Color
     let isSecondaryLoading: Bool
@@ -322,33 +332,68 @@ private struct ComparisonMetricRow: View {
                 ComparisonValuePill(
                     value: row.primaryValue,
                     tint: primaryTint,
-                    alignment: .leading
+                    alignment: .leading,
+                    isLeading: row.leadingSide == .primary
                 )
 
-                Text(row.label)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 88)
-                    .multilineTextAlignment(.center)
+                VStack(spacing: 3) {
+                    Text(row.label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    if let deltaText = row.deltaText, !isSecondaryLoading {
+                        Text(deltaText)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(deltaColor)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .frame(width: 108)
 
                 secondaryValueView(alignment: .trailing)
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(row.label)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                rowLabelStack
 
                 HStack(spacing: 10) {
                     ComparisonValuePill(
                         value: row.primaryValue,
                         tint: primaryTint,
-                        alignment: .center
+                        alignment: .center,
+                        isLeading: row.leadingSide == .primary
                     )
 
                     secondaryValueView(alignment: .center)
                 }
             }
+        }
+    }
+
+    private var rowLabelStack: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(row.label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            if let deltaText = row.deltaText, !isSecondaryLoading {
+                Text(deltaText)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(deltaColor)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var deltaColor: Color {
+        switch row.leadingSide {
+        case .primary:
+            return primaryTint
+        case .secondary:
+            return secondaryTint
+        case .tied:
+            return .secondary
         }
     }
 
@@ -372,7 +417,8 @@ private struct ComparisonMetricRow: View {
             ComparisonValuePill(
                 value: row.secondaryValue ?? AppStrings.Symbols.emDash,
                 tint: secondaryTint,
-                alignment: alignment
+                alignment: alignment,
+                isLeading: row.leadingSide == .secondary
             )
         }
     }
@@ -382,6 +428,7 @@ private struct ComparisonValuePill: View {
     let value: String
     let tint: Color
     let alignment: Alignment
+    var isLeading: Bool = false
 
     var body: some View {
         Text(value)
@@ -393,11 +440,11 @@ private struct ComparisonValuePill: View {
             .padding(.vertical, 10)
             .background(
                 Capsule()
-                    .fill(tint.opacity(0.14))
+                    .fill(tint.opacity(isLeading ? 0.22 : 0.14))
             )
             .overlay(
                 Capsule()
-                    .stroke(tint.opacity(0.2), lineWidth: 0.9)
+                    .stroke(tint.opacity(isLeading ? 0.34 : 0.2), lineWidth: isLeading ? 1.1 : 0.9)
             )
     }
 }
@@ -445,16 +492,47 @@ private struct ComparisonErrorBanner: View {
     }
 }
 
-private struct ComparisonMetricRowModel: Identifiable {
-    let id: String
-    let label: String
-    let primaryValue: String
-    let secondaryValue: String?
+private struct ComparisonCalloutCard: View {
+    let callout: ComparisonNarrativeCallout
 
-    init(label: String, primaryValue: String, secondaryValue: String?) {
-        self.id = label
-        self.label = label
-        self.primaryValue = primaryValue
-        self.secondaryValue = secondaryValue
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: callout.systemImage)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(tint)
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(0.14), in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(callout.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(callout.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(tint.opacity(0.18), lineWidth: 0.9)
+        )
+    }
+
+    private var tint: Color {
+        switch callout.tone {
+        case .neutral:
+            return .indigo
+        case .positive:
+            return .green
+        case .caution:
+            return .orange
+        }
     }
 }

@@ -89,6 +89,23 @@ enum AppStrings {
         static var compareDone: String { L10n.tr("Done comparing") }
         static var compareVersus: String { L10n.tr("vs") }
         static var compareLoadingTitle: String { L10n.tr("Loading place") }
+        static var compareHighlightsTitle: String { L10n.tr("What stands out") }
+        static var compareWhyDiffersTitle: String { L10n.tr("Why this place differs") }
+        static var compareNearlySame: String { L10n.tr("Nearly the same") }
+        static var compareSimilarProfiles: String { L10n.tr("These two profiles are fairly close across the available metrics.") }
+        static var compareHomeValue: String { L10n.tr("Home Value") }
+        static var compareRent: String { L10n.tr("Gross Rent") }
+        static var compareHomeownership: String { L10n.tr("Homeownership") }
+        static var compareAffordabilityCalloutTitle: String { L10n.tr("Affordability and buying power shift") }
+        static var compareWorkPatternCalloutTitle: String { L10n.tr("Work patterns diverge") }
+        static var comparePovertyCalloutTitle: String { L10n.tr("Economic strain is uneven") }
+        static var compareHomeownershipCalloutTitle: String { L10n.tr("Tenure mix changes") }
+        static var compareAgeCalloutTitle: String { L10n.tr("Age profile shifts") }
+        static var compareAffordabilitySummaryPhrase: String { L10n.tr("affordability and buying power") }
+        static var compareWorkPatternSummaryPhrase: String { L10n.tr("work patterns") }
+        static var comparePovertySummaryPhrase: String { L10n.tr("poverty pressure") }
+        static var compareHomeownershipSummaryPhrase: String { L10n.tr("homeownership") }
+        static var compareAgeSummaryPhrase: String { L10n.tr("age mix") }
         static var compareUnavailableTitle: String { L10n.tr("Could not load comparison") }
         static var compareLoadFailedBody: String { L10n.tr("Lociq could not load metrics for the comparison place right now. Try another place or try again in a moment.") }
         static var compareNoCoverageBody: String { L10n.tr("That place does not map to a ZIP-backed neighborhood profile that Lociq can compare.") }
@@ -174,6 +191,42 @@ enum AppStrings {
 
         static func compareLoadingInline(_ value: String) -> String {
             L10n.format("Comparing %@ with another place...", fallback: "Comparing %@ with another place...", value)
+        }
+
+        static func compareLeadsBy(_ place: String, _ value: String) -> String {
+            L10n.format("%@ leads by %@", fallback: "%@ leads by %@", place, value)
+        }
+
+        static func compareSummaryFavoring(_ place: String, _ details: String) -> String {
+            L10n.format("Biggest gaps favor %@ on %@.", fallback: "Biggest gaps favor %@ on %@.", place, details)
+        }
+
+        static func compareSummaryMixed(_ details: String) -> String {
+            L10n.format("Biggest gaps show up in %@.", fallback: "Biggest gaps show up in %@.", details)
+        }
+
+        static func compareAffordabilityDetail(_ place: String, _ first: String, _ second: String) -> String {
+            L10n.format("%@ stands apart on %@ and %@, which usually signals a different housing cost floor and spending power.", fallback: "%@ stands apart on %@ and %@, which usually signals a different housing cost floor and spending power.", place, first, second)
+        }
+
+        static func compareSingleDriverDetail(_ place: String, _ metric: String) -> String {
+            L10n.format("%@ stands apart most on %@.", fallback: "%@ stands apart most on %@.", place, metric)
+        }
+
+        static func compareRemoteWorkDetail(_ place: String, _ value: String, _ otherValue: String) -> String {
+            L10n.format("%@ reports %@ remote work versus %@ in the other place, which can point to a different job mix and daily rhythm.", fallback: "%@ reports %@ remote work versus %@ in the other place, which can point to a different job mix and daily rhythm.", place, value, otherValue)
+        }
+
+        static func comparePovertyDetail(_ place: String, _ value: String, _ otherValue: String) -> String {
+            L10n.format("%@ shows %@ poverty versus %@ in the other place, suggesting a different level of economic strain.", fallback: "%@ shows %@ poverty versus %@ in the other place, suggesting a different level of economic strain.", place, value, otherValue)
+        }
+
+        static func compareHomeownershipDetail(_ place: String, _ value: String, _ otherValue: String) -> String {
+            L10n.format("%@ is %@ owner-occupied versus %@ in the other place, shifting the balance between long-term ownership and renter turnover.", fallback: "%@ is %@ owner-occupied versus %@ in the other place, shifting the balance between long-term ownership and renter turnover.", place, value, otherValue)
+        }
+
+        static func compareAgeDetail(_ place: String, _ value: String, _ otherValue: String) -> String {
+            L10n.format("%@ has a median age of %@ versus %@ in the other place, which changes how established or younger the area may feel.", fallback: "%@ has a median age of %@ versus %@ in the other place, which changes how established or younger the area may feel.", place, value, otherValue)
         }
 
         static func ownerOccupied(_ owner: String, renter: String) -> String {
