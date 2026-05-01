@@ -1,3 +1,5 @@
 // Copy this file to Config/GoogleMaps.xcconfig and replace the placeholder
-// with your real Google Maps SDK for iOS key. Keep GoogleMaps.xcconfig local.
+// with your real Google Maps SDK for iOS key, or use
+// ./scripts/sync_google_maps_key.sh to pull the value from Secret Manager.
+// Keep GoogleMaps.xcconfig local.
 GOOGLE_MAPS_API_KEY = YOUR_GOOGLE_MAPS_API_KEY

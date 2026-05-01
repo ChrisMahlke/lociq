@@ -10,7 +10,7 @@ import CoreLocation
 import UIKit
 
 enum TabSelection {
-    case map, more
+    case map, library, guide
 }
 
 enum BoundaryOverlayScale: String, CaseIterable, Identifiable {
@@ -170,11 +170,6 @@ struct ContentView: View {
                         .padding(.top, 14)
                 }
 
-                if selectionModel.isBoundaryLoading {
-                    BoundaryLoadingBadge()
-                        .padding(.horizontal, 12)
-                }
-
                 if let mapNotice = selectionModel.mapNotice {
                     MapNoticeBanner(message: mapNotice)
                         .padding(.horizontal, 12)
@@ -220,6 +215,12 @@ struct ContentView: View {
                 .padding(.bottom, mapBottomInset + 28)
                 .animation(.easeInOut(duration: 0.2), value: mapBottomInset)
             }
+
+            if AppConfig.hasGoogleMapsAPIKey && selectionModel.isLoadingSelection {
+                MapLoadingOverlay(onCancel: selectionModel.cancelCurrentSelectionRequest)
+                    .padding(.horizontal, 24)
+                    .transition(.opacity)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -230,8 +231,8 @@ struct ContentView: View {
             switch selection {
             case .map:
                 mapPane(ignoresSafeAreaTop: true)
-            case .more:
-                MoreScreen(
+            case .library:
+                LibraryScreen(
                     libraryStore: libraryStore,
                     discoveryModel: discoveryModel,
                     hasCurrentDiscoverySeed: currentDiscoverySeed != nil,
@@ -240,6 +241,8 @@ struct ContentView: View {
                     onSelectPlace: openLibraryEntry,
                     onSelectComparison: openSavedComparison
                 )
+            case .guide:
+                GuideScreen()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -279,8 +282,8 @@ struct ContentView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
                 .padding(.bottom, 12)
-            case .more:
-                MoreScreen(
+            case .library:
+                LibraryScreen(
                     libraryStore: libraryStore,
                     discoveryModel: discoveryModel,
                     hasCurrentDiscoverySeed: currentDiscoverySeed != nil,
@@ -289,6 +292,8 @@ struct ContentView: View {
                     onSelectPlace: openLibraryEntry,
                     onSelectComparison: openSavedComparison
                 )
+            case .guide:
+                GuideScreen()
             }
         }
     }
@@ -520,7 +525,7 @@ struct ContentView: View {
             compareModel.refreshComparison(for: newScale)
         }
         .onChange(of: selection) { newSelection in
-            if newSelection == .more, discoveryModel.result == nil, !discoveryModel.isLoading {
+            if newSelection == .library, discoveryModel.result == nil, !discoveryModel.isLoading {
                 refreshDiscovery()
             }
         }
@@ -671,32 +676,49 @@ private struct MapQuickTipCard: View {
     }
 }
 
-private struct BoundaryLoadingBadge: View {
+private struct MapLoadingOverlay: View {
+    let onCancel: () -> Void
+
     var body: some View {
-        HStack(spacing: 10) {
-            ProgressView()
-                .progressViewStyle(.circular)
-                .tint(.blue)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(AppStrings.Labels.loadingBoundary)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Text(AppStrings.Labels.updatingNeighborhoodOutline)
+        ZStack {
+            Color.black.opacity(0.08)
+                .ignoresSafeArea()
+
+            VStack(spacing: 14) {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(.blue)
+                    .scaleEffect(1.15)
+
+                VStack(spacing: 4) {
+                    Text(AppStrings.Labels.loadingBoundary)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(AppStrings.Labels.updatingNeighborhoodOutline)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.center)
+                }
+
+                Button(AppStrings.Labels.cancel, action: onCancel)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .buttonStyle(.bordered)
+                    .tint(.blue)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 0.8)
+            )
+            .shadow(color: .black.opacity(0.12), radius: 16, y: 4)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground).opacity(0.95))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.blue.opacity(0.16), lineWidth: 0.9)
-        )
-        .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -754,14 +776,19 @@ private struct IPadSidebarHeader: View {
 
             HStack(spacing: 10) {
                 button(
-                    title: AppStrings.Labels.profile,
+                    title: AppStrings.Tabs.map,
                     systemImage: selection == .map ? IconNames.mapFilled : IconNames.map,
                     tab: .map
                 )
                 button(
-                    title: AppStrings.Labels.guide,
-                    systemImage: selection == .more ? IconNames.moreFilled : IconNames.more,
-                    tab: .more
+                    title: AppStrings.Tabs.library,
+                    systemImage: selection == .library ? IconNames.libraryFilled : IconNames.library,
+                    tab: .library
+                )
+                button(
+                    title: AppStrings.Tabs.guide,
+                    systemImage: selection == .guide ? IconNames.guideFilled : IconNames.guide,
+                    tab: .guide
                 )
             }
         }
@@ -769,6 +796,14 @@ private struct IPadSidebarHeader: View {
 
     private func button(title: String, systemImage: String, tab: TabSelection) -> some View {
         let isSelected = selection == tab
+        let identifier: String = switch tab {
+        case .map:
+            "sidebar.map"
+        case .library:
+            "sidebar.library"
+        case .guide:
+            "sidebar.guide"
+        }
 
         return Button {
             selection = tab
@@ -786,15 +821,17 @@ private struct IPadSidebarHeader: View {
             .padding(.vertical, 11)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(isSelected ? Color.accentColor.opacity(0.14) : Color(.systemBackground))
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color(.systemBackground))
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(isSelected ? Color.accentColor.opacity(0.22) : Color.primary.opacity(0.07), lineWidth: 0.9)
-            )
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(isSelected ? Color.accentColor : Color.clear)
+                    .frame(height: 2)
+                    .padding(.horizontal, 14)
+            }
         }
-        .accessibilityIdentifier(tab == .map ? "sidebar.profile" : "sidebar.guide")
+        .accessibilityIdentifier(identifier)
         .buttonStyle(.plain)
     }
 }

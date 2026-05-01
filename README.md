@@ -35,10 +35,26 @@ Lociq is a SwiftUI iOS app for exploring neighborhood context on an interactive 
 ## Getting Started
 
 1. Open [`Lociq.xcodeproj`](/Users/chrismahlke/ios/lociq/Lociq.xcodeproj) in Xcode.
-2. Copy [`Config/GoogleMaps.example.xcconfig`](/Users/chrismahlke/ios/lociq/Config/GoogleMaps.example.xcconfig) to `Config/GoogleMaps.xcconfig`.
-3. Add your real Google Maps SDK for iOS key to `Config/GoogleMaps.xcconfig`.
-4. Select an iPhone or simulator target in Xcode.
-5. Build and run.
+2. Sync your Google Maps SDK for iOS key from Secret Manager into `Config/GoogleMaps.xcconfig`.
+3. Select an iPhone or simulator target in Xcode.
+4. Build and run.
+
+Example sync command:
+
+```bash
+./scripts/sync_google_maps_key.sh --project YOUR_GCP_PROJECT_ID
+```
+
+The sync script validates that the secret resolves to a Google Maps API key with:
+
+- `iOS apps` application restriction
+- allowed bundle ID `io.chrismahlke.lociq`
+- `Maps SDK for iOS` API access
+
+Manual fallback:
+
+1. Copy [`Config/GoogleMaps.example.xcconfig`](/Users/chrismahlke/ios/lociq/Config/GoogleMaps.example.xcconfig) to `Config/GoogleMaps.xcconfig`.
+2. Add your real Google Maps SDK for iOS key to `Config/GoogleMaps.xcconfig`.
 
 Example local config:
 
@@ -56,6 +72,7 @@ The project uses local configuration files so the real Google Maps key is not ha
 - Committed example: [`Config/GoogleMaps.example.xcconfig`](/Users/chrismahlke/ios/lociq/Config/GoogleMaps.example.xcconfig)
 - Local file for your real key: `Config/GoogleMaps.xcconfig`
 - Optional local secrets file: `Config/Secrets.xcconfig`
+- Secret Manager sync helper: [`scripts/sync_google_maps_key.sh`](/Users/chrismahlke/ios/lociq/scripts/sync_google_maps_key.sh)
 
 The app reads configuration through [`AppConfig.swift`](/Users/chrismahlke/ios/lociq/Lociq/AppConfig.swift), and Google Maps is initialized at startup in [`LociqApp.swift`](/Users/chrismahlke/ios/lociq/Lociq/LociqApp.swift).
 
@@ -78,6 +95,15 @@ Current bundle identifier:
 ```text
 io.chrismahlke.lociq
 ```
+
+Recommended local workflow:
+
+1. Store the client key in Secret Manager as `lociq-google-maps-api-key`.
+2. Keep the key restricted in Google Cloud to the iOS bundle ID above and only the Maps APIs your app uses.
+3. Sync the latest value locally with `./scripts/sync_google_maps_key.sh --project YOUR_GCP_PROJECT_ID`.
+4. Build the app normally in Xcode.
+
+This app should not fetch Secret Manager at runtime. For Maps SDK for iOS, the secure pattern is a tightly restricted client key injected at build time.
 
 ## Data Sources
 
@@ -104,6 +130,7 @@ xcodebuild test -project Lociq.xcodeproj -scheme Lociq -destination 'platform=iO
 - Do not commit `Config/Secrets.xcconfig`.
 - Treat the key as deployable client configuration, not as a server secret.
 - Real protection comes from Google Cloud restrictions on bundle ID and API scope.
+- Secret Manager is used as the storage and rotation source, not as a runtime dependency for the shipped iOS app.
 
 ## License
 

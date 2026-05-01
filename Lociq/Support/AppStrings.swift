@@ -15,7 +15,8 @@ enum AppStrings {
 
     enum Tabs {
         static var map: String { L10n.tr("Map") }
-        static var more: String { L10n.tr("More") }
+        static var library: String { L10n.tr("Library") }
+        static var guide: String { L10n.tr("Guide") }
     }
 
     enum Metrics {
@@ -30,22 +31,23 @@ enum AppStrings {
         static var insights: String { L10n.tr("Insights") }
         static var selectedArea: String { L10n.tr("Selected area") }
         static var noSelectionTitle: String { L10n.tr("Start with the map") }
-        static var noSelectionBody: String { L10n.tr("Tap anywhere to load a neighborhood profile, compare ZIP and tract views, and read the area at a glance.") }
+        static var noSelectionBody: String { L10n.tr("Tap anywhere to load a neighborhood profile, compare broader and closer views, and read the area at a glance.") }
         static var loadingSelectionTitle: String { L10n.tr("Loading area profile") }
         static var loadingSelectionBody: String { L10n.tr("Fetching boundaries, Census context, and quick-read signals for your selected location.") }
         static var noCoverageTitle: String { L10n.tr("No neighborhood profile here") }
-        static var noCoverageBody: String { L10n.tr("This point does not map to a ZIP-backed neighborhood profile. Try a nearby area on land.") }
+        static var noCoverageBody: String { L10n.tr("This point does not map to a neighborhood profile. Try a nearby area on land.") }
         static var sampleFallbackTitle: String { L10n.tr("Showing a temporary profile") }
-        static var sampleFallbackBody: String { L10n.tr("Live neighborhood data could not be loaded, so Lociq is showing sample metrics for now. Retry to request the selected area again.") }
+        static var sampleFallbackBody: String { L10n.tr("Live neighborhood data could not be loaded, so Neighborhood intelligence is showing sample metrics for now. Retry to request the selected area again.") }
         static var retry: String { L10n.tr("Retry") }
+        static var cancel: String { L10n.tr("Cancel") }
         static var refreshingScaleBody: String { L10n.tr("Keeping your current profile visible while the selected scale updates.") }
-        static var dataZip: String { L10n.tr("Data: ZIP") }
-        static var dataTract: String { L10n.tr("Data: Tract") }
+        static var dataZip: String { L10n.tr("Data: Area") }
+        static var dataTract: String { L10n.tr("Data: Local") }
         static var dataSample: String { L10n.tr("Data: Sample") }
         static var howToUseTitle: String { L10n.tr("How to use it") }
         static var mapInstructionOne: String { L10n.tr("1. Tap a location on the map.") }
         static var mapInstructionTwo: String { L10n.tr("2. Switch overlay scale at the top.") }
-        static var mapInstructionThree: String { L10n.tr("3. Compare how boundaries and context shift between ZIP and tract levels.") }
+        static var mapInstructionThree: String { L10n.tr("3. Compare how boundaries and context shift between broader and closer views.") }
         static var collapsedHint: String { L10n.tr("Tap on map · swipe up for neighborhood profile") }
         static var profileSubtitle: String { L10n.tr("Real census profile and quick-read insights") }
         static var neighborhoodProfile: String { L10n.tr("Neighborhood profile") }
@@ -71,7 +73,7 @@ enum AppStrings {
         static var geography: String { L10n.tr("Geography") }
         static var onboardingTitleOne: String { L10n.tr("Explore neighborhoods fast") }
         static var onboardingBodyOne: String { L10n.tr("Tap any spot on the map to load local Census context in seconds.") }
-        static var onboardingTitleTwo: String { L10n.tr("Compare ZIP and Tract") }
+        static var onboardingTitleTwo: String { L10n.tr("Compare area scales") }
         static var onboardingBodyTwo: String { L10n.tr("Switch scales to see how metrics shift between broader and finer boundaries.") }
         static var onboardingTitleThree: String { L10n.tr("Swipe up for deeper context") }
         static var onboardingBodyThree: String { L10n.tr("Expand the bottom sheet to view housing, work, and demographic composition details.") }
@@ -83,8 +85,8 @@ enum AppStrings {
         static var share: String { L10n.tr("Share") }
         static var compareAction: String { L10n.tr("Compare") }
         static var compareModeTitle: String { L10n.tr("Compare places") }
-        static var compareZipDetail: String { L10n.tr("Side-by-side ZIP metrics for two selected places.") }
-        static var compareTractDetail: String { L10n.tr("Side-by-side tract metrics for two selected places.") }
+        static var compareZipDetail: String { L10n.tr("Side-by-side broader-area metrics for two selected places.") }
+        static var compareTractDetail: String { L10n.tr("Side-by-side closer local metrics for two selected places.") }
         static var compareReplace: String { L10n.tr("Change") }
         static var compareDone: String { L10n.tr("Done comparing") }
         static var compareVersus: String { L10n.tr("vs") }
@@ -107,43 +109,43 @@ enum AppStrings {
         static var compareHomeownershipSummaryPhrase: String { L10n.tr("homeownership") }
         static var compareAgeSummaryPhrase: String { L10n.tr("age mix") }
         static var compareUnavailableTitle: String { L10n.tr("Could not load comparison") }
-        static var compareLoadFailedBody: String { L10n.tr("Lociq could not load metrics for the comparison place right now. Try another place or try again in a moment.") }
-        static var compareNoCoverageBody: String { L10n.tr("That place does not map to a ZIP-backed neighborhood profile that Lociq can compare.") }
+        static var compareLoadFailedBody: String { L10n.tr("Neighborhood intelligence could not load metrics for the comparison place right now. Try another place or try again in a moment.") }
+        static var compareNoCoverageBody: String { L10n.tr("That place does not map to a neighborhood profile that Neighborhood intelligence can compare.") }
         static var comparePickerTitle: String { L10n.tr("Choose another place") }
         static var comparePickerBody: String { L10n.tr("Search for a second ZIP, city, neighborhood, or address to compare beside the current profile.") }
-        static var tractFallbackTitle: String { L10n.tr("ZIP fallback active") }
-        static var tractFallbackBody: String { L10n.tr("Tract data is unavailable for this selection, so the profile is showing ZIP-level Census data.") }
+        static var tractFallbackTitle: String { L10n.tr("Broader view active") }
+        static var tractFallbackBody: String { L10n.tr("Closer local data is unavailable for this selection, so the profile is showing the broader area view.") }
         static var mapTipTitle: String { L10n.tr("Tap to explore") }
-        static var mapTipBody: String { L10n.tr("Select any point on the map to load a neighborhood profile, then switch between ZIP and tract.") }
+        static var mapTipBody: String { L10n.tr("Select any point on the map to load a neighborhood profile, then switch between broader and closer views.") }
         static var dismiss: String { L10n.tr("Dismiss") }
         static var searchPlaceholder: String { L10n.tr("Search ZIP, city, neighborhood, or address") }
         static var clearSearch: String { L10n.tr("Clear search") }
         static var searchCancel: String { L10n.tr("Cancel") }
         static var searchPromptTitle: String { L10n.tr("Find a place") }
-        static var searchPromptBody: String { L10n.tr("Search ZIPs, cities, neighborhoods, and street addresses to jump straight to the area on the map.") }
+        static var searchPromptBody: String { L10n.tr("Search zip codes, cities, neighborhoods, and street addresses to jump straight to the area on the map.") }
         static var searchingPlaces: String { L10n.tr("Searching places") }
-        static var searchingPlacesBody: String { L10n.tr("Looking up matching ZIPs, cities, neighborhoods, and addresses.") }
+        static var searchingPlacesBody: String { L10n.tr("Looking up matching zip codes, cities, neighborhoods, and addresses.") }
         static var noSearchResultsTitle: String { L10n.tr("No places found") }
-        static var noSearchResultsBody: String { L10n.tr("Try a different ZIP, city, neighborhood, or street address.") }
+        static var noSearchResultsBody: String { L10n.tr("Try a different zip code, city, neighborhood, or street address.") }
         static var searchUnavailableTitle: String { L10n.tr("Search is unavailable") }
         static var searchErrorBody: String { L10n.tr("The app could not load search results right now. Try again in a moment.") }
-        static var noZipAvailableNotice: String { L10n.tr("No ZIP code is available for this location. Try a nearby area on land.") }
+        static var noZipAvailableNotice: String { L10n.tr("No neighborhood profile is available for this location. Try a nearby area on land.") }
         static var googleMapsKeyRequired: String { L10n.tr("Google Maps Key Required") }
         static var googleMapsKeyBody: String { L10n.tr("Add GOOGLE_MAPS_API_KEY in Config/GoogleMaps.xcconfig or your scheme environment variables.") }
         static var loadingBoundary: String { L10n.tr("Loading boundary") }
         static var updatingNeighborhoodOutline: String { L10n.tr("Updating neighborhood outline") }
         static var locationUnavailable: String { L10n.tr("Location unavailable") }
-        static var appTitle: String { L10n.tr("Lociq") }
+        static var appTitle: String { L10n.tr("Neighborhood intelligence") }
         static var ipadSidebarBody: String { L10n.tr("Review the neighborhood profile while the map stays live.") }
         static var profile: String { L10n.tr("Profile") }
         static var guide: String { L10n.tr("Guide") }
-        static var tapMapToLoadContext: String { L10n.tr("Tap the map to load ZIP and tract context.") }
+        static var tapMapToLoadContext: String { L10n.tr("Tap the map to load area context.") }
         static var tapTheMap: String { L10n.tr("Tap the map") }
         static var expandForMore: String { L10n.tr("Expand for more") }
         static var tapAPlace: String { L10n.tr("Tap a place") }
         static var compareScales: String { L10n.tr("Compare scales") }
         static var readTheProfile: String { L10n.tr("Read the profile") }
-        static var usingBroaderZIPContext: String { L10n.tr("Using broader ZIP context") }
+        static var usingBroaderZIPContext: String { L10n.tr("Using broader area context") }
         static var broaderNeighborhoodRead: String { L10n.tr("Broader neighborhood read") }
         static var finerLocalContext: String { L10n.tr("Finer local context") }
         static var valuesAreEstimatesShort: String { L10n.tr("Values are estimates") }
@@ -177,8 +179,8 @@ enum AppStrings {
         static var discoveryUsingRecentPlace: String { L10n.tr("Using your most recent place") }
         static var discoveryNeedsPlaceTitle: String { L10n.tr("Start from a place first") }
         static var discoveryNeedsPlaceBody: String { L10n.tr("Open a neighborhood on the map, or revisit a recent place, to generate discovery recommendations.") }
-        static var discoveryLoadFailedBody: String { L10n.tr("Lociq could not generate discovery recommendations right now. Try again in a moment.") }
-        static var discoveryNoCandidatesBody: String { L10n.tr("Lociq could not find enough nearby candidates to recommend from this place.") }
+        static var discoveryLoadFailedBody: String { L10n.tr("Neighborhood intelligence could not generate discovery recommendations right now. Try again in a moment.") }
+        static var discoveryNoCandidatesBody: String { L10n.tr("Neighborhood intelligence could not find enough nearby candidates to recommend from this place.") }
         static var discoverySourceGemini: String { L10n.tr("Gemini") }
         static var discoverySourceLocal: String { L10n.tr("Local ranking") }
         static var discoveryHiddenGemTitle: String { L10n.tr("Hidden gem nearby") }
@@ -187,12 +189,10 @@ enum AppStrings {
     }
 
     enum Formats {
-        static func zip(_ value: String) -> String {
-            L10n.format("ZIP %@", fallback: "ZIP %@", value)
-        }
+        static func zip(_ value: String) -> String { value }
 
         static func tract(_ value: String) -> String {
-            L10n.format("Tract %@", fallback: "Tract %@", value)
+            L10n.format("Local %@", fallback: "Local %@", value)
         }
 
         static func refreshingScale(_ value: String) -> String {
@@ -334,28 +334,28 @@ enum AppStrings {
     }
 
     enum More {
-        static var heroTitle: String { L10n.tr("How Lociq works") }
+        static var heroTitle: String { L10n.tr("How Neighborhood intelligence works") }
         static var heroSubtitle: String { L10n.tr("A quick guide to reading the map and profile cards.") }
-        static var heroBody: String { L10n.tr("Tap a place, compare ZIP and tract views, and use the sheet to understand the area without digging through raw Census tables.") }
+        static var heroBody: String { L10n.tr("Tap a place, compare broader and closer views, and use the sheet to understand the area without digging through raw Census tables.") }
         static var broadScan: String { L10n.tr("Broad scan") }
         static var localDetail: String { L10n.tr("Local detail") }
         static var tapAnySpot: String { L10n.tr("Tap any spot") }
         static var tapAnySpotDetail: String { L10n.tr("Select a location and load a neighborhood profile for that area.") }
         static var switchScale: String { L10n.tr("Switch scale") }
-        static var switchScaleDetail: String { L10n.tr("Use ZIP for a broader read and tract for more local variation.") }
+        static var switchScaleDetail: String { L10n.tr("Use the broader view for context and the closer view for more local variation.") }
         static var readTheProfileDetail: String { L10n.tr("Swipe up to compare population, income, age, housing, and context.") }
         static var startHere: String { L10n.tr("Start here") }
         static var startHereSubtitle: String { L10n.tr("The fastest way to get useful signal from the app") }
-        static var zipVsTract: String { L10n.tr("ZIP vs Tract") }
+        static var zipVsTract: String { L10n.tr("Area scales") }
         static var zipVsTractSubtitle: String { L10n.tr("Use each scale for a different kind of question") }
-        static var zipTitle: String { L10n.tr("ZIP") }
+        static var zipTitle: String { L10n.tr("Area") }
         static var zipDetail: String { L10n.tr("Best for a broader neighborhood read and faster comparison across larger areas.") }
         static var broaderView: String { L10n.tr("Broader view") }
-        static var tractTitle: String { L10n.tr("Tract") }
-        static var tractDetail: String { L10n.tr("Best for finer local context when nearby blocks may differ within the same ZIP.") }
+        static var tractTitle: String { L10n.tr("Local") }
+        static var tractDetail: String { L10n.tr("Best for a closer local read when nearby blocks may differ within the same area.") }
         static var closerView: String { L10n.tr("Closer view") }
         static var tip: String { L10n.tr("Tip") }
-        static var tipDetail: String { L10n.tr("If two nearby places look similar in ZIP view, switch to tract to check for more local variation.") }
+        static var tipDetail: String { L10n.tr("If two nearby places look similar in the broader view, switch to the closer view to check for more local variation.") }
         static var whatYoureSeeing: String { L10n.tr("What you’re seeing") }
         static var whatYoureSeeingSubtitle: String { L10n.tr("How to interpret the profile without reading every number in depth") }
         static var populationMeaning: String { L10n.tr("How many people live in the selected area.") }
@@ -375,7 +375,7 @@ enum AppStrings {
         static var privacyTrust: String { L10n.tr("Privacy and data trust") }
         static var privacyTrustSubtitle: String { L10n.tr("What the app uses and what it does not") }
         static var locationOptional: String { L10n.tr("Location is optional") }
-        static var locationOptionalDetail: String { L10n.tr("Lociq uses location to center the map and help you explore nearby areas more quickly.") }
+        static var locationOptionalDetail: String { L10n.tr("Neighborhood intelligence uses location to center the map and help you explore nearby areas more quickly.") }
         static var noAccountRequired: String { L10n.tr("No account required") }
         static var noAccountRequiredDetail: String { L10n.tr("You can use the app without signing in or creating a personal profile.") }
         static var officialPublicData: String { L10n.tr("Official public data") }
@@ -387,7 +387,7 @@ enum AppStrings {
         static var tigerwebGeometry: String { L10n.tr("TIGERweb Geometry") }
         static var fccBlockLookup: String { L10n.tr("FCC Block Lookup") }
         static var primarySources: String { L10n.tr("Primary sources") }
-        static var primarySourcesSubtitle: String { L10n.tr("The public datasets behind Lociq") }
+        static var primarySourcesSubtitle: String { L10n.tr("The public datasets behind Neighborhood intelligence") }
         static var dataQualityNotes: String { L10n.tr("Data quality notes") }
         static var dataQualityNotesSubtitle: String { L10n.tr("Useful caveats when comparing places") }
         static var savedPlaces: String { L10n.tr("Saved places") }
@@ -438,8 +438,10 @@ enum SampleData {
 enum IconNames {
     static let map = "map"
     static let mapFilled = "map.fill"
-    static let more = "ellipsis.circle"
-    static let moreFilled = "ellipsis.circle.fill"
+    static let library = "books.vertical"
+    static let libraryFilled = "books.vertical.fill"
+    static let guide = "info.circle"
+    static let guideFilled = "info.circle.fill"
     static let person = "person.3"
     static let personFilled = "person.3.fill"
     static let money = "dollarsign.circle"

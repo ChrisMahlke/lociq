@@ -156,6 +156,10 @@ final class MapSelectionModel: ObservableObject {
         refreshData(for: coordinate)
     }
 
+    func cancelCurrentSelectionRequest() {
+        clearSelection()
+    }
+
     func clearSelection() {
         activeSelectionRequestID = UUID()
         activeFetchTask?.cancel()

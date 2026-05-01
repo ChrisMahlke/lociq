@@ -1,15 +1,8 @@
 import SwiftUI
 
-struct MoreScreen: View {
+private struct AuxiliaryScreenScaffold<Content: View>: View {
     @Environment(\.colorScheme) private var colorScheme
-    @ObservedObject var libraryStore: NeighborhoodLibraryStore
-    @ObservedObject var discoveryModel: NeighborhoodDiscoveryModel
-    let hasCurrentDiscoverySeed: Bool
-    let onRefreshDiscovery: () -> Void
-    let onSelectDiscoveryRecommendation: (NeighborhoodDiscoveryRecommendation) -> Void
-    let onSelectPlace: (NeighborhoodLibraryEntry) -> Void
-    let onSelectComparison: (SavedComparisonEntry) -> Void
-    @State private var editingEntry: EditableNeighborhoodLibraryEntry?
+    @ViewBuilder let content: Content
 
     private var backgroundWashColors: [Color] {
         if colorScheme == .dark {
@@ -30,99 +23,7 @@ struct MoreScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                MoreHeroCard()
-                DiscoveryModeCard(
-                    model: discoveryModel,
-                    hasCurrentSeed: hasCurrentDiscoverySeed,
-                    onRefresh: onRefreshDiscovery,
-                    onSelectRecommendation: onSelectDiscoveryRecommendation
-                )
-                NeighborhoodLibraryCard(
-                    title: AppStrings.More.pinnedNeighborhoods,
-                    subtitle: AppStrings.More.pinnedNeighborhoodsSubtitle,
-                    icon: "pin.fill",
-                    tint: .indigo,
-                    entries: libraryStore.pinnedPlaces,
-                    emptyState: AppStrings.More.noPinnedNeighborhoodsYet,
-                    removeActionTitle: AppStrings.Labels.removeSavedPlace,
-                    onSelectPlace: onSelectPlace,
-                    onEditPlace: { entry in
-                        editingEntry = EditableNeighborhoodLibraryEntry(entry: entry)
-                    },
-                    onTogglePinned: { entry in
-                        libraryStore.updatePlaceMetadata(
-                            id: entry.id,
-                            customLabel: entry.normalizedCustomLabel ?? "",
-                            note: entry.normalizedNote,
-                            isPinned: !entry.isPinned
-                        )
-                    },
-                    onRemovePlace: { entry in
-                        libraryStore.removeSavedPlace(id: entry.id)
-                    }
-                )
-                NeighborhoodLibraryCard(
-                    title: AppStrings.More.savedPlaces,
-                    subtitle: AppStrings.More.savedPlacesSubtitle,
-                    icon: "bookmark.fill",
-                    tint: .blue,
-                    entries: libraryStore.unpinnedSavedPlaces,
-                    emptyState: AppStrings.More.noSavedPlacesYet,
-                    removeActionTitle: AppStrings.Labels.removeSavedPlace,
-                    onSelectPlace: onSelectPlace,
-                    onEditPlace: { entry in
-                        editingEntry = EditableNeighborhoodLibraryEntry(entry: entry)
-                    },
-                    onTogglePinned: { entry in
-                        libraryStore.updatePlaceMetadata(
-                            id: entry.id,
-                            customLabel: entry.normalizedCustomLabel ?? "",
-                            note: entry.normalizedNote,
-                            isPinned: !entry.isPinned
-                        )
-                    },
-                    onRemovePlace: { entry in
-                        libraryStore.removeSavedPlace(id: entry.id)
-                    }
-                )
-                NeighborhoodLibraryCard(
-                    title: AppStrings.More.recentLookups,
-                    subtitle: AppStrings.More.recentLookupsSubtitle,
-                    icon: "clock.arrow.circlepath",
-                    tint: .teal,
-                    entries: libraryStore.recentLookups,
-                    emptyState: AppStrings.More.noRecentLookupsYet,
-                    removeActionTitle: AppStrings.Labels.removeRecentLookup,
-                    onSelectPlace: onSelectPlace,
-                    onEditPlace: { entry in
-                        editingEntry = EditableNeighborhoodLibraryEntry(entry: entry)
-                    },
-                    onTogglePinned: { entry in
-                        libraryStore.updatePlaceMetadata(
-                            id: entry.id,
-                            customLabel: entry.normalizedCustomLabel ?? "",
-                            note: entry.normalizedNote,
-                            isPinned: !entry.isPinned
-                        )
-                    },
-                    onRemovePlace: { entry in
-                        libraryStore.removeRecentLookup(id: entry.id)
-                    }
-                )
-                SavedComparisonsCard(
-                    entries: libraryStore.savedComparisons,
-                    onSelectComparison: onSelectComparison,
-                    onRemoveComparison: { entry in
-                        libraryStore.removeSavedComparison(id: entry.id)
-                    }
-                )
-                QuickStartCard()
-                ScaleComparisonCard()
-                WhatYouSeeCard()
-                MapControlsCard()
-                PrivacyAndTrustCard()
-                SourceBadgeGrid()
-                DataQualityFootnoteCard()
+                content
             }
             .padding()
         }
@@ -139,6 +40,86 @@ struct MoreScreen: View {
                 .blur(radius: 10)
             }
         )
+    }
+}
+
+struct LibraryScreen: View {
+    @ObservedObject var libraryStore: NeighborhoodLibraryStore
+    @ObservedObject var discoveryModel: NeighborhoodDiscoveryModel
+    let hasCurrentDiscoverySeed: Bool
+    let onRefreshDiscovery: () -> Void
+    let onSelectDiscoveryRecommendation: (NeighborhoodDiscoveryRecommendation) -> Void
+    let onSelectPlace: (NeighborhoodLibraryEntry) -> Void
+    let onSelectComparison: (SavedComparisonEntry) -> Void
+    @State private var editingEntry: EditableNeighborhoodLibraryEntry?
+
+    var body: some View {
+        AuxiliaryScreenScaffold {
+            DiscoveryModeCard(
+                model: discoveryModel,
+                hasCurrentSeed: hasCurrentDiscoverySeed,
+                onRefresh: onRefreshDiscovery,
+                onSelectRecommendation: onSelectDiscoveryRecommendation
+            )
+            NeighborhoodLibraryCard(
+                title: AppStrings.More.pinnedNeighborhoods,
+                subtitle: AppStrings.More.pinnedNeighborhoodsSubtitle,
+                icon: "pin.fill",
+                tint: .indigo,
+                entries: libraryStore.pinnedPlaces,
+                emptyState: AppStrings.More.noPinnedNeighborhoodsYet,
+                removeActionTitle: AppStrings.Labels.removeSavedPlace,
+                onSelectPlace: onSelectPlace,
+                onEditPlace: { entry in
+                    editingEntry = EditableNeighborhoodLibraryEntry(entry: entry)
+                },
+                onTogglePinned: togglePinned,
+                onRemovePlace: { entry in
+                    libraryStore.removeSavedPlace(id: entry.id)
+                }
+            )
+            NeighborhoodLibraryCard(
+                title: AppStrings.More.savedPlaces,
+                subtitle: AppStrings.More.savedPlacesSubtitle,
+                icon: "bookmark.fill",
+                tint: .blue,
+                entries: libraryStore.unpinnedSavedPlaces,
+                emptyState: AppStrings.More.noSavedPlacesYet,
+                removeActionTitle: AppStrings.Labels.removeSavedPlace,
+                onSelectPlace: onSelectPlace,
+                onEditPlace: { entry in
+                    editingEntry = EditableNeighborhoodLibraryEntry(entry: entry)
+                },
+                onTogglePinned: togglePinned,
+                onRemovePlace: { entry in
+                    libraryStore.removeSavedPlace(id: entry.id)
+                }
+            )
+            NeighborhoodLibraryCard(
+                title: AppStrings.More.recentLookups,
+                subtitle: AppStrings.More.recentLookupsSubtitle,
+                icon: "clock.arrow.circlepath",
+                tint: .teal,
+                entries: libraryStore.recentLookups,
+                emptyState: AppStrings.More.noRecentLookupsYet,
+                removeActionTitle: AppStrings.Labels.removeRecentLookup,
+                onSelectPlace: onSelectPlace,
+                onEditPlace: { entry in
+                    editingEntry = EditableNeighborhoodLibraryEntry(entry: entry)
+                },
+                onTogglePinned: togglePinned,
+                onRemovePlace: { entry in
+                    libraryStore.removeRecentLookup(id: entry.id)
+                }
+            )
+            SavedComparisonsCard(
+                entries: libraryStore.savedComparisons,
+                onSelectComparison: onSelectComparison,
+                onRemoveComparison: { entry in
+                    libraryStore.removeSavedComparison(id: entry.id)
+                }
+            )
+        }
         .sheet(item: $editingEntry) { draft in
             NeighborhoodLibraryEditorSheet(
                 draft: draft,
@@ -151,6 +132,30 @@ struct MoreScreen: View {
                     )
                 }
             )
+        }
+    }
+
+    private func togglePinned(_ entry: NeighborhoodLibraryEntry) {
+        libraryStore.updatePlaceMetadata(
+            id: entry.id,
+            customLabel: entry.normalizedCustomLabel ?? "",
+            note: entry.normalizedNote,
+            isPinned: !entry.isPinned
+        )
+    }
+}
+
+struct GuideScreen: View {
+    var body: some View {
+        AuxiliaryScreenScaffold {
+            MoreHeroCard()
+            QuickStartCard()
+            ScaleComparisonCard()
+            WhatYouSeeCard()
+            MapControlsCard()
+            PrivacyAndTrustCard()
+            SourceBadgeGrid()
+            DataQualityFootnoteCard()
         }
     }
 }
