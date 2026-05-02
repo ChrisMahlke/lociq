@@ -320,6 +320,7 @@ enum AppStrings {
         static func belowPovertyLine(_ value: String) -> String {
             L10n.format("%@ of people are below the poverty line (ACS estimate).", fallback: "%@ of people are below the poverty line (ACS estimate).", value)
         }
+
     }
 
     enum Insight {

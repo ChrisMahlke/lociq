@@ -366,6 +366,7 @@ struct InsightsSheetContent: View {
                                 } else if metrics == nil {
                                     GeneratedInsightsSection(insights: [], isLoading: true)
                                 }
+
                             }
                         }
                     }
