@@ -542,7 +542,7 @@ private struct NeighborhoodLibraryRow: View {
                     .background(Color.primary.opacity(0.06), in: Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(AppStrings.Labels.removeLibraryItem)
+            .accessibilityLabel(AppStrings.Labels.libraryDetails)
         }
         .padding(12)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -651,6 +651,7 @@ private struct SavedComparisonRow: View {
                     .background(Color.primary.opacity(0.06), in: Circle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(AppStrings.Labels.savedComparisons)
         }
         .padding(12)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))

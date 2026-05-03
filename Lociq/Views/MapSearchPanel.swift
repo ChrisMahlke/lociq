@@ -42,6 +42,8 @@ struct MapSearchLauncher: View {
         .buttonStyle(.plain)
         .frame(maxWidth: 420, alignment: .leading)
         .accessibilityIdentifier("map.search.launcher")
+        .accessibilityLabel(AppStrings.Labels.searchPromptTitle)
+        .accessibilityValue(displayText)
     }
 }
 
@@ -165,10 +167,10 @@ struct MapSearchExperienceView: View {
                 }
             }
         }
-        .onAppear {
-            DispatchQueue.main.async {
-                isFieldFocused = true
-            }
+        .task {
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            isFieldFocused = true
         }
     }
 

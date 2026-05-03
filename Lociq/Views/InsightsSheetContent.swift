@@ -210,205 +210,240 @@ struct InsightsSheetContent: View {
     }
 
     var body: some View {
+        content
+            .task {
+                guard hintVisible else { return }
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.25)) {
+                    hintVisible = false
+                }
+            }
+            .task(id: shareExportIdentity) {
+                guard canShareSelection else {
+                    shareAsset = nil
+                    return
+                }
+
+                shareAsset = NeighborhoodShareCardExporter.makeAsset(
+                    areaTitle: areaTitle,
+                    areaSubtitle: areaSubtitle,
+                    boundaryScale: boundaryScale,
+                    metricsSource: metricsSource,
+                    metrics: metrics,
+                    demographics: demographics,
+                    insights: insights
+                )
+            }
+            .task(id: comparisonShareExportIdentity) {
+                guard let primaryComparisonProfile, let comparisonProfile else {
+                    comparisonShareAsset = nil
+                    return
+                }
+
+                comparisonShareAsset = ComparisonShareCardExporter.makeAsset(
+                    boundaryScale: boundaryScale,
+                    primary: primaryComparisonProfile,
+                    secondary: comparisonProfile
+                )
+            }
+            .sheet(item: $libraryEditorDraft) { draft in
+                NeighborhoodLibraryEditorSheet(
+                    draft: draft,
+                    onSave: { updatedDraft in
+                        onSavePlaceDetails(
+                            updatedDraft.customLabel,
+                            updatedDraft.note,
+                            updatedDraft.isPinned
+                        )
+                    }
+                )
+            }
+            .animation(.easeInOut(duration: 0.3), value: refreshAnimationKey)
+    }
+
+    @ViewBuilder
+    private var content: some View {
         Group {
             if isCollapsed {
-                VStack(alignment: .leading, spacing: 10) {
-                    CollapsedInsightsHeaderRow(
-                        areaTitle: areaTitle,
-                        areaSubtitle: areaSubtitle,
-                        zipLine: zipLine,
-                        boundaryScale: $boundaryScale,
-                        hintVisible: hintVisible,
-                        hasActiveSelection: hasActiveSelection
-                    )
-
-                    if showsNoCoverageState {
-                        CompactSelectionFeedbackCard(
-                            title: AppStrings.Labels.noCoverageTitle,
-                            message: AppStrings.Labels.noCoverageBody,
-                            systemImage: "mappin.slash.circle.fill",
-                            tint: .orange
-                        )
-                    } else if showsSampleFallbackState {
-                        CompactSelectionFeedbackCard(
-                            title: AppStrings.Labels.sampleFallbackTitle,
-                            message: AppStrings.Labels.sampleFallbackBody,
-                            systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90",
-                            tint: .indigo
-                        )
-                    } else if isCompareModeActive {
-                        CollapsedComparisonPreviewCard(
-                            primaryTitle: areaTitle,
-                            secondaryTitle: comparisonProfile?.title ?? pendingComparisonTitle,
-                            isLoadingSecondary: isLoadingComparison,
-                            boundaryScale: boundaryScale
-                        )
-                    } else if hasActiveSelection || isLoadingSelection {
-                        CollapsedInsightsMetricsGrid(metrics: metrics)
-                    } else {
-                        CompactSheetPromptCard()
-                    }
-                }
+                collapsedContent
             } else {
-                ScrollView {
-                    VStack(spacing: 14) {
-                        if !hasActiveSelection {
-                            SelectionStateCard(
-                                title: AppStrings.Labels.noSelectionTitle,
-                                message: AppStrings.Labels.noSelectionBody,
-                                systemImage: "hand.tap.fill",
-                                tint: .blue
-                            )
-                        } else if showsNoCoverageState {
-                            SelectionStateCard(
-                                title: AppStrings.Labels.noCoverageTitle,
-                                message: AppStrings.Labels.noCoverageBody,
-                                systemImage: "mappin.slash.circle.fill",
-                                tint: .orange
-                            )
-                        } else if isLoadingSelection && demographics == nil && metrics == nil {
-                            SelectionStateCard(
-                                title: AppStrings.Labels.loadingSelectionTitle,
-                                message: AppStrings.Labels.loadingSelectionBody,
-                                systemImage: "point.3.connected.trianglepath.dotted",
-                                tint: themeTint
-                            )
-                            KeyMetricsGrid(metrics: metrics)
-                            GeneratedInsightsSection(insights: [], isLoading: true)
-                        } else if showsSampleFallbackState {
-                            SelectionStateCard(
-                                title: AppStrings.Labels.sampleFallbackTitle,
-                                message: AppStrings.Labels.sampleFallbackBody,
-                                systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90",
-                                tint: .indigo,
-                                actionTitle: AppStrings.Labels.retry,
-                                action: onRetrySelection
-                            )
-
-                            if let metrics {
-                                KeyMetricsGrid(metrics: metrics)
-                            }
-                        } else {
-                            if isRefreshingScale {
-                                InlineSelectionRefreshCard(
-                                    title: AppStrings.Formats.refreshingScale(boundaryScale.displayTitle),
-                                    message: AppStrings.Labels.refreshingScaleBody,
-                                    tint: themeTint
-                                )
-                            }
-
-                            ExpandedInsightsHeaderRow(
-                                areaTitle: areaTitle,
-                                areaSubtitle: areaSubtitle,
-                                zipCode: zipCode,
-                                metricsSource: metricsSource,
-                                isFallbackToZIP: isFallbackToZIP,
-                                isComparing: isCompareModeActive,
-                                isCurrentPlaceSaved: isCurrentPlaceSaved,
-                                onStartCompare: onStartCompare,
-                                onToggleSaved: onToggleSaved,
-                                onEditLibraryEntry: {
-                                    libraryEditorDraft = EditableNeighborhoodLibraryEntry(
-                                        id: currentLibraryEntry?.id ?? zipBundle?.tract?.geoid ?? areaTitle,
-                                        defaultTitle: currentLibraryEntry?.title ?? areaTitle,
-                                        customLabel: currentLibraryEntry?.normalizedCustomLabel ?? "",
-                                        note: currentLibraryEntry?.normalizedNote ?? "",
-                                        isPinned: currentLibraryEntry?.isPinned ?? false
-                                    )
-                                },
-                                shareAsset: shareAsset,
-                                boundaryScale: $boundaryScale
-                            )
-                            .id("header-\(refreshAnimationKey)")
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-
-                            if isCompareModeActive, let primaryComparisonProfile {
-                                PlaceComparisonSection(
-                                    primary: primaryComparisonProfile,
-                                    secondary: comparisonProfile,
-                                    pendingSecondaryTitle: pendingComparisonTitle,
-                                    isLoadingSecondary: isLoadingComparison,
-                                    comparisonErrorMessage: comparisonErrorMessage,
-                                    boundaryScale: boundaryScale,
-                                    onReplaceComparison: onReplaceCompare,
-                                    onClearComparison: onClearCompare,
-                                    isComparisonSaved: isCurrentComparisonSaved,
-                                    onSaveComparison: onSaveComparison,
-                                    shareAsset: comparisonShareAsset
-                                )
-                            } else {
-                                KeyMetricsGrid(metrics: metrics)
-                                    .id("metrics-\(refreshAnimationKey)")
-                                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
-
-                                if let demographics {
-                                    QuickSignalsSection(demographics: demographics, themeTint: themeTint)
-                                    HousingAffordabilitySection(demographics: demographics, themeTint: themeTint)
-                                    DemographicCompositionSection(
-                                        demographics: demographics,
-                                        totalPopulation: metrics?.population,
-                                        themeTint: themeTint
-                                    )
-                                }
-
-                                if zipBundle != nil {
-                                    GeneratedInsightsSection(insights: insights, isLoading: false)
-                                } else if metrics == nil {
-                                    GeneratedInsightsSection(insights: [], isLoading: true)
-                                }
-
-                            }
-                        }
-                    }
-                    .padding(.bottom, 16)
-                }
+                expandedContent
             }
         }
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                withAnimation(.easeOut(duration: 0.25)) { hintVisible = false }
-            }
-        }
-        .task(id: shareExportIdentity) {
-            guard canShareSelection else {
-                shareAsset = nil
-                return
-            }
+    }
 
-            shareAsset = NeighborhoodShareCardExporter.makeAsset(
+    private var collapsedContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            CollapsedInsightsHeaderRow(
                 areaTitle: areaTitle,
                 areaSubtitle: areaSubtitle,
-                boundaryScale: boundaryScale,
-                metricsSource: metricsSource,
-                metrics: metrics,
-                demographics: demographics,
-                insights: insights
+                zipLine: zipLine,
+                boundaryScale: $boundaryScale,
+                hintVisible: hintVisible,
+                hasActiveSelection: hasActiveSelection
             )
-        }
-        .task(id: comparisonShareExportIdentity) {
-            guard let primaryComparisonProfile, let comparisonProfile else {
-                comparisonShareAsset = nil
-                return
-            }
 
-            comparisonShareAsset = ComparisonShareCardExporter.makeAsset(
-                boundaryScale: boundaryScale,
+            collapsedStatusContent
+        }
+    }
+
+    @ViewBuilder
+    private var collapsedStatusContent: some View {
+        if showsNoCoverageState {
+            CompactSelectionFeedbackCard(
+                title: AppStrings.Labels.noCoverageTitle,
+                message: AppStrings.Labels.noCoverageBody,
+                systemImage: "mappin.slash.circle.fill",
+                tint: .orange
+            )
+        } else if showsSampleFallbackState {
+            CompactSelectionFeedbackCard(
+                title: AppStrings.Labels.sampleFallbackTitle,
+                message: AppStrings.Labels.sampleFallbackBody,
+                systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90",
+                tint: .indigo
+            )
+        } else if isCompareModeActive {
+            CollapsedComparisonPreviewCard(
+                primaryTitle: areaTitle,
+                secondaryTitle: comparisonProfile?.title ?? pendingComparisonTitle,
+                isLoadingSecondary: isLoadingComparison,
+                boundaryScale: boundaryScale
+            )
+        } else if hasActiveSelection || isLoadingSelection {
+            CollapsedInsightsMetricsGrid(metrics: metrics)
+        } else {
+            CompactSheetPromptCard()
+        }
+    }
+
+    private var expandedContent: some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                expandedStatusContent
+            }
+            .padding(.bottom, 16)
+        }
+    }
+
+    @ViewBuilder
+    private var expandedStatusContent: some View {
+        if !hasActiveSelection {
+            SelectionStateCard(
+                title: AppStrings.Labels.noSelectionTitle,
+                message: AppStrings.Labels.noSelectionBody,
+                systemImage: "hand.tap.fill",
+                tint: .blue
+            )
+        } else if showsNoCoverageState {
+            SelectionStateCard(
+                title: AppStrings.Labels.noCoverageTitle,
+                message: AppStrings.Labels.noCoverageBody,
+                systemImage: "mappin.slash.circle.fill",
+                tint: .orange
+            )
+        } else if isLoadingSelection && demographics == nil && metrics == nil {
+            SelectionStateCard(
+                title: AppStrings.Labels.loadingSelectionTitle,
+                message: AppStrings.Labels.loadingSelectionBody,
+                systemImage: "point.3.connected.trianglepath.dotted",
+                tint: themeTint
+            )
+            KeyMetricsGrid(metrics: metrics)
+            GeneratedInsightsSection(insights: [], isLoading: true)
+        } else if showsSampleFallbackState {
+            SelectionStateCard(
+                title: AppStrings.Labels.sampleFallbackTitle,
+                message: AppStrings.Labels.sampleFallbackBody,
+                systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90",
+                tint: .indigo,
+                actionTitle: AppStrings.Labels.retry,
+                action: onRetrySelection
+            )
+
+            if let metrics {
+                KeyMetricsGrid(metrics: metrics)
+            }
+        } else {
+            expandedProfileContent
+        }
+    }
+
+    @ViewBuilder
+    private var expandedProfileContent: some View {
+        if isRefreshingScale {
+            InlineSelectionRefreshCard(
+                title: AppStrings.Formats.refreshingScale(boundaryScale.displayTitle),
+                message: AppStrings.Labels.refreshingScaleBody,
+                tint: themeTint
+            )
+        }
+
+        ExpandedInsightsHeaderRow(
+            areaTitle: areaTitle,
+            areaSubtitle: areaSubtitle,
+            zipCode: zipCode,
+            metricsSource: metricsSource,
+            isFallbackToZIP: isFallbackToZIP,
+            isComparing: isCompareModeActive,
+            isCurrentPlaceSaved: isCurrentPlaceSaved,
+            onStartCompare: onStartCompare,
+            onToggleSaved: onToggleSaved,
+            onEditLibraryEntry: {
+                libraryEditorDraft = EditableNeighborhoodLibraryEntry(
+                    id: currentLibraryEntry?.id ?? zipBundle?.tract?.geoid ?? areaTitle,
+                    defaultTitle: currentLibraryEntry?.title ?? areaTitle,
+                    customLabel: currentLibraryEntry?.normalizedCustomLabel ?? "",
+                    note: currentLibraryEntry?.normalizedNote ?? "",
+                    isPinned: currentLibraryEntry?.isPinned ?? false
+                )
+            },
+            shareAsset: shareAsset,
+            boundaryScale: $boundaryScale
+        )
+        .id("header-\(refreshAnimationKey)")
+        .transition(.opacity.combined(with: .move(edge: .top)))
+
+        if isCompareModeActive, let primaryComparisonProfile {
+            PlaceComparisonSection(
                 primary: primaryComparisonProfile,
-                secondary: comparisonProfile
+                secondary: comparisonProfile,
+                pendingSecondaryTitle: pendingComparisonTitle,
+                isLoadingSecondary: isLoadingComparison,
+                comparisonErrorMessage: comparisonErrorMessage,
+                boundaryScale: boundaryScale,
+                onReplaceComparison: onReplaceCompare,
+                onClearComparison: onClearCompare,
+                isComparisonSaved: isCurrentComparisonSaved,
+                onSaveComparison: onSaveComparison,
+                shareAsset: comparisonShareAsset
+            )
+        } else {
+            expandedMetricsContent
+        }
+    }
+
+    @ViewBuilder
+    private var expandedMetricsContent: some View {
+        KeyMetricsGrid(metrics: metrics)
+            .id("metrics-\(refreshAnimationKey)")
+            .transition(.opacity.combined(with: .scale(scale: 0.98)))
+
+        if let demographics {
+            QuickSignalsSection(demographics: demographics, themeTint: themeTint)
+            HousingAffordabilitySection(demographics: demographics, themeTint: themeTint)
+            DemographicCompositionSection(
+                demographics: demographics,
+                totalPopulation: metrics?.population,
+                themeTint: themeTint
             )
         }
-        .sheet(item: $libraryEditorDraft) { draft in
-            NeighborhoodLibraryEditorSheet(
-                draft: draft,
-                onSave: { updatedDraft in
-                    onSavePlaceDetails(
-                        updatedDraft.customLabel,
-                        updatedDraft.note,
-                        updatedDraft.isPinned
-                    )
-                }
-            )
+
+        if zipBundle != nil {
+            GeneratedInsightsSection(insights: insights, isLoading: false)
+        } else if metrics == nil {
+            GeneratedInsightsSection(insights: [], isLoading: true)
         }
-        .animation(.easeInOut(duration: 0.3), value: refreshAnimationKey)
     }
 }

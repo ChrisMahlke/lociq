@@ -58,6 +58,9 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
         mapView.settings.compassButton = true
         mapView.settings.myLocationButton = false
         mapView.isMyLocationEnabled = true
+        mapView.isAccessibilityElement = true
+        mapView.accessibilityLabel = AppStrings.Tabs.map
+        mapView.accessibilityHint = AppStrings.Labels.tapMapToLoadContext
         return mapView
     }
 
