@@ -1,5 +1,5 @@
 enum CensusMetricsMapper {
-    static func metrics(from demographics: Demographics) -> CensusMetrics {
+    nonisolated static func metrics(from demographics: Demographics) -> CensusMetrics {
         CensusMetrics(
             population: demographics.population,
             medianIncome: demographics.medianHouseholdIncome,
