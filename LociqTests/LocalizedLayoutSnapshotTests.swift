@@ -35,25 +35,37 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
     private func makeSnapshotCases() -> [SnapshotCase] {
         let fixtures = SnapshotFixtures.make()
         let libraryStore = SnapshotFixtures.makeLibraryStore()
+        let discoveryModel = NeighborhoodDiscoveryModel(
+            service: SnapshotDiscoveryService(),
+            libraryStore: libraryStore
+        )
 
         return [
             SnapshotCase(
-                name: "more-compact",
+                name: "library-compact",
                 size: CGSize(width: 320, height: 1400),
                 view: AnyView(
-                    MoreScreen(
+                    LibraryScreen(
                         libraryStore: libraryStore,
+                        discoveryModel: discoveryModel,
+                        hasCurrentDiscoverySeed: false,
+                        onRefreshDiscovery: {},
+                        onSelectDiscoveryRecommendation: { _ in },
                         onSelectPlace: { _ in },
                         onSelectComparison: { _ in }
                     )
                 )
             ),
             SnapshotCase(
-                name: "more-regular",
+                name: "library-regular",
                 size: CGSize(width: 834, height: 1194),
                 view: AnyView(
-                    MoreScreen(
+                    LibraryScreen(
                         libraryStore: libraryStore,
+                        discoveryModel: discoveryModel,
+                        hasCurrentDiscoverySeed: false,
+                        onRefreshDiscovery: {},
+                        onSelectDiscoveryRecommendation: { _ in },
                         onSelectPlace: { _ in },
                         onSelectComparison: { _ in }
                     )
@@ -114,7 +126,7 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
             SnapshotCase(
                 name: "bottom-ribbon-compact",
                 size: CGSize(width: 320, height: 92),
-                view: AnyView(BottomRibbon(selection: .constant(.more)))
+                view: AnyView(BottomRibbon(selection: .constant(.guide)))
             ),
             SnapshotCase(
                 name: "onboarding-compact",
@@ -183,6 +195,15 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
 
         visit(rootView)
         return labels
+    }
+}
+
+private struct SnapshotDiscoveryService: NeighborhoodDiscoveryServing {
+    func discoverNeighborhoods(
+        from seed: NeighborhoodDiscoverySeed,
+        recentPlaces: [NeighborhoodLibraryEntry]
+    ) async throws -> NeighborhoodDiscoveryResult {
+        throw NeighborhoodDiscoveryError.missingSeed
     }
 }
 

@@ -121,7 +121,7 @@ This app should not fetch Secret Manager at runtime. For Maps SDK for iOS, the s
 Run tests from Xcode or with:
 
 ```bash
-xcodebuild test -project Lociq.xcodeproj -scheme Lociq -destination 'platform=iOS Simulator,name=iPhone 17'
+./scripts/test_baseline.sh
 ```
 
 ## Security Notes

@@ -13,19 +13,24 @@ struct AppDependencies {
     let makeNeighborhoodDiscoveryService: @Sendable () -> any NeighborhoodDiscoveryServing
     let neighborhoodLibraryStore: NeighborhoodLibraryStore
 
-    static let live = AppDependencies(
-        makeCensusLookupService: {
-            CensusZipDemographicsService(censusApiKey: AppConfig.censusAPIKey)
-        },
-        makePlaceSearchService: {
-            ApplePlaceSearchService()
-        },
-        makeNeighborhoodDiscoveryService: {
-            NeighborhoodDiscoveryService(
-                censusService: CensusZipDemographicsService(censusApiKey: AppConfig.censusAPIKey),
-                geminiClient: GeminiDiscoveryClient.makeDefaultIfAvailable()
-            )
-        },
-        neighborhoodLibraryStore: NeighborhoodLibraryStore()
-    )
+    static let live: AppDependencies = {
+        let censusLookupService = CensusZipDemographicsService(censusApiKey: AppConfig.censusAPIKey)
+        let libraryStore = NeighborhoodLibraryStore()
+
+        return AppDependencies(
+            makeCensusLookupService: {
+                censusLookupService
+            },
+            makePlaceSearchService: {
+                ApplePlaceSearchService()
+            },
+            makeNeighborhoodDiscoveryService: {
+                NeighborhoodDiscoveryService(
+                    censusService: censusLookupService,
+                    geminiClient: GeminiDiscoveryClient.makeDefaultIfAvailable()
+                )
+            },
+            neighborhoodLibraryStore: libraryStore
+        )
+    }()
 }

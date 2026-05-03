@@ -65,17 +65,7 @@ final class MapSelectionModel: ObservableObject {
     @Published var tappedCoordinate: CLLocationCoordinate2D?
     @Published var boundaryScale: BoundaryOverlayScale = .zip
 
-    @Published private(set) var selectedZipCode: String?
-    @Published private(set) var censusMetrics: CensusMetrics?
-    @Published private(set) var selectedDemographics: Demographics?
-    @Published private(set) var metricsSource: MetricsSource?
-    @Published private(set) var selectedBoundary: GeoJSONFeatureCollection?
-    @Published private(set) var neighborhoodBoundaries: NeighborhoodBoundarySet?
-    @Published private(set) var selectedZipBundle: ZipLookupResult?
-    @Published private(set) var isBoundaryLoading: Bool = false
-    @Published private(set) var mapNotice: String?
-    @Published private(set) var selectionFeedbackState: SelectionFeedbackState?
-    @Published private(set) var isRefreshingScale: Bool = false
+    @Published private var selectionState: MapSelectionState = .empty
 
     private let service: any CensusNeighborhoodServing
     private let libraryStore: NeighborhoodLibraryStore
@@ -83,8 +73,6 @@ final class MapSelectionModel: ObservableObject {
     private var activeFetchTask: Task<Void, Never>?
     private var activeScaleTask: Task<Void, Never>?
     private var libraryStoreCancellable: AnyCancellable?
-    private var resolvedCoordinate: CLLocationCoordinate2D?
-    private var resolvedPlaceProfile: ResolvedPlaceProfile?
 
     init(service: any CensusNeighborhoodServing, libraryStore: NeighborhoodLibraryStore) {
         self.service = service
@@ -102,6 +90,50 @@ final class MapSelectionModel: ObservableObject {
         tappedCoordinate != nil && (censusMetrics == nil || isBoundaryLoading)
     }
 
+    var selectedZipCode: String? {
+        selectionState.selectedZipCode
+    }
+
+    var censusMetrics: CensusMetrics? {
+        selectionState.censusMetrics
+    }
+
+    var selectedDemographics: Demographics? {
+        selectionState.selectedDemographics
+    }
+
+    var metricsSource: MetricsSource? {
+        selectionState.metricsSource
+    }
+
+    var selectedBoundary: GeoJSONFeatureCollection? {
+        selectionState.selectedBoundary
+    }
+
+    var neighborhoodBoundaries: NeighborhoodBoundarySet? {
+        selectionState.neighborhoodBoundaries
+    }
+
+    var selectedZipBundle: ZipLookupResult? {
+        selectionState.selectedZipBundle
+    }
+
+    var isBoundaryLoading: Bool {
+        selectionState.isBoundaryLoading
+    }
+
+    var mapNotice: String? {
+        selectionState.mapNotice
+    }
+
+    var selectionFeedbackState: SelectionFeedbackState? {
+        selectionState.selectionFeedbackState
+    }
+
+    var isRefreshingScale: Bool {
+        selectionState.isRefreshingScale
+    }
+
     var savedPlaces: [NeighborhoodLibraryEntry] {
         libraryStore.savedPlaces
     }
@@ -116,12 +148,12 @@ final class MapSelectionModel: ObservableObject {
     }
 
     var currentLookupSnapshot: NeighborhoodLookupSnapshot? {
-        guard let coordinate = resolvedCoordinate, let bundle = selectedZipBundle else { return nil }
+        guard let coordinate = selectionState.resolvedCoordinate, let bundle = selectedZipBundle else { return nil }
         return makeLookupSnapshot(bundle: bundle, coordinate: coordinate)
     }
 
     var currentResolvedPlaceProfile: ResolvedPlaceProfile? {
-        resolvedPlaceProfile
+        selectionState.resolvedPlaceProfile
     }
 
     var currentLibraryEntry: NeighborhoodLibraryEntry? {
@@ -147,7 +179,7 @@ final class MapSelectionModel: ObservableObject {
 
     func clearMapNotice(ifMatches message: String) {
         if mapNotice == message {
-            mapNotice = nil
+            updateSelectionState { $0.mapNotice = nil }
         }
     }
 
@@ -165,19 +197,7 @@ final class MapSelectionModel: ObservableObject {
         activeFetchTask?.cancel()
         activeScaleTask?.cancel()
         tappedCoordinate = nil
-        selectedZipCode = nil
-        censusMetrics = nil
-        selectedDemographics = nil
-        metricsSource = nil
-        selectedBoundary = nil
-        neighborhoodBoundaries = nil
-        selectedZipBundle = nil
-        resolvedCoordinate = nil
-        resolvedPlaceProfile = nil
-        isBoundaryLoading = false
-        isRefreshingScale = false
-        mapNotice = nil
-        selectionFeedbackState = nil
+        selectionState = .empty
     }
 
     func toggleSavedCurrentPlace() {
@@ -213,10 +233,7 @@ final class MapSelectionModel: ObservableObject {
         activeSelectionRequestID = requestID
         activeFetchTask?.cancel()
         activeScaleTask?.cancel()
-        isBoundaryLoading = true
-        isRefreshingScale = false
-        mapNotice = nil
-        selectionFeedbackState = nil
+        selectionState = selectionState.loadingNextSelection()
 
         activeFetchTask = Task { [weak self] in
             guard let self else { return }
@@ -237,19 +254,15 @@ final class MapSelectionModel: ObservableObject {
             let (demographics, source) = demographicsForScale(boundaryScale, profile: placeProfile)
             let boundary = boundaryOverlay(for: placeProfile.boundaries, scale: boundaryScale)
 
-            resolvedPlaceProfile = placeProfile
-            resolvedCoordinate = coordinate
-
             withAnimation(.easeInOut(duration: 0.28)) {
-                selectedZipCode = bundle.zcta
-                censusMetrics = mapDemographicsToMetrics(demographics)
-                selectedDemographics = demographics
-                metricsSource = source
-                selectedBoundary = boundary
-                selectedZipBundle = bundle
-                neighborhoodBoundaries = placeProfile.boundaries
-                isBoundaryLoading = false
-                selectionFeedbackState = nil
+                selectionState = .loaded(
+                    coordinate: coordinate,
+                    profile: placeProfile,
+                    demographics: demographics,
+                    metricsSource: source,
+                    boundary: boundary,
+                    metrics: mapDemographicsToMetrics(demographics)
+                )
             }
 
             if let snapshot = makeLookupSnapshot(bundle: bundle, coordinate: coordinate) {
@@ -261,18 +274,7 @@ final class MapSelectionModel: ObservableObject {
             guard isSelectionRequestCurrent(requestID) else { return }
 
             if case .noZCTAFound = serviceError {
-                selectedZipCode = nil
-                censusMetrics = nil
-                selectedDemographics = nil
-                metricsSource = nil
-                selectedBoundary = nil
-                neighborhoodBoundaries = nil
-                selectedZipBundle = nil
-                resolvedCoordinate = nil
-                resolvedPlaceProfile = nil
-                isBoundaryLoading = false
-                mapNotice = AppStrings.Labels.noZipAvailableNotice
-                selectionFeedbackState = .noCoverage
+                selectionState = .noCoverage(notice: AppStrings.Labels.noZipAvailableNotice)
                 return
             }
 
@@ -294,16 +296,16 @@ final class MapSelectionModel: ObservableObject {
 
         guard
             let boundaries = neighborhoodBoundaries,
-            let placeProfile = resolvedPlaceProfile
+            let placeProfile = selectionState.resolvedPlaceProfile
         else {
-            selectedBoundary = nil
+            updateSelectionState { $0.selectedBoundary = nil }
             return
         }
 
-        selectedBoundary = boundaryOverlay(for: boundaries, scale: scale)
+        updateSelectionState { $0.selectedBoundary = boundaryOverlay(for: boundaries, scale: scale) }
         defer {
             if isSelectionRequestCurrent(requestID) {
-                isRefreshingScale = false
+                updateSelectionState { $0.isRefreshingScale = false }
             }
         }
 
@@ -312,10 +314,12 @@ final class MapSelectionModel: ObservableObject {
         guard isSelectionRequestCurrent(requestID) else { return }
 
         withAnimation(.spring(response: 0.38, dampingFraction: 0.9)) {
-            censusMetrics = mapDemographicsToMetrics(demographics)
-            selectedDemographics = demographics
-            metricsSource = source
-            selectionFeedbackState = nil
+            updateSelectionState {
+                $0.censusMetrics = mapDemographicsToMetrics(demographics)
+                $0.selectedDemographics = demographics
+                $0.metricsSource = source
+                $0.selectionFeedbackState = nil
+            }
         }
     }
 
@@ -340,17 +344,7 @@ final class MapSelectionModel: ObservableObject {
     }
 
     private func applySampleFallbackState() {
-        selectedZipCode = nil
-        censusMetrics = SampleMetricsFactory.make(seedString: AppStrings.Network.defaultSeed)
-        selectedDemographics = nil
-        metricsSource = .sample
-        selectedBoundary = nil
-        neighborhoodBoundaries = nil
-        selectedZipBundle = nil
-        resolvedCoordinate = nil
-        resolvedPlaceProfile = nil
-        isBoundaryLoading = false
-        selectionFeedbackState = .sampleFallback
+        selectionState = .sampleFallback(metrics: SampleMetricsFactory.make(seedString: AppStrings.Network.defaultSeed))
     }
 
     private func mapDemographicsToMetrics(_ demographics: Demographics) -> CensusMetrics {
@@ -412,5 +406,11 @@ final class MapSelectionModel: ObservableObject {
             longitude: coordinate.longitude,
             preferredScale: boundaryScale
         )
+    }
+
+    private func updateSelectionState(_ transform: (inout MapSelectionState) -> Void) {
+        var updatedState = selectionState
+        transform(&updatedState)
+        selectionState = updatedState
     }
 }
