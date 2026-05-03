@@ -30,7 +30,7 @@ protocol PlaceSearchServing {
 }
 
 struct ApplePlaceSearchService: PlaceSearchServing {
-    init() {}
+    nonisolated init() {}
 
     func search(query: String) async throws -> [PlaceSearchResult] {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)

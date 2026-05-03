@@ -40,15 +40,15 @@ enum AppConfig {
     /// 1) `GOOGLE_MAPS_API_KEY` environment variable for local debugging or CI
     /// 2) `GoogleMapsAPIKey` (or legacy `GOOGLE_MAPS_API_KEY`) in Info.plist,
     ///    typically populated from `Config/GoogleMaps.xcconfig`
-    static var googleMapsAPIKey: String {
+    nonisolated static var googleMapsAPIKey: String {
         value(forAnyOf: ["GOOGLE_MAPS_API_KEY", "GoogleMapsAPIKey"])
     }
 
-    static var hasGoogleMapsAPIKey: Bool {
+    nonisolated static var hasGoogleMapsAPIKey: Bool {
         !googleMapsAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    static var googleMapsDiagnostics: KeyDiagnostics {
+    nonisolated static var googleMapsDiagnostics: KeyDiagnostics {
         KeyDiagnostics(
             environmentValue: ProcessInfo.processInfo.environment["GOOGLE_MAPS_API_KEY"],
             plistValue: Bundle.main.object(forInfoDictionaryKey: "GoogleMapsAPIKey") as? String
@@ -56,22 +56,22 @@ enum AppConfig {
     }
 
     /// Optional Census API key. Leave blank to use anonymous quota.
-    static var censusAPIKey: String {
+    nonisolated static var censusAPIKey: String {
         value(forAnyOf: ["CENSUS_API_KEY", "CensusAPIKey"])
     }
 
     /// Optional Gemini API key used for AI-assisted discovery recommendations.
-    static var geminiAPIKey: String {
+    nonisolated static var geminiAPIKey: String {
         value(forAnyOf: ["GEMINI_API_KEY", "GeminiAPIKey"])
     }
 
     /// Gemini model used for AI-assisted discovery recommendations.
-    static var geminiModel: String {
+    nonisolated static var geminiModel: String {
         let value = value(forAnyOf: ["GEMINI_MODEL", "GeminiModel"]).trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? "gemini-2.5-flash" : value
     }
 
-    private static func value(forAnyOf keys: [String]) -> String {
+    nonisolated private static func value(forAnyOf keys: [String]) -> String {
         for key in keys {
             let resolved = value(for: key)
             if !resolved.isEmpty {
@@ -81,7 +81,7 @@ enum AppConfig {
         return ""
     }
 
-    private static func value(for key: String) -> String {
+    nonisolated private static func value(for key: String) -> String {
         if let env = ProcessInfo.processInfo.environment[key], !env.isEmpty {
             return env
         }

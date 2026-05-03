@@ -56,7 +56,7 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
     private let directClient: DirectCensusZipDemographicsClient
     private let lookupCache = NeighborhoodLookupCache()
 
-    public init(
+    public nonisolated init(
         censusApiKey: String,
         acsYear: Int = 2024,
         session: URLSession = .shared

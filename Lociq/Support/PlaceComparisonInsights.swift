@@ -496,7 +496,7 @@ enum PlaceComparisonInsightsBuilder {
         )
     }
 
-    private static func formatAge(_ value: Double?) -> String {
+    nonisolated private static func formatAge(_ value: Double?) -> String {
         guard let value else { return AppStrings.Symbols.emDash }
         return String(format: AppStrings.Symbols.oneDecimalFormat, value)
     }

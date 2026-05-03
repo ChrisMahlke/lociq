@@ -26,7 +26,7 @@ final class DirectCensusZipDemographicsClient: @unchecked Sendable {
     private let geocoderCoordinatesURL = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
     private let tigerwebMapServerBaseURL = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer"
 
-    init(
+    nonisolated init(
         censusApiKey: String,
         acsYear: Int = 2024,
         session: URLSession = .shared

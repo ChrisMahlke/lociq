@@ -8,9 +8,9 @@ enum AppStrings {
     }
 
     enum Symbols {
-        static let emDash = "—"
-        static let oneDecimalFormat = "%.1f"
-        static let oneDecimalPercentFormat = "%.1f%%"
+        nonisolated static let emDash = "—"
+        nonisolated static let oneDecimalFormat = "%.1f"
+        nonisolated static let oneDecimalPercentFormat = "%.1f%%"
     }
 
     enum Tabs {
@@ -41,9 +41,9 @@ enum AppStrings {
         static var retry: String { L10n.tr("Retry") }
         static var cancel: String { L10n.tr("Cancel") }
         static var refreshingScaleBody: String { L10n.tr("Keeping your current profile visible while the selected scale updates.") }
-        static var dataZip: String { L10n.tr("Data: Area") }
-        static var dataTract: String { L10n.tr("Data: Local") }
-        static var dataSample: String { L10n.tr("Data: Sample") }
+        nonisolated static var dataZip: String { L10n.tr("Data: Area") }
+        nonisolated static var dataTract: String { L10n.tr("Data: Local") }
+        nonisolated static var dataSample: String { L10n.tr("Data: Sample") }
         static var howToUseTitle: String { L10n.tr("How to use it") }
         static var mapInstructionOne: String { L10n.tr("1. Tap a location on the map.") }
         static var mapInstructionTwo: String { L10n.tr("2. Switch overlay scale at the top.") }
@@ -189,9 +189,9 @@ enum AppStrings {
     }
 
     enum Formats {
-        static func zip(_ value: String) -> String { value }
+        nonisolated static func zip(_ value: String) -> String { value }
 
-        static func tract(_ value: String) -> String {
+        nonisolated static func tract(_ value: String) -> String {
             L10n.format("Local %@", fallback: "Local %@", value)
         }
 
@@ -458,26 +458,18 @@ enum IconNames {
 }
 
 enum NumberFormatting {
-    static let decimalFormatter: NumberFormatter = {
+    nonisolated static func decimalString(_ value: Int) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.locale = .current
-        return formatter
-    }()
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
 
-    static let currencyFormatter: NumberFormatter = {
+    nonisolated static func currencyString(_ value: Int) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.maximumFractionDigits = 0
         formatter.locale = .current
-        return formatter
-    }()
-
-    static func decimalString(_ value: Int) -> String {
-        decimalFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
-
-    static func currencyString(_ value: Int) -> String {
-        currencyFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }

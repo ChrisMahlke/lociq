@@ -5,6 +5,7 @@
 //  App entry point that configures third-party SDKs and boots the root SwiftUI scene.
 //
 
+import AppIntents
 import SwiftUI
 import GoogleMaps
 import os

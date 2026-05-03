@@ -5,7 +5,7 @@ final class NeighborhoodDiscoveryService: @unchecked Sendable, NeighborhoodDisco
     private let censusService: any CensusNeighborhoodServing
     private let geminiClient: GeminiDiscoveryClient?
 
-    init(
+    nonisolated init(
         censusService: any CensusNeighborhoodServing,
         geminiClient: GeminiDiscoveryClient?
     ) {
@@ -346,7 +346,7 @@ final class NeighborhoodDiscoveryService: @unchecked Sendable, NeighborhoodDisco
         return abs(lhs - rhs) / floor
     }
 
-    private static func offsetCoordinate(
+    nonisolated private static func offsetCoordinate(
         from coordinate: CLLocationCoordinate2D,
         distanceKilometers: Double,
         bearingDegrees: Double
@@ -373,7 +373,7 @@ final class NeighborhoodDiscoveryService: @unchecked Sendable, NeighborhoodDisco
         )
     }
 
-    private static func makeCandidate(
+    nonisolated private static func makeCandidate(
         profile: ResolvedPlaceProfile,
         coordinate: CLLocationCoordinate2D,
         scale: BoundaryOverlayScale
@@ -407,7 +407,7 @@ final class NeighborhoodDiscoveryService: @unchecked Sendable, NeighborhoodDisco
         )
     }
 
-    private static func makeSubtitle(bundle: ZipLookupResult, scale: BoundaryOverlayScale) -> String {
+    nonisolated private static func makeSubtitle(bundle: ZipLookupResult, scale: BoundaryOverlayScale) -> String {
         var parts: [String] = []
         if let county = bundle.county?.name, !county.isEmpty {
             parts.append(county)

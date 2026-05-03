@@ -5,13 +5,13 @@ final class GeminiDiscoveryClient: @unchecked Sendable {
     private let model: String
     private let session: URLSession
 
-    init(apiKey: String, model: String, session: URLSession = .shared) {
+    nonisolated init(apiKey: String, model: String, session: URLSession = .shared) {
         self.apiKey = apiKey
         self.model = model
         self.session = session
     }
 
-    static func makeDefaultIfAvailable() -> GeminiDiscoveryClient? {
+    nonisolated static func makeDefaultIfAvailable() -> GeminiDiscoveryClient? {
         let apiKey = AppConfig.geminiAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !apiKey.isEmpty else { return nil }
         return GeminiDiscoveryClient(apiKey: apiKey, model: AppConfig.geminiModel)
