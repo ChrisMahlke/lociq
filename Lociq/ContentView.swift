@@ -20,12 +20,9 @@ struct ContentView: View {
     @StateObject private var compareModel: CompareModeModel
     @StateObject private var discoveryModel: NeighborhoodDiscoveryModel
     @StateObject private var libraryStore: NeighborhoodLibraryStore
-    @State private var selection: TabSelection = .map
+    @StateObject private var flowCoordinator = ContentFlowCoordinator()
     @State private var sheetOffset: CGFloat = 0
     @State private var showOnboarding: Bool = false
-    @State private var showSearchExperience: Bool = false
-    @State private var showComparePicker: Bool = false
-    @State private var mapFocusRequest: MapFocusRequest?
 
     init(dependencies: AppDependencies = .live) {
         _libraryStore = StateObject(wrappedValue: dependencies.neighborhoodLibraryStore)
@@ -74,6 +71,27 @@ struct ContentView: View {
         selectionModel.boundaryScale.themeColor
     }
 
+    private var insightsPresentation: InsightsSheetPresentation {
+        InsightsSheetPresentation(
+            zipCode: selectionModel.selectedZipCode,
+            metrics: selectionModel.censusMetrics,
+            demographics: selectionModel.selectedDemographics,
+            zipBundle: selectionModel.selectedZipBundle,
+            metricsSource: selectionModel.metricsSource,
+            hasActiveSelection: selectionModel.hasActiveSelection,
+            isLoadingSelection: selectionModel.isLoadingSelection,
+            selectionFeedbackState: selectionModel.selectionFeedbackState,
+            isRefreshingScale: selectionModel.isRefreshingScale,
+            comparisonProfile: compareModel.secondaryProfile,
+            pendingComparisonTitle: compareModel.pendingComparisonTitle,
+            isLoadingComparison: compareModel.isLoadingComparison,
+            comparisonErrorMessage: compareModel.comparisonErrorMessage,
+            isCurrentPlaceSaved: selectionModel.isCurrentPlaceSaved,
+            currentLibraryEntry: selectionModel.currentLibraryEntry,
+            isCurrentComparisonSaved: isCurrentComparisonSaved
+        )
+    }
+
     private var floatingMapControlsBottomPadding: CGFloat {
         if usesSidebarLayout {
             return 20
@@ -83,7 +101,7 @@ struct ContentView: View {
     }
 
     private var shouldShowMapQuickTip: Bool {
-        selection == .map && !showOnboarding && !hasSeenMapQuickTip && selectionModel.tappedCoordinate == nil
+        flowCoordinator.selection == .map && !showOnboarding && !hasSeenMapQuickTip && selectionModel.tappedCoordinate == nil
     }
 
     private var boundaryScaleBinding: Binding<BoundaryOverlayScale> {
@@ -102,17 +120,16 @@ struct ContentView: View {
             get: { selectionModel.tappedCoordinate },
             set: { newValue in
                 if newValue != nil {
-                    hasSeenMapQuickTip = true
-                    if usesSidebarLayout {
-                        selection = .map
-                    }
                     Haptics.selectionChanged()
-                    showSearchExperience = false
-                    showComparePicker = false
-                    compareModel.clear()
-                    searchModel.dismissResults()
                 }
-                selectionModel.handleMapSelection(newValue)
+                flowCoordinator.handleMapSelection(
+                    newValue,
+                    usesSidebarLayout: usesSidebarLayout,
+                    markMapQuickTipSeen: markMapQuickTipSeen,
+                    selectionModel: selectionModel,
+                    searchModel: searchModel,
+                    compareModel: compareModel
+                )
             }
         )
     }
@@ -123,7 +140,7 @@ struct ContentView: View {
             if AppConfig.hasGoogleMapsAPIKey {
                 GoogleMapViewRepresentable(
                     tappedCoordinate: tappedBinding,
-                    focusRequest: mapFocusRequest,
+                    focusRequest: flowCoordinator.mapFocusRequest,
                     selectedBoundary: selectionModel.selectedBoundary,
                     selectedScale: selectionModel.boundaryScale,
                     contentInsetBottom: mapBottomInset
@@ -137,7 +154,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 10) {
                 if AppConfig.hasGoogleMapsAPIKey {
                     MapSearchLauncher(query: searchModel.query) {
-                        showSearchExperience = true
+                        flowCoordinator.showSearch()
                     }
                         .padding(.horizontal, 12)
                         .padding(.top, 14)
@@ -201,7 +218,7 @@ struct ContentView: View {
     @ViewBuilder
     private var activeScreen: some View {
         Group {
-            switch selection {
+            switch flowCoordinator.selection {
             case .map:
                 mapPane(ignoresSafeAreaTop: true)
             case .library:
@@ -223,31 +240,16 @@ struct ContentView: View {
 
     private var sidebarContent: some View {
         Group {
-            switch selection {
+            switch flowCoordinator.selection {
             case .map:
                 InsightsSheetContent(
-                    zipCode: selectionModel.selectedZipCode,
-                    metrics: selectionModel.censusMetrics,
-                    demographics: selectionModel.selectedDemographics,
-                    zipBundle: selectionModel.selectedZipBundle,
-                    metricsSource: selectionModel.metricsSource,
-                    hasActiveSelection: selectionModel.hasActiveSelection,
-                    isLoadingSelection: selectionModel.isLoadingSelection,
-                    selectionFeedbackState: selectionModel.selectionFeedbackState,
-                    isRefreshingScale: selectionModel.isRefreshingScale,
+                    presentation: insightsPresentation,
                     onRetrySelection: selectionModel.retryCurrentSelection,
-                    comparisonProfile: compareModel.secondaryProfile,
-                    pendingComparisonTitle: compareModel.pendingComparisonTitle,
-                    isLoadingComparison: compareModel.isLoadingComparison,
-                    comparisonErrorMessage: compareModel.comparisonErrorMessage,
                     onStartCompare: openComparePicker,
                     onReplaceCompare: openComparePicker,
                     onClearCompare: compareModel.clear,
-                    isCurrentPlaceSaved: selectionModel.isCurrentPlaceSaved,
                     onToggleSaved: selectionModel.toggleSavedCurrentPlace,
-                    currentLibraryEntry: selectionModel.currentLibraryEntry,
                     onSavePlaceDetails: selectionModel.saveCurrentPlaceWithMetadata,
-                    isCurrentComparisonSaved: isCurrentComparisonSaved,
                     onSaveComparison: saveCurrentComparison,
                     boundaryScale: boundaryScaleBinding,
                     sheetOffset: .constant(1000)
@@ -272,49 +274,23 @@ struct ContentView: View {
     }
 
     private func openLibraryEntry(_ entry: NeighborhoodLibraryEntry) {
-        selection = .map
-        hasSeenMapQuickTip = true
-        showSearchExperience = false
-        showComparePicker = false
-        compareModel.clear()
-        searchModel.dismissResults()
-        mapFocusRequest = MapFocusRequest(
-            id: UUID(),
-            coordinate: CLLocationCoordinate2D(latitude: entry.latitude, longitude: entry.longitude),
-            minimumZoom: 13
+        flowCoordinator.openLibraryEntry(
+            entry,
+            markMapQuickTipSeen: markMapQuickTipSeen,
+            selectionModel: selectionModel,
+            searchModel: searchModel,
+            compareModel: compareModel
         )
-        selectionModel.openLibraryEntry(entry)
     }
 
     private func openSavedComparison(_ entry: SavedComparisonEntry) {
-        selection = .map
-        hasSeenMapQuickTip = true
-        showSearchExperience = false
-        showComparePicker = false
-        searchModel.dismissResults()
-        selectionModel.boundaryScale = entry.boundaryScale
-        compareModel.clear()
-
-        let primaryCoordinate = CLLocationCoordinate2D(
-            latitude: entry.primaryLatitude,
-            longitude: entry.primaryLongitude
+        flowCoordinator.openSavedComparison(
+            entry,
+            markMapQuickTipSeen: markMapQuickTipSeen,
+            selectionModel: selectionModel,
+            searchModel: searchModel,
+            compareModel: compareModel
         )
-        mapFocusRequest = MapFocusRequest(
-            id: UUID(),
-            coordinate: primaryCoordinate,
-            minimumZoom: 13
-        )
-        selectionModel.handleMapSelection(primaryCoordinate)
-
-        let comparisonResult = PlaceSearchResult(
-            title: entry.secondaryTitle,
-            subtitle: entry.secondarySubtitle,
-            coordinate: CLLocationCoordinate2D(
-                latitude: entry.secondaryLatitude,
-                longitude: entry.secondaryLongitude
-            )
-        )
-        compareModel.beginComparison(with: comparisonResult, scale: entry.boundaryScale)
     }
 
     private var currentDiscoverySeed: NeighborhoodDiscoverySeed? {
@@ -333,54 +309,45 @@ struct ContentView: View {
     }
 
     private func openDiscoveryRecommendation(_ recommendation: NeighborhoodDiscoveryRecommendation) {
-        selection = .map
-        hasSeenMapQuickTip = true
-        showSearchExperience = false
-        showComparePicker = false
-        compareModel.clear()
-        searchModel.dismissResults()
-        selectionModel.boundaryScale = recommendation.destination.preferredScale
-        let coordinate = CLLocationCoordinate2D(
-            latitude: recommendation.destination.latitude,
-            longitude: recommendation.destination.longitude
+        flowCoordinator.openDiscoveryRecommendation(
+            recommendation,
+            markMapQuickTipSeen: markMapQuickTipSeen,
+            selectionModel: selectionModel,
+            searchModel: searchModel,
+            compareModel: compareModel
         )
-        mapFocusRequest = MapFocusRequest(
-            id: UUID(),
-            coordinate: coordinate,
-            minimumZoom: 13
-        )
-        selectionModel.handleMapSelection(coordinate)
     }
 
     private func openSearchResult(_ result: PlaceSearchResult) {
-        selection = .map
-        hasSeenMapQuickTip = true
-        showSearchExperience = false
-        showComparePicker = false
-        compareModel.clear()
-        searchModel.selectResult(result)
-        mapFocusRequest = MapFocusRequest(
-            id: UUID(),
-            coordinate: result.coordinate,
-            minimumZoom: 13
+        flowCoordinator.openSearchResult(
+            result,
+            markMapQuickTipSeen: markMapQuickTipSeen,
+            selectionModel: selectionModel,
+            searchModel: searchModel,
+            compareModel: compareModel
         )
-        selectionModel.handleMapSelection(result.coordinate)
     }
 
     private func openComparePicker() {
-        compareSearchModel.clear()
-        showComparePicker = true
+        flowCoordinator.openComparePicker(compareSearchModel: compareSearchModel)
     }
 
     private func focusMapOnUserArea() {
-        hasSeenMapQuickTip = true
+        markMapQuickTipSeen()
         GoogleMapViewRepresentable.focusOnUserOrSelection(selection: selectionModel.tappedCoordinate)
     }
 
     private func chooseComparisonResult(_ result: PlaceSearchResult) {
-        showComparePicker = false
-        compareSearchModel.selectResult(result)
-        compareModel.beginComparison(with: result, scale: selectionModel.boundaryScale)
+        flowCoordinator.chooseComparisonResult(
+            result,
+            compareSearchModel: compareSearchModel,
+            compareModel: compareModel,
+            boundaryScale: selectionModel.boundaryScale
+        )
+    }
+
+    private func markMapQuickTipSeen() {
+        hasSeenMapQuickTip = true
     }
 
     private var currentComparisonSnapshot: SavedComparisonSnapshot? {
@@ -413,7 +380,7 @@ struct ContentView: View {
 
                     HStack(spacing: 0) {
                         VStack(spacing: 0) {
-                            IPadSidebarHeader(selection: $selection)
+                            IPadSidebarHeader(selection: $flowCoordinator.selection)
                                 .padding(.horizontal, 20)
                                 .padding(.top, 18)
                                 .padding(.bottom, 14)
@@ -438,31 +405,16 @@ struct ContentView: View {
                 ZStack(alignment: .bottom) {
                     activeScreen
 
-                    if selection == .map {
+                    if flowCoordinator.selection == .map {
                         BottomSheet(sheetOffset: $sheetOffset) {
                             InsightsSheetContent(
-                                zipCode: selectionModel.selectedZipCode,
-                                metrics: selectionModel.censusMetrics,
-                                demographics: selectionModel.selectedDemographics,
-                                zipBundle: selectionModel.selectedZipBundle,
-                                metricsSource: selectionModel.metricsSource,
-                                hasActiveSelection: selectionModel.hasActiveSelection,
-                                isLoadingSelection: selectionModel.isLoadingSelection,
-                                selectionFeedbackState: selectionModel.selectionFeedbackState,
-                                isRefreshingScale: selectionModel.isRefreshingScale,
+                                presentation: insightsPresentation,
                                 onRetrySelection: selectionModel.retryCurrentSelection,
-                                comparisonProfile: compareModel.secondaryProfile,
-                                pendingComparisonTitle: compareModel.pendingComparisonTitle,
-                                isLoadingComparison: compareModel.isLoadingComparison,
-                                comparisonErrorMessage: compareModel.comparisonErrorMessage,
                                 onStartCompare: openComparePicker,
                                 onReplaceCompare: openComparePicker,
                                 onClearCompare: compareModel.clear,
-                                isCurrentPlaceSaved: selectionModel.isCurrentPlaceSaved,
                                 onToggleSaved: selectionModel.toggleSavedCurrentPlace,
-                                currentLibraryEntry: selectionModel.currentLibraryEntry,
                                 onSavePlaceDetails: selectionModel.saveCurrentPlaceWithMetadata,
-                                isCurrentComparisonSaved: isCurrentComparisonSaved,
                                 onSaveComparison: saveCurrentComparison,
                                 boundaryScale: boundaryScaleBinding,
                                 sheetOffset: $sheetOffset
@@ -475,7 +427,7 @@ struct ContentView: View {
                     }
 
                     VStack(spacing: 0) {
-                        BottomRibbon(selection: $selection)
+                        BottomRibbon(selection: $flowCoordinator.selection)
                     }
                     .zIndex(2)
                     .allowsHitTesting(true)
@@ -497,7 +449,7 @@ struct ContentView: View {
         .onChange(of: selectionModel.boundaryScale) { newScale in
             compareModel.refreshComparison(for: newScale)
         }
-        .onChange(of: selection) { newSelection in
+        .onChange(of: flowCoordinator.selection) { newSelection in
             if newSelection == .library, discoveryModel.result == nil, !discoveryModel.isLoading {
                 refreshDiscovery()
             }
@@ -508,24 +460,24 @@ struct ContentView: View {
                 showOnboarding = false
             }
         }
-        .fullScreenCover(isPresented: $showSearchExperience) {
+        .fullScreenCover(isPresented: $flowCoordinator.showSearchExperience) {
             MapSearchExperienceView(
                 model: searchModel,
                 promptTitle: AppStrings.Labels.searchPromptTitle,
                 promptBody: AppStrings.Labels.searchPromptBody,
                 onDismiss: {
-                    showSearchExperience = false
+                    flowCoordinator.dismissSearch()
                 },
                 onSelectResult: openSearchResult
             )
         }
-        .fullScreenCover(isPresented: $showComparePicker) {
+        .fullScreenCover(isPresented: $flowCoordinator.showComparePicker) {
             MapSearchExperienceView(
                 model: compareSearchModel,
                 promptTitle: AppStrings.Labels.comparePickerTitle,
                 promptBody: AppStrings.Labels.comparePickerBody,
                 onDismiss: {
-                    showComparePicker = false
+                    flowCoordinator.dismissComparePicker()
                 },
                 onSelectResult: chooseComparisonResult
             )

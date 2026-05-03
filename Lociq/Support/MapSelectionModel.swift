@@ -261,7 +261,7 @@ final class MapSelectionModel: ObservableObject {
                     demographics: demographics,
                     metricsSource: source,
                     boundary: boundary,
-                    metrics: mapDemographicsToMetrics(demographics)
+                    metrics: CensusMetricsMapper.metrics(from: demographics)
                 )
             }
 
@@ -315,7 +315,7 @@ final class MapSelectionModel: ObservableObject {
 
         withAnimation(.spring(response: 0.38, dampingFraction: 0.9)) {
             updateSelectionState {
-                $0.censusMetrics = mapDemographicsToMetrics(demographics)
+                $0.censusMetrics = CensusMetricsMapper.metrics(from: demographics)
                 $0.selectedDemographics = demographics
                 $0.metricsSource = source
                 $0.selectionFeedbackState = nil
@@ -345,19 +345,6 @@ final class MapSelectionModel: ObservableObject {
 
     private func applySampleFallbackState() {
         selectionState = .sampleFallback(metrics: SampleMetricsFactory.make(seedString: AppStrings.Network.defaultSeed))
-    }
-
-    private func mapDemographicsToMetrics(_ demographics: Demographics) -> CensusMetrics {
-        CensusMetrics(
-            population: demographics.population,
-            medianIncome: demographics.medianHouseholdIncome,
-            medianAge: demographics.medianAge,
-            households: demographics.housingUnits,
-            populationTrend: nil,
-            ageBuckets: nil,
-            educationLevels: nil,
-            householdIncome: nil
-        )
     }
 
     private func boundaryOverlay(

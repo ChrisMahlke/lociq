@@ -76,21 +76,10 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
                 size: CGSize(width: 320, height: 960),
                 view: AnyView(
                     InsightsSheetContent(
-                        zipCode: fixtures.zipCode,
-                        metrics: fixtures.metrics,
-                        demographics: fixtures.demographics,
-                        zipBundle: fixtures.zipBundle,
-                        metricsSource: .tract,
-                        hasActiveSelection: true,
-                        isLoadingSelection: false,
-                        selectionFeedbackState: nil,
-                        isRefreshingScale: false,
+                        presentation: fixtures.insightsPresentation,
                         onRetrySelection: {},
-                        isCurrentPlaceSaved: true,
                         onToggleSaved: {},
-                        currentLibraryEntry: nil,
                         onSavePlaceDetails: { _, _, _ in },
-                        isCurrentComparisonSaved: false,
                         onSaveComparison: {},
                         boundaryScale: .constant(.tract),
                         sheetOffset: .constant(1000)
@@ -102,21 +91,10 @@ final class LocalizedLayoutSnapshotTests: XCTestCase {
                 size: CGSize(width: 420, height: 1100),
                 view: AnyView(
                     InsightsSheetContent(
-                        zipCode: fixtures.zipCode,
-                        metrics: fixtures.metrics,
-                        demographics: fixtures.demographics,
-                        zipBundle: fixtures.zipBundle,
-                        metricsSource: .tract,
-                        hasActiveSelection: true,
-                        isLoadingSelection: false,
-                        selectionFeedbackState: nil,
-                        isRefreshingScale: false,
+                        presentation: fixtures.insightsPresentation,
                         onRetrySelection: {},
-                        isCurrentPlaceSaved: true,
                         onToggleSaved: {},
-                        currentLibraryEntry: nil,
                         onSavePlaceDetails: { _, _, _ in },
-                        isCurrentComparisonSaved: false,
                         onSaveComparison: {},
                         boundaryScale: .constant(.tract),
                         sheetOffset: .constant(1000)
@@ -213,6 +191,27 @@ private enum SnapshotFixtures {
         let metrics: CensusMetrics
         let demographics: Demographics
         let zipBundle: ZipLookupResult
+
+        var insightsPresentation: InsightsSheetPresentation {
+            InsightsSheetPresentation(
+                zipCode: zipCode,
+                metrics: metrics,
+                demographics: demographics,
+                zipBundle: zipBundle,
+                metricsSource: .tract,
+                hasActiveSelection: true,
+                isLoadingSelection: false,
+                selectionFeedbackState: nil,
+                isRefreshingScale: false,
+                comparisonProfile: nil,
+                pendingComparisonTitle: nil,
+                isLoadingComparison: false,
+                comparisonErrorMessage: nil,
+                isCurrentPlaceSaved: true,
+                currentLibraryEntry: nil,
+                isCurrentComparisonSaved: false
+            )
+        }
     }
 
     static func make() -> FixtureBundle {

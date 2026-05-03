@@ -126,7 +126,7 @@ final class CompareModeModel: ObservableObject {
                     id: comparison.id,
                     title: comparison.title,
                     subtitle: comparison.subtitle,
-                    metrics: mapDemographicsToMetrics(comparison.demographics),
+                    metrics: CensusMetricsMapper.metrics(from: comparison.demographics),
                     demographics: comparison.demographics,
                     metricsSource: comparison.metricsSource
                 )
@@ -154,19 +154,6 @@ final class CompareModeModel: ObservableObject {
                 comparisonErrorMessage = AppStrings.Labels.compareLoadFailedBody
             }
         }
-    }
-
-    private func mapDemographicsToMetrics(_ demographics: Demographics) -> CensusMetrics {
-        CensusMetrics(
-            population: demographics.population,
-            medianIncome: demographics.medianHouseholdIncome,
-            medianAge: demographics.medianAge,
-            households: demographics.housingUnits,
-            populationTrend: nil,
-            ageBuckets: nil,
-            educationLevels: nil,
-            householdIncome: nil
-        )
     }
 
     private func isCurrentRequest(_ requestID: UUID) -> Bool {

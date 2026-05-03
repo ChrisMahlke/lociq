@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct InsightsSheetContent: View {
+struct InsightsSheetPresentation {
     let zipCode: String?
     let metrics: CensusMetrics?
     let demographics: Demographics?
@@ -10,19 +10,23 @@ struct InsightsSheetContent: View {
     let isLoadingSelection: Bool
     let selectionFeedbackState: SelectionFeedbackState?
     let isRefreshingScale: Bool
-    let onRetrySelection: () -> Void
     let comparisonProfile: ComparablePlaceProfile?
     let pendingComparisonTitle: String?
     let isLoadingComparison: Bool
     let comparisonErrorMessage: String?
+    let isCurrentPlaceSaved: Bool
+    let currentLibraryEntry: NeighborhoodLibraryEntry?
+    let isCurrentComparisonSaved: Bool
+}
+
+struct InsightsSheetContent: View {
+    let presentation: InsightsSheetPresentation
+    let onRetrySelection: () -> Void
     let onStartCompare: () -> Void
     let onReplaceCompare: () -> Void
     let onClearCompare: () -> Void
-    let isCurrentPlaceSaved: Bool
-    let currentLibraryEntry: NeighborhoodLibraryEntry?
     let onToggleSaved: () -> Void
     let onSavePlaceDetails: (String, String, Bool) -> Void
-    let isCurrentComparisonSaved: Bool
     let onSaveComparison: () -> Void
     @Binding var boundaryScale: BoundaryOverlayScale
     @Binding var sheetOffset: CGFloat
@@ -33,59 +37,45 @@ struct InsightsSheetContent: View {
     @State private var libraryEditorDraft: EditableNeighborhoodLibraryEntry?
 
     init(
-        zipCode: String?,
-        metrics: CensusMetrics?,
-        demographics: Demographics?,
-        zipBundle: ZipLookupResult?,
-        metricsSource: MetricsSource?,
-        hasActiveSelection: Bool,
-        isLoadingSelection: Bool,
-        selectionFeedbackState: SelectionFeedbackState?,
-        isRefreshingScale: Bool,
+        presentation: InsightsSheetPresentation,
         onRetrySelection: @escaping () -> Void,
-        comparisonProfile: ComparablePlaceProfile? = nil,
-        pendingComparisonTitle: String? = nil,
-        isLoadingComparison: Bool = false,
-        comparisonErrorMessage: String? = nil,
         onStartCompare: @escaping () -> Void = {},
         onReplaceCompare: @escaping () -> Void = {},
         onClearCompare: @escaping () -> Void = {},
-        isCurrentPlaceSaved: Bool,
         onToggleSaved: @escaping () -> Void,
-        currentLibraryEntry: NeighborhoodLibraryEntry?,
         onSavePlaceDetails: @escaping (String, String, Bool) -> Void,
-        isCurrentComparisonSaved: Bool,
         onSaveComparison: @escaping () -> Void,
         boundaryScale: Binding<BoundaryOverlayScale>,
         sheetOffset: Binding<CGFloat>
     ) {
-        self.zipCode = zipCode
-        self.metrics = metrics
-        self.demographics = demographics
-        self.zipBundle = zipBundle
-        self.metricsSource = metricsSource
-        self.hasActiveSelection = hasActiveSelection
-        self.isLoadingSelection = isLoadingSelection
-        self.selectionFeedbackState = selectionFeedbackState
-        self.isRefreshingScale = isRefreshingScale
+        self.presentation = presentation
         self.onRetrySelection = onRetrySelection
-        self.comparisonProfile = comparisonProfile
-        self.pendingComparisonTitle = pendingComparisonTitle
-        self.isLoadingComparison = isLoadingComparison
-        self.comparisonErrorMessage = comparisonErrorMessage
         self.onStartCompare = onStartCompare
         self.onReplaceCompare = onReplaceCompare
         self.onClearCompare = onClearCompare
-        self.isCurrentPlaceSaved = isCurrentPlaceSaved
         self.onToggleSaved = onToggleSaved
-        self.currentLibraryEntry = currentLibraryEntry
         self.onSavePlaceDetails = onSavePlaceDetails
-        self.isCurrentComparisonSaved = isCurrentComparisonSaved
         self.onSaveComparison = onSaveComparison
         self._boundaryScale = boundaryScale
         self._sheetOffset = sheetOffset
     }
 
+    private var zipCode: String? { presentation.zipCode }
+    private var metrics: CensusMetrics? { presentation.metrics }
+    private var demographics: Demographics? { presentation.demographics }
+    private var zipBundle: ZipLookupResult? { presentation.zipBundle }
+    private var metricsSource: MetricsSource? { presentation.metricsSource }
+    private var hasActiveSelection: Bool { presentation.hasActiveSelection }
+    private var isLoadingSelection: Bool { presentation.isLoadingSelection }
+    private var selectionFeedbackState: SelectionFeedbackState? { presentation.selectionFeedbackState }
+    private var isRefreshingScale: Bool { presentation.isRefreshingScale }
+    private var comparisonProfile: ComparablePlaceProfile? { presentation.comparisonProfile }
+    private var pendingComparisonTitle: String? { presentation.pendingComparisonTitle }
+    private var isLoadingComparison: Bool { presentation.isLoadingComparison }
+    private var comparisonErrorMessage: String? { presentation.comparisonErrorMessage }
+    private var isCurrentPlaceSaved: Bool { presentation.isCurrentPlaceSaved }
+    private var currentLibraryEntry: NeighborhoodLibraryEntry? { presentation.currentLibraryEntry }
+    private var isCurrentComparisonSaved: Bool { presentation.isCurrentComparisonSaved }
     private var insights: [Insight] { zipBundle?.insights ?? [] }
 
     private var isCollapsed: Bool { sheetOffset < 300 }
