@@ -9,7 +9,7 @@ import XCTest
 
 private enum UITestIDs {
     static let tabMap = "tab.map"
-    static let tabMore = "tab.more"
+    static let tabGuide = "tab.guide"
     static let sidebarProfile = "sidebar.profile"
     static let sidebarGuide = "sidebar.guide"
     static let moreHeroTitle = "more.hero.title"
@@ -55,13 +55,13 @@ final class LociqUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(waitForMapControl(in: app, timeout: 5))
-        XCTAssertTrue(waitForMoreControl(in: app, timeout: 5))
+        XCTAssertTrue(waitForGuideControl(in: app, timeout: 5))
 
-        openMoreScreen(in: app)
+        openGuideScreen(in: app)
         XCTAssertTrue(waitForMoreHeroTitle(in: app, timeout: 5))
 
         openMapScreen(in: app)
-        XCTAssertTrue(waitForMoreControl(in: app, timeout: 5))
+        XCTAssertTrue(waitForGuideControl(in: app, timeout: 5))
     }
 
     @MainActor
@@ -81,11 +81,11 @@ final class LociqUITests: XCTestCase {
             )
 
             app.launch()
-            XCTAssertTrue(waitForMoreControl(in: app, timeout: 5))
+            XCTAssertTrue(waitForGuideControl(in: app, timeout: 5))
 
             addNamedScreenshot(from: app, name: "\(scenario.name)-Map")
 
-            openMoreScreen(in: app)
+            openGuideScreen(in: app)
             XCTAssertTrue(waitForMoreHeroTitle(in: app, timeout: 5))
 
             addNamedScreenshot(from: app, name: "\(scenario.name)-More")
@@ -134,8 +134,8 @@ final class LociqUITests: XCTestCase {
             || app.buttons[UITestIDs.sidebarProfile].waitForExistence(timeout: timeout)
     }
 
-    private func waitForMoreControl(in app: XCUIApplication, timeout: TimeInterval) -> Bool {
-        app.buttons[UITestIDs.tabMore].waitForExistence(timeout: timeout)
+    private func waitForGuideControl(in app: XCUIApplication, timeout: TimeInterval) -> Bool {
+        app.buttons[UITestIDs.tabGuide].waitForExistence(timeout: timeout)
             || app.buttons[UITestIDs.sidebarGuide].waitForExistence(timeout: timeout)
     }
 
@@ -144,9 +144,9 @@ final class LociqUITests: XCTestCase {
             || app.otherElements[UITestIDs.moreHeroTitle].waitForExistence(timeout: timeout)
     }
 
-    private func openMoreScreen(in app: XCUIApplication) {
-        if app.buttons[UITestIDs.tabMore].waitForExistence(timeout: 2) {
-            app.buttons[UITestIDs.tabMore].tap()
+    private func openGuideScreen(in app: XCUIApplication) {
+        if app.buttons[UITestIDs.tabGuide].waitForExistence(timeout: 2) {
+            app.buttons[UITestIDs.tabGuide].tap()
             return
         }
 
