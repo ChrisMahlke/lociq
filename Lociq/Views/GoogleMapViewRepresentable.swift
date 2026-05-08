@@ -19,6 +19,15 @@ struct MapFocusRequest: Equatable {
     }
 }
 
+struct UserLocationFocusRequest: Equatable {
+    let id: UUID
+    let fallbackCoordinate: CLLocationCoordinate2D?
+
+    static func == (lhs: UserLocationFocusRequest, rhs: UserLocationFocusRequest) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 /// Bridges Google Maps UIKit APIs into SwiftUI.
 struct GoogleMapViewRepresentable: UIViewRepresentable {
     private static let defaultCamera = GMSCameraPosition(latitude: 37.7749, longitude: -122.4194, zoom: 12)
@@ -26,10 +35,10 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
     /// Shared map instance to preserve camera and avoid recreating expensive map resources.
     private static var sharedMapView: GMSMapView = makeMapView()
     private static var sharedBoundaryOverlays: [GMSPolygon] = []
-    private static var hasAutoSelectedUserLocation = false
 
     @Binding var tappedCoordinate: CLLocationCoordinate2D?
     let focusRequest: MapFocusRequest?
+    let userLocationFocusRequest: UserLocationFocusRequest?
     let selectedBoundary: GeoJSONFeatureCollection?
     let selectedScale: BoundaryOverlayScale
     let contentInsetBottom: CGFloat
@@ -37,12 +46,14 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
     init(
         tappedCoordinate: Binding<CLLocationCoordinate2D?>,
         focusRequest: MapFocusRequest? = nil,
+        userLocationFocusRequest: UserLocationFocusRequest? = nil,
         selectedBoundary: GeoJSONFeatureCollection?,
         selectedScale: BoundaryOverlayScale = .zip,
         contentInsetBottom: CGFloat = 0
     ) {
         self._tappedCoordinate = tappedCoordinate
         self.focusRequest = focusRequest
+        self.userLocationFocusRequest = userLocationFocusRequest
         self.selectedBoundary = selectedBoundary
         self.selectedScale = selectedScale
         self.contentInsetBottom = contentInsetBottom
@@ -57,26 +68,11 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
         let mapView = GMSMapView(options: options)
         mapView.settings.compassButton = true
         mapView.settings.myLocationButton = false
-        mapView.isMyLocationEnabled = true
+        mapView.isMyLocationEnabled = false
         mapView.isAccessibilityElement = true
         mapView.accessibilityLabel = AppStrings.Tabs.map
         mapView.accessibilityHint = AppStrings.Labels.tapMapToLoadContext
         return mapView
-    }
-
-    /// Centers on either the user's location or the last selected coordinate.
-    static func focusOnUserOrSelection(selection: CLLocationCoordinate2D?) {
-        let mapView = sharedMapView
-        if let userCoordinate = mapView.myLocation?.coordinate {
-            let camera = GMSCameraPosition(latitude: userCoordinate.latitude, longitude: userCoordinate.longitude, zoom: max(mapView.camera.zoom, 13))
-            mapView.animate(to: camera)
-            return
-        }
-
-        if let selection {
-            let camera = GMSCameraPosition(latitude: selection.latitude, longitude: selection.longitude, zoom: max(mapView.camera.zoom, 13))
-            mapView.animate(to: camera)
-        }
     }
 
     /// Resets to the app's default city overview camera.
@@ -100,6 +96,7 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
         context.coordinator.parent = self
         context.coordinator.updateBoundaryOverlay(on: uiView, with: selectedBoundary, scale: selectedScale)
         context.coordinator.applyFocusRequestIfNeeded(on: uiView)
+        context.coordinator.applyUserLocationFocusRequestIfNeeded(on: uiView)
     }
 
     /// Handles `GMSMapViewDelegate` callbacks and boundary overlay lifecycle.
@@ -107,8 +104,10 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
         var parent: GoogleMapViewRepresentable
         private let locationManager = CLLocationManager()
         private weak var mapView: GMSMapView?
-        private var hasCenteredOnUserLocation = false
         private var lastAppliedFocusRequestID: UUID?
+        private var lastAppliedUserLocationRequestID: UUID?
+        private var pendingFallbackCoordinate: CLLocationCoordinate2D?
+        private var isAwaitingUserLocationFocus = false
 
         init(_ parent: GoogleMapViewRepresentable) {
             self.parent = parent
@@ -128,7 +127,6 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
         /// Replaces currently rendered boundaries with the latest selected feature collection.
         func updateBoundaryOverlay(on mapView: GMSMapView, with featureCollection: GeoJSONFeatureCollection?, scale: BoundaryOverlayScale) {
             self.mapView = mapView
-            updateLocationAuthorizationState()
 
             clearBoundaryOverlays()
 
@@ -152,6 +150,27 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
                 zoom: zoom
             )
             mapView.animate(to: camera)
+        }
+
+        func applyUserLocationFocusRequestIfNeeded(on mapView: GMSMapView) {
+            guard let request = parent.userLocationFocusRequest else { return }
+            guard request.id != lastAppliedUserLocationRequestID else { return }
+
+            lastAppliedUserLocationRequestID = request.id
+            self.mapView = mapView
+            pendingFallbackCoordinate = request.fallbackCoordinate
+
+            switch locationManager.authorizationStatus {
+            case .authorizedWhenInUse, .authorizedAlways:
+                enableUserLocation(on: mapView)
+                centerOnKnownUserLocationOrStartUpdating(on: mapView, fallback: request.fallbackCoordinate)
+            case .notDetermined:
+                locationManager.requestWhenInUseAuthorization()
+            case .denied, .restricted:
+                centerOnFallback(request.fallbackCoordinate, on: mapView)
+            @unknown default:
+                centerOnFallback(request.fallbackCoordinate, on: mapView)
+            }
         }
 
         private func clearBoundaryOverlays() {
@@ -215,16 +234,54 @@ struct GoogleMapViewRepresentable: UIViewRepresentable {
         }
 
         private func updateLocationAuthorizationState() {
+            guard let mapView else { return }
             switch locationManager.authorizationStatus {
             case .authorizedWhenInUse, .authorizedAlways:
-                locationManager.startUpdatingLocation()
+                enableUserLocation(on: mapView)
+                centerOnKnownUserLocationOrStartUpdating(on: mapView, fallback: pendingFallbackCoordinate)
             case .notDetermined:
-                locationManager.requestWhenInUseAuthorization()
+                break
             case .denied, .restricted:
+                mapView.isMyLocationEnabled = false
                 locationManager.stopUpdatingLocation()
+                centerOnFallback(pendingFallbackCoordinate, on: mapView)
             @unknown default:
+                mapView.isMyLocationEnabled = false
                 locationManager.stopUpdatingLocation()
+                centerOnFallback(pendingFallbackCoordinate, on: mapView)
             }
+        }
+
+        private func enableUserLocation(on mapView: GMSMapView) {
+            guard !mapView.isMyLocationEnabled else { return }
+            mapView.isMyLocationEnabled = true
+        }
+
+        private func centerOnKnownUserLocationOrStartUpdating(on mapView: GMSMapView, fallback: CLLocationCoordinate2D?) {
+            if let userCoordinate = mapView.myLocation?.coordinate {
+                center(on: userCoordinate, mapView: mapView)
+                pendingFallbackCoordinate = nil
+                isAwaitingUserLocationFocus = false
+                return
+            }
+
+            pendingFallbackCoordinate = fallback
+            isAwaitingUserLocationFocus = true
+            locationManager.startUpdatingLocation()
+        }
+
+        private func centerOnFallback(_ fallback: CLLocationCoordinate2D?, on mapView: GMSMapView) {
+            guard let fallback else { return }
+            center(on: fallback, mapView: mapView)
+        }
+
+        private func center(on coordinate: CLLocationCoordinate2D, mapView: GMSMapView) {
+            let camera = GMSCameraPosition(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                zoom: max(mapView.camera.zoom, 13)
+            )
+            mapView.animate(to: camera)
         }
     }
 }
@@ -236,21 +293,17 @@ extension GoogleMapViewRepresentable.Coordinator: CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard
-            !hasCenteredOnUserLocation,
-            !GoogleMapViewRepresentable.hasAutoSelectedUserLocation,
-            parent.tappedCoordinate == nil,
+            isAwaitingUserLocationFocus,
             let location = locations.last,
             let mapView
         else {
             return
         }
 
-        hasCenteredOnUserLocation = true
-        GoogleMapViewRepresentable.hasAutoSelectedUserLocation = true
         let coordinate = location.coordinate
-        parent.tappedCoordinate = coordinate
-        mapView.animate(toLocation: coordinate)
-        mapView.animate(toZoom: 13)
+        center(on: coordinate, mapView: mapView)
+        isAwaitingUserLocationFocus = false
+        pendingFallbackCoordinate = nil
         manager.stopUpdatingLocation()
     }
 

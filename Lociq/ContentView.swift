@@ -21,6 +21,7 @@ struct ContentView: View {
     @StateObject private var discoveryModel: NeighborhoodDiscoveryModel
     @StateObject private var libraryStore: NeighborhoodLibraryStore
     @StateObject private var flowCoordinator = ContentFlowCoordinator()
+    @State private var userLocationFocusRequest: UserLocationFocusRequest?
     @State private var sheetOffset: CGFloat = 0
     @State private var showOnboarding: Bool = false
 
@@ -141,6 +142,7 @@ struct ContentView: View {
                 GoogleMapViewRepresentable(
                     tappedCoordinate: tappedBinding,
                     focusRequest: flowCoordinator.mapFocusRequest,
+                    userLocationFocusRequest: userLocationFocusRequest,
                     selectedBoundary: selectionModel.selectedBoundary,
                     selectedScale: selectionModel.boundaryScale,
                     contentInsetBottom: mapBottomInset
@@ -334,7 +336,10 @@ struct ContentView: View {
 
     private func focusMapOnUserArea() {
         markMapQuickTipSeen()
-        GoogleMapViewRepresentable.focusOnUserOrSelection(selection: selectionModel.tappedCoordinate)
+        userLocationFocusRequest = UserLocationFocusRequest(
+            id: UUID(),
+            fallbackCoordinate: selectionModel.tappedCoordinate
+        )
     }
 
     private func chooseComparisonResult(_ result: PlaceSearchResult) {
