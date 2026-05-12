@@ -6,489 +6,487 @@
 //
 
 import SwiftUI
-import CoreLocation
-import UIKit
 
 struct ContentView: View {
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
-    @AppStorage("hasSeenMapQuickTip") private var hasSeenMapQuickTip: Bool = false
+    private let snapshot = DemographicSnapshot.sample
+    @State private var isShowingDetails = false
 
-    @StateObject private var selectionModel: MapSelectionModel
-    @StateObject private var searchModel: MapSearchModel
-    @StateObject private var compareSearchModel: MapSearchModel
-    @StateObject private var compareModel: CompareModeModel
-    @StateObject private var discoveryModel: NeighborhoodDiscoveryModel
-    @StateObject private var libraryStore: NeighborhoodLibraryStore
-    @StateObject private var flowCoordinator = ContentFlowCoordinator()
-    @State private var userLocationFocusRequest: UserLocationFocusRequest?
-    @State private var sheetOffset: CGFloat = 0
-    @State private var showOnboarding: Bool = false
+    var body: some View {
+        GeometryReader { geometry in
+            let topInset = max(54, geometry.safeAreaInsets.top + 34)
+            let bottomReserve: CGFloat = geometry.size.height < 520 ? 168 : 190
+            let detailHeight = max(120, geometry.size.height - topInset - bottomReserve)
 
-    init(dependencies: AppDependencies = .live) {
-        _libraryStore = StateObject(wrappedValue: dependencies.neighborhoodLibraryStore)
-        _searchModel = StateObject(wrappedValue: MapSearchModel(service: dependencies.makePlaceSearchService()))
-        _compareSearchModel = StateObject(wrappedValue: MapSearchModel(service: dependencies.makePlaceSearchService()))
-        _compareModel = StateObject(wrappedValue: CompareModeModel(service: dependencies.makeCensusLookupService()))
-        _discoveryModel = StateObject(
-            wrappedValue: NeighborhoodDiscoveryModel(
-                service: dependencies.makeNeighborhoodDiscoveryService(),
-                libraryStore: dependencies.neighborhoodLibraryStore
-            )
-        )
-        _selectionModel = StateObject(
-            wrappedValue: MapSelectionModel(
-                service: dependencies.makeCensusLookupService(),
-                libraryStore: dependencies.neighborhoodLibraryStore
-            )
-        )
-    }
+            ZStack(alignment: .topTrailing) {
+                MinimalBackground()
 
-    private var isUITestSkippingOnboarding: Bool {
-        ProcessInfo.processInfo.arguments.contains("UITEST_SKIP_ONBOARDING")
-    }
+                ZipBoundaryPreview()
+                    .frame(
+                        width: min(max(geometry.size.width * 0.28, 96), 142),
+                        height: min(max(geometry.size.height * 0.19, 112), 158)
+                    )
+                    .padding(.top, topInset + 96)
+                    .padding(.leading, 30)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .accessibilityLabel("Sample ZIP code boundary")
 
-    private var isUITestResettingState: Bool {
-        ProcessInfo.processInfo.arguments.contains("UITEST_RESET_STATE")
-    }
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .trailing, spacing: 34) {
+                        HeaderBlock(snapshot: snapshot)
 
-    private var defaultSheetPeekHeight: CGFloat {
-        max(140, min(220, UIScreen.main.bounds.height * 0.25))
-    }
-
-    private var usesSidebarLayout: Bool {
-        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
-    }
-
-    private var mapBottomInset: CGFloat {
-        if usesSidebarLayout {
-            return 20
-        }
-
-        return max(defaultSheetPeekHeight, sheetOffset) + 12
-    }
-
-    private var boundaryThemeTint: Color {
-        selectionModel.boundaryScale.themeColor
-    }
-
-    private var insightsPresentation: InsightsSheetPresentation {
-        InsightsSheetPresentation(
-            zipCode: selectionModel.selectedZipCode,
-            metrics: selectionModel.censusMetrics,
-            demographics: selectionModel.selectedDemographics,
-            zipBundle: selectionModel.selectedZipBundle,
-            metricsSource: selectionModel.metricsSource,
-            hasActiveSelection: selectionModel.hasActiveSelection,
-            isLoadingSelection: selectionModel.isLoadingSelection,
-            selectionFeedbackState: selectionModel.selectionFeedbackState,
-            isRefreshingScale: selectionModel.isRefreshingScale,
-            comparisonProfile: compareModel.secondaryProfile,
-            pendingComparisonTitle: compareModel.pendingComparisonTitle,
-            isLoadingComparison: compareModel.isLoadingComparison,
-            comparisonErrorMessage: compareModel.comparisonErrorMessage,
-            isCurrentPlaceSaved: selectionModel.isCurrentPlaceSaved,
-            currentLibraryEntry: selectionModel.currentLibraryEntry,
-            isCurrentComparisonSaved: isCurrentComparisonSaved
-        )
-    }
-
-    private var floatingMapControlsBottomPadding: CGFloat {
-        if usesSidebarLayout {
-            return 20
-        }
-
-        return mapBottomInset + 18
-    }
-
-    private var shouldShowMapQuickTip: Bool {
-        flowCoordinator.selection == .map && !showOnboarding && !hasSeenMapQuickTip && selectionModel.tappedCoordinate == nil
-    }
-
-    private var boundaryScaleBinding: Binding<BoundaryOverlayScale> {
-        Binding(
-            get: { selectionModel.boundaryScale },
-            set: { newValue in
-                guard newValue != selectionModel.boundaryScale else { return }
-                Haptics.softImpact()
-                selectionModel.selectBoundaryScale(newValue)
-            }
-        )
-    }
-
-    private var tappedBinding: Binding<CLLocationCoordinate2D?> {
-        Binding(
-            get: { selectionModel.tappedCoordinate },
-            set: { newValue in
-                if newValue != nil {
-                    Haptics.selectionChanged()
+                        FadingContentPanel(
+                            snapshot: snapshot,
+                            isShowingDetails: isShowingDetails
+                        )
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                flowCoordinator.handleMapSelection(
-                    newValue,
-                    usesSidebarLayout: usesSidebarLayout,
-                    markMapQuickTipSeen: markMapQuickTipSeen,
-                    selectionModel: selectionModel,
-                    searchModel: searchModel,
-                    compareModel: compareModel
+                .frame(
+                    maxWidth: min(geometry.size.width * 0.58, 310),
+                    maxHeight: detailHeight,
+                    alignment: .topTrailing
                 )
-            }
-        )
-    }
+                .padding(.top, topInset)
+                .padding(.trailing, 28)
 
-    @ViewBuilder
-    private func mapPane(ignoresSafeAreaTop: Bool) -> some View {
-        ZStack(alignment: .top) {
-            if AppConfig.hasGoogleMapsAPIKey {
-                GoogleMapViewRepresentable(
-                    tappedCoordinate: tappedBinding,
-                    focusRequest: flowCoordinator.mapFocusRequest,
-                    userLocationFocusRequest: userLocationFocusRequest,
-                    selectedBoundary: selectionModel.selectedBoundary,
-                    selectedScale: selectionModel.boundaryScale,
-                    contentInsetBottom: mapBottomInset
-                )
-                .modifier(OptionalTopSafeAreaIgnoring(enabled: ignoresSafeAreaTop))
-            } else {
-                MissingGoogleMapsKeyView()
-                    .modifier(OptionalTopSafeAreaIgnoring(enabled: ignoresSafeAreaTop))
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                if AppConfig.hasGoogleMapsAPIKey {
-                    MapSearchLauncher(query: searchModel.query) {
-                        flowCoordinator.showSearch()
-                    }
-                        .padding(.horizontal, 12)
-                        .padding(.top, 14)
-                }
-
-                if let mapNotice = selectionModel.mapNotice {
-                    MapNoticeBanner(message: mapNotice)
-                        .padding(.horizontal, 12)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .task(id: mapNotice) {
-                            try? await Task.sleep(nanoseconds: 4_500_000_000)
-                            selectionModel.clearMapNotice(ifMatches: mapNotice)
-                        }
-                }
-
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-            if AppConfig.hasGoogleMapsAPIKey {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        MapFloatingControls(onFocusMyArea: focusMapOnUserArea)
+                BottomIdentity(snapshot: snapshot) {
+                    withAnimation(.easeInOut(duration: 0.58)) {
+                        isShowingDetails.toggle()
                     }
                 }
-                .padding(.trailing, 12)
-                .padding(.bottom, floatingMapControlsBottomPadding)
-                .animation(.easeInOut(duration: 0.2), value: floatingMapControlsBottomPadding)
-            }
-
-            if AppConfig.hasGoogleMapsAPIKey && shouldShowMapQuickTip {
-                VStack {
-                    Spacer()
-                    HStack {
-                        MapQuickTipCard {
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                hasSeenMapQuickTip = true
-                            }
-                        }
-                        .transition(.move(edge: .leading).combined(with: .opacity))
-
-                        Spacer()
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, mapBottomInset + 28)
-                .animation(.easeInOut(duration: 0.2), value: mapBottomInset)
-            }
-
-            if AppConfig.hasGoogleMapsAPIKey && selectionModel.isLoadingSelection {
-                MapLoadingOverlay(onCancel: selectionModel.cancelCurrentSelectionRequest)
                     .padding(.horizontal, 24)
+                    .padding(.bottom, max(30, geometry.safeAreaInsets.bottom + 20))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .background(Color.lociqInk)
+        .preferredColorScheme(.dark)
+    }
+}
+
+private struct MinimalBackground: View {
+    var body: some View {
+        ZStack {
+            Color.lociqInk
+
+            Rectangle()
+                .fill(Color.white.opacity(0.045))
+                .frame(width: 260)
+                .rotationEffect(.degrees(-31))
+                .offset(x: 84, y: -150)
+
+            VStack {
+                Spacer()
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        Color.white.opacity(0.035),
+                        .clear
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(height: 1)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 142)
+            }
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+}
+
+private struct HeaderBlock: View {
+    let snapshot: DemographicSnapshot
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            Text(snapshot.market)
+                .font(.system(size: 28, weight: .light, design: .rounded))
+                .foregroundStyle(.white)
+                .monospacedDigit()
+
+            Text(snapshot.dateLabel)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.68))
+
+            Text(snapshot.cadence)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.5))
+        }
+        .multilineTextAlignment(.trailing)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("demographics.header")
+    }
+}
+
+private struct MetricBlock: View {
+    let metric: DemographicMetric
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 5) {
+            Text(metric.title)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.78))
+
+            Text(metric.primaryValue)
+                .font(.system(size: 18, weight: .light, design: .rounded))
+                .foregroundStyle(.white)
+                .monospacedDigit()
+
+            Text(metric.detail)
+                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .foregroundStyle(.white.opacity(0.54))
+                .lineLimit(2)
+                .multilineTextAlignment(.trailing)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct BottomIdentity: View {
+    let snapshot: DemographicSnapshot
+    let onShowDetails: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("LOCIQ")
+                .font(.system(size: 52, weight: .ultraLight, design: .rounded))
+                .foregroundStyle(.white.opacity(0.74))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .accessibilityIdentifier("app.brand")
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center, spacing: 18) {
+                    Text(snapshot.mode)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.68))
+
+                    Spacer(minLength: 28)
+
+                    Button(action: onShowDetails) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.68))
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Info")
+                }
+
+                ProgressLine(progress: snapshot.confidence)
+            }
+            .frame(maxWidth: 520)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("demographics.summary")
+    }
+}
+
+private struct FadingContentPanel: View {
+    let snapshot: DemographicSnapshot
+    let isShowingDetails: Bool
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            if isShowingDetails {
+                DetailContent(snapshot: snapshot)
+                    .transition(.opacity)
+            } else {
+                MetricContent(metrics: snapshot.metrics)
                     .transition(.opacity)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, alignment: .topTrailing)
+        .animation(.easeInOut(duration: 0.58), value: isShowingDetails)
     }
+}
 
-    @ViewBuilder
-    private var activeScreen: some View {
-        Group {
-            switch flowCoordinator.selection {
-            case .map:
-                mapPane(ignoresSafeAreaTop: true)
-            case .library:
-                LibraryScreen(
-                    libraryStore: libraryStore,
-                    discoveryModel: discoveryModel,
-                    hasCurrentDiscoverySeed: currentDiscoverySeed != nil,
-                    onRefreshDiscovery: refreshDiscovery,
-                    onSelectDiscoveryRecommendation: openDiscoveryRecommendation,
-                    onSelectPlace: openLibraryEntry,
-                    onSelectComparison: openSavedComparison
-                )
-            case .guide:
-                GuideScreen()
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var sidebarContent: some View {
-        Group {
-            switch flowCoordinator.selection {
-            case .map:
-                InsightsSheetContent(
-                    presentation: insightsPresentation,
-                    onRetrySelection: selectionModel.retryCurrentSelection,
-                    onStartCompare: openComparePicker,
-                    onReplaceCompare: openComparePicker,
-                    onClearCompare: compareModel.clear,
-                    onToggleSaved: selectionModel.toggleSavedCurrentPlace,
-                    onSavePlaceDetails: selectionModel.saveCurrentPlaceWithMetadata,
-                    onSaveComparison: saveCurrentComparison,
-                    boundaryScale: boundaryScaleBinding,
-                    sheetOffset: .constant(1000)
-                )
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
-                .padding(.bottom, 12)
-            case .library:
-                LibraryScreen(
-                    libraryStore: libraryStore,
-                    discoveryModel: discoveryModel,
-                    hasCurrentDiscoverySeed: currentDiscoverySeed != nil,
-                    onRefreshDiscovery: refreshDiscovery,
-                    onSelectDiscoveryRecommendation: openDiscoveryRecommendation,
-                    onSelectPlace: openLibraryEntry,
-                    onSelectComparison: openSavedComparison
-                )
-            case .guide:
-                GuideScreen()
-            }
-        }
-    }
-
-    private func openLibraryEntry(_ entry: NeighborhoodLibraryEntry) {
-        flowCoordinator.openLibraryEntry(
-            entry,
-            markMapQuickTipSeen: markMapQuickTipSeen,
-            selectionModel: selectionModel,
-            searchModel: searchModel,
-            compareModel: compareModel
-        )
-    }
-
-    private func openSavedComparison(_ entry: SavedComparisonEntry) {
-        flowCoordinator.openSavedComparison(
-            entry,
-            markMapQuickTipSeen: markMapQuickTipSeen,
-            selectionModel: selectionModel,
-            searchModel: searchModel,
-            compareModel: compareModel
-        )
-    }
-
-    private var currentDiscoverySeed: NeighborhoodDiscoverySeed? {
-        guard let snapshot = selectionModel.currentLookupSnapshot else { return nil }
-        return NeighborhoodDiscoverySeed(
-            snapshot: snapshot,
-            profile: selectionModel.currentResolvedPlaceProfile
-        )
-    }
-
-    private func refreshDiscovery() {
-        discoveryModel.refresh(
-            currentSeed: currentDiscoverySeed,
-            fallbackEntry: libraryStore.recentLookups.first
-        )
-    }
-
-    private func openDiscoveryRecommendation(_ recommendation: NeighborhoodDiscoveryRecommendation) {
-        flowCoordinator.openDiscoveryRecommendation(
-            recommendation,
-            markMapQuickTipSeen: markMapQuickTipSeen,
-            selectionModel: selectionModel,
-            searchModel: searchModel,
-            compareModel: compareModel
-        )
-    }
-
-    private func openSearchResult(_ result: PlaceSearchResult) {
-        flowCoordinator.openSearchResult(
-            result,
-            markMapQuickTipSeen: markMapQuickTipSeen,
-            selectionModel: selectionModel,
-            searchModel: searchModel,
-            compareModel: compareModel
-        )
-    }
-
-    private func openComparePicker() {
-        flowCoordinator.openComparePicker(compareSearchModel: compareSearchModel)
-    }
-
-    private func focusMapOnUserArea() {
-        markMapQuickTipSeen()
-        userLocationFocusRequest = UserLocationFocusRequest(
-            id: UUID(),
-            fallbackCoordinate: selectionModel.tappedCoordinate
-        )
-    }
-
-    private func chooseComparisonResult(_ result: PlaceSearchResult) {
-        flowCoordinator.chooseComparisonResult(
-            result,
-            compareSearchModel: compareSearchModel,
-            compareModel: compareModel,
-            boundaryScale: selectionModel.boundaryScale
-        )
-    }
-
-    private func markMapQuickTipSeen() {
-        hasSeenMapQuickTip = true
-    }
-
-    private var currentComparisonSnapshot: SavedComparisonSnapshot? {
-        guard let primarySnapshot = selectionModel.currentLookupSnapshot else { return nil }
-        return compareModel.makeSavedComparisonSnapshot(
-            primary: primarySnapshot,
-            scale: selectionModel.boundaryScale
-        )
-    }
-
-    private var isCurrentComparisonSaved: Bool {
-        guard let currentComparisonSnapshot else { return false }
-        return libraryStore.isComparisonSaved(id: currentComparisonSnapshot.id)
-    }
-
-    private func saveCurrentComparison() {
-        guard let currentComparisonSnapshot else { return }
-        if libraryStore.isComparisonSaved(id: currentComparisonSnapshot.id) {
-            libraryStore.removeSavedComparison(id: currentComparisonSnapshot.id)
-        } else {
-            libraryStore.saveComparison(currentComparisonSnapshot)
-        }
-    }
+private struct MetricContent: View {
+    let metrics: [DemographicMetric]
 
     var body: some View {
-        Group {
-            if usesSidebarLayout {
-                GeometryReader { geo in
-                    let sidebarWidth = min(max(geo.size.width * 0.34, 360), 460)
-
-                    HStack(spacing: 0) {
-                        VStack(spacing: 0) {
-                            IPadSidebarHeader(selection: $flowCoordinator.selection)
-                                .padding(.horizontal, 20)
-                                .padding(.top, 18)
-                                .padding(.bottom, 14)
-
-                            Divider()
-
-                            sidebarContent
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        }
-                        .frame(width: sidebarWidth)
-                        .background(Color(.secondarySystemGroupedBackground))
-
-                        Divider()
-
-                        mapPane(ignoresSafeAreaTop: false)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(Color(.systemBackground))
-                    }
-                    .frame(width: geo.size.width, height: geo.size.height)
-                }
-            } else {
-                ZStack(alignment: .bottom) {
-                    activeScreen
-
-                    if flowCoordinator.selection == .map {
-                        BottomSheet(sheetOffset: $sheetOffset) {
-                            InsightsSheetContent(
-                                presentation: insightsPresentation,
-                                onRetrySelection: selectionModel.retryCurrentSelection,
-                                onStartCompare: openComparePicker,
-                                onReplaceCompare: openComparePicker,
-                                onClearCompare: compareModel.clear,
-                                onToggleSaved: selectionModel.toggleSavedCurrentPlace,
-                                onSavePlaceDetails: selectionModel.saveCurrentPlaceWithMetadata,
-                                onSaveComparison: saveCurrentComparison,
-                                boundaryScale: boundaryScaleBinding,
-                                sheetOffset: $sheetOffset
-                            )
-                        }
-                        .tint(boundaryThemeTint)
-                        .animation(.easeInOut(duration: 0.25), value: selectionModel.boundaryScale)
-                        .accessibilitySortPriority(1)
-                        .zIndex(1)
-                    }
-
-                    VStack(spacing: 0) {
-                        BottomRibbon(selection: $flowCoordinator.selection)
-                    }
-                    .zIndex(2)
-                    .allowsHitTesting(true)
-                }
+        VStack(alignment: .trailing, spacing: 22) {
+            ForEach(metrics) { metric in
+                MetricBlock(metric: metric)
             }
         }
-        .onAppear {
-            if isUITestResettingState {
-                hasSeenOnboarding = false
-                hasSeenMapQuickTip = false
-            }
-            if isUITestSkippingOnboarding {
-                hasSeenOnboarding = true
-            }
-            if !hasSeenOnboarding {
-                showOnboarding = true
-            }
-        }
-        .onChange(of: selectionModel.boundaryScale) { newScale in
-            compareModel.refreshComparison(for: newScale)
-        }
-        .onChange(of: flowCoordinator.selection) { newSelection in
-            if newSelection == .library, discoveryModel.result == nil, !discoveryModel.isLoading {
-                refreshDiscovery()
-            }
-        }
-        .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingExperienceView {
-                hasSeenOnboarding = true
-                showOnboarding = false
-            }
-        }
-        .fullScreenCover(isPresented: $flowCoordinator.showSearchExperience) {
-            MapSearchExperienceView(
-                model: searchModel,
-                promptTitle: AppStrings.Labels.searchPromptTitle,
-                promptBody: AppStrings.Labels.searchPromptBody,
-                onDismiss: {
-                    flowCoordinator.dismissSearch()
-                },
-                onSelectResult: openSearchResult
-            )
-        }
-        .fullScreenCover(isPresented: $flowCoordinator.showComparePicker) {
-            MapSearchExperienceView(
-                model: compareSearchModel,
-                promptTitle: AppStrings.Labels.comparePickerTitle,
-                promptBody: AppStrings.Labels.comparePickerBody,
-                onDismiss: {
-                    flowCoordinator.dismissComparePicker()
-                },
-                onSelectResult: chooseComparisonResult
-            )
-        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
+}
 
+private struct DetailContent: View {
+    let snapshot: DemographicSnapshot
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 18) {
+            ForEach(snapshot.detailSections) { section in
+                DetailSectionView(section: section)
+            }
+
+            VStack(alignment: .trailing, spacing: 8) {
+                Text("SIGNAL")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.48))
+
+                ProgressLine(progress: snapshot.confidence)
+                    .frame(maxWidth: 220)
+            }
+            .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+}
+
+private struct ZipBoundaryPreview: View {
+    var body: some View {
+        SampleZipBoundaryShape()
+            .stroke(
+                Color.white.opacity(0.18),
+                style: StrokeStyle(lineWidth: 0.75, lineCap: .round, lineJoin: .round)
+            )
+            .background(Color.clear)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct SampleZipBoundaryShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + rect.width * 0.47, y: rect.minY + rect.height * 0.02))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.65, y: rect.minY + rect.height * 0.08),
+            control1: CGPoint(x: rect.minX + rect.width * 0.54, y: rect.minY + rect.height * 0.03),
+            control2: CGPoint(x: rect.minX + rect.width * 0.58, y: rect.minY + rect.height * 0.06)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.75, y: rect.minY + rect.height * 0.06))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.87, y: rect.minY + rect.height * 0.21),
+            control1: CGPoint(x: rect.minX + rect.width * 0.80, y: rect.minY + rect.height * 0.09),
+            control2: CGPoint(x: rect.minX + rect.width * 0.84, y: rect.minY + rect.height * 0.14)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.95, y: rect.minY + rect.height * 0.29))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.89, y: rect.minY + rect.height * 0.45),
+            control1: CGPoint(x: rect.minX + rect.width * 0.96, y: rect.minY + rect.height * 0.36),
+            control2: CGPoint(x: rect.minX + rect.width * 0.93, y: rect.minY + rect.height * 0.40)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.81, y: rect.minY + rect.height * 0.53))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.91, y: rect.minY + rect.height * 0.71),
+            control1: CGPoint(x: rect.minX + rect.width * 0.83, y: rect.minY + rect.height * 0.61),
+            control2: CGPoint(x: rect.minX + rect.width * 0.89, y: rect.minY + rect.height * 0.65)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.96, y: rect.minY + rect.height * 0.82))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.78, y: rect.minY + rect.height * 0.92),
+            control1: CGPoint(x: rect.minX + rect.width * 0.90, y: rect.minY + rect.height * 0.88),
+            control2: CGPoint(x: rect.minX + rect.width * 0.85, y: rect.minY + rect.height * 0.91)
+        )
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.59, y: rect.minY + rect.height * 0.98),
+            control1: CGPoint(x: rect.minX + rect.width * 0.72, y: rect.minY + rect.height * 0.91),
+            control2: CGPoint(x: rect.minX + rect.width * 0.67, y: rect.minY + rect.height * 0.96)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.42, y: rect.minY + rect.height * 0.92))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.28, y: rect.minY + rect.height * 0.87),
+            control1: CGPoint(x: rect.minX + rect.width * 0.37, y: rect.minY + rect.height * 0.95),
+            control2: CGPoint(x: rect.minX + rect.width * 0.33, y: rect.minY + rect.height * 0.91)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.14, y: rect.minY + rect.height * 0.74))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.19, y: rect.minY + rect.height * 0.58),
+            control1: CGPoint(x: rect.minX + rect.width * 0.10, y: rect.minY + rect.height * 0.67),
+            control2: CGPoint(x: rect.minX + rect.width * 0.13, y: rect.minY + rect.height * 0.62)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.45))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.09, y: rect.minY + rect.height * 0.29),
+            control1: CGPoint(x: rect.minX + rect.width * 0.17, y: rect.minY + rect.height * 0.40),
+            control2: CGPoint(x: rect.minX + rect.width * 0.12, y: rect.minY + rect.height * 0.35)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.04, y: rect.minY + rect.height * 0.17))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.10),
+            control1: CGPoint(x: rect.minX + rect.width * 0.11, y: rect.minY + rect.height * 0.13),
+            control2: CGPoint(x: rect.minX + rect.width * 0.17, y: rect.minY + rect.height * 0.10)
+        )
+        path.addCurve(
+            to: CGPoint(x: rect.minX + rect.width * 0.47, y: rect.minY + rect.height * 0.02),
+            control1: CGPoint(x: rect.minX + rect.width * 0.33, y: rect.minY + rect.height * 0.12),
+            control2: CGPoint(x: rect.minX + rect.width * 0.40, y: rect.minY + rect.height * 0.05)
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct DetailSectionView: View {
+    let section: DemographicDetailSection
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 10) {
+            Text(section.title)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.72))
+
+            VStack(alignment: .trailing, spacing: 7) {
+                ForEach(section.rows) { row in
+                    VStack(alignment: .trailing, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline, spacing: 18) {
+                            Text(row.label)
+                                .font(.system(size: 12, weight: .regular, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.46))
+                                .lineLimit(1)
+
+                            Spacer(minLength: 24)
+
+                            Text(row.value)
+                                .font(.system(size: 17, weight: .light, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .multilineTextAlignment(.trailing)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .monospacedDigit()
+
+                        if let progress = row.progress {
+                            ProgressLine(progress: progress)
+                                .opacity(0.78)
+                                .frame(maxWidth: 220)
+                        }
+                    }
+                    .padding(.vertical, 3)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct ProgressLine: View {
+    let progress: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(Color.white.opacity(0.24))
+                    .frame(height: 1)
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.72))
+                    .frame(width: geometry.size.width * min(max(progress, 0), 1), height: 1)
+            }
+        }
+        .frame(height: 1)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct DemographicSnapshot {
+    let market: String
+    let dateLabel: String
+    let cadence: String
+    let mode: String
+    let confidence: Double
+    let metrics: [DemographicMetric]
+    let detailSections: [DemographicDetailSection]
+
+    static let sample = DemographicSnapshot(
+        market: "OAKLAND, CA",
+        dateLabel: "MAY 12, 2026",
+        cadence: "ACS 5-YEAR SAMPLE",
+        mode: "DEMOGRAPHICS",
+        confidence: 0.78,
+        metrics: [
+            DemographicMetric(
+                title: "POPULATION",
+                primaryValue: "437,500",
+                detail: "MEDIAN AGE 37.2"
+            ),
+            DemographicMetric(
+                title: "HOUSEHOLDS",
+                primaryValue: "172,900",
+                detail: "2.45 PEOPLE PER HOME"
+            ),
+            DemographicMetric(
+                title: "INCOME",
+                primaryValue: "$98,400",
+                detail: "MEDIAN HOUSEHOLD"
+            ),
+            DemographicMetric(
+                title: "RENTERS",
+                primaryValue: "57%",
+                detail: "43% OWNER OCCUPIED"
+            ),
+            DemographicMetric(
+                title: "EDUCATION",
+                primaryValue: "49%",
+                detail: "BACHELOR'S OR HIGHER"
+            )
+        ],
+        detailSections: [
+            DemographicDetailSection(
+                title: "AGE",
+                rows: [
+                    DemographicDetailRow(label: "UNDER 18", value: "19%"),
+                    DemographicDetailRow(label: "18 TO 34", value: "28%"),
+                    DemographicDetailRow(label: "35 TO 64", value: "39%"),
+                    DemographicDetailRow(label: "65 PLUS", value: "14%")
+                ]
+            ),
+            DemographicDetailSection(
+                title: "HOUSING",
+                rows: [
+                    DemographicDetailRow(label: "MEDIAN RENT", value: "$2,180"),
+                    DemographicDetailRow(label: "MEDIAN VALUE", value: "$812,000"),
+                    DemographicDetailRow(label: "VACANCY", value: "5.8%")
+                ]
+            ),
+            DemographicDetailSection(
+                title: "MOBILITY",
+                rows: [
+                    DemographicDetailRow(label: "TRANSIT", value: "18%"),
+                    DemographicDetailRow(label: "REMOTE WORK", value: "24%"),
+                    DemographicDetailRow(label: "MEDIAN COMMUTE", value: "31 MIN")
+                ]
+            )
+        ]
+    )
+}
+
+private struct DemographicMetric: Identifiable {
+    let id = UUID()
+    let title: String
+    let primaryValue: String
+    let detail: String
+}
+
+private struct DemographicDetailSection: Identifiable {
+    let id = UUID()
+    let title: String
+    let rows: [DemographicDetailRow]
+}
+
+private struct DemographicDetailRow: Identifiable {
+    let id = UUID()
+    let label: String
+    let value: String
+    let progress: Double?
+
+    init(label: String, value: String, progress: Double? = nil) {
+        self.label = label
+        self.value = value
+        self.progress = progress
+    }
+}
+
+private extension Color {
+    static let lociqInk = Color(red: 0.075, green: 0.075, blue: 0.072)
 }
 
 #Preview {

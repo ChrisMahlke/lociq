@@ -2,48 +2,16 @@
 //  LociqApp.swift
 //  Lociq
 //
-//  App entry point that configures third-party SDKs and boots the root SwiftUI scene.
+//  App entry point for the stripped-down SwiftUI experience.
 //
 
-import AppIntents
 import SwiftUI
-import GoogleMaps
-import os
 
 @main
 struct LociqApp: App {
-    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "io.chrismahlke.lociq", category: "App")
-    private let dependencies = AppDependencies.live
-
-    /// Initializes app-level SDK configuration before the first view appears.
-    init() {
-        configureGoogleMaps()
-    }
-
     var body: some Scene {
         WindowGroup {
-            ContentView(dependencies: dependencies)
+            ContentView()
         }
-    }
-
-    private func configureGoogleMaps() {
-        let apiKey = AppConfig.googleMapsAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !apiKey.isEmpty else {
-            let diagnostics = AppConfig.googleMapsDiagnostics.summary
-            #if DEBUG
-            Self.logger.error("""
-            Missing GOOGLE_MAPS_API_KEY. Copy Config/GoogleMaps.example.xcconfig \
-            to Config/GoogleMaps.xcconfig and add your real key locally.
-
-            \(diagnostics)
-            """)
-            #else
-            Self.logger.error("Missing Google Maps API key. The app will show the missing-key fallback view.")
-            #endif
-
-            return
-        }
-
-        GMSServices.provideAPIKey(apiKey)
     }
 }
