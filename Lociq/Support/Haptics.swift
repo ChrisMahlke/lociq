@@ -1,3 +1,10 @@
+//
+//  Haptics.swift
+//  Lociq
+//
+//  Provides small haptic feedback helpers for minimal UI interactions.
+//
+
 import UIKit
 
 enum Haptics {

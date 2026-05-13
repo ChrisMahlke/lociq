@@ -1,3 +1,10 @@
+//
+//  MinimalBackground.swift
+//  Lociq
+//
+//  Draws the restrained dark background used by the app shell.
+//
+
 import SwiftUI
 
 struct MinimalBackground: View {

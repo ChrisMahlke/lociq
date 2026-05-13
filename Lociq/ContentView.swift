@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  Lociq
 //
-//  Created by Chris Mahlke on 3/6/26.
+//  Composes the root minimal city profile interface and routes its single action.
 //
 
 import CoreLocation

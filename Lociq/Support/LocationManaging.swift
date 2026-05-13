@@ -1,3 +1,10 @@
+//
+//  LocationManaging.swift
+//  Lociq
+//
+//  Defines the location-manager abstraction used by the profile ViewModel.
+//
+
 import CoreLocation
 
 protocol LocationManaging: AnyObject {

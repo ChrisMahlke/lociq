@@ -1,3 +1,10 @@
+//
+//  ACSDemographicsClient.swift
+//  Lociq
+//
+//  Fetches city-level ACS demographics from the U.S. Census API.
+//
+
 import Foundation
 
 final class ACSDemographicsClient: @unchecked Sendable {

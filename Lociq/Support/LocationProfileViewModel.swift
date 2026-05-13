@@ -1,3 +1,10 @@
+//
+//  LocationProfileViewModel.swift
+//  Lociq
+//
+//  Coordinates location permission, profile loading, cache refresh, and UI state.
+//
+
 import Combine
 import CoreLocation
 import Foundation
@@ -80,7 +87,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         case .needsLocationPermission, .locationUnavailable:
             return .placeholder
         case .refreshing(let profile, let isStale), .loaded(let profile, let isStale):
-            return isStale ? profile.snapshot.replacingDateLabel("CACHED") : profile.snapshot
+            return isStale ? profile.snapshot.replacingDateLabel("") : profile.snapshot
         case .profileUnavailable(let snapshot, _, _, _, _):
             return snapshot
         }

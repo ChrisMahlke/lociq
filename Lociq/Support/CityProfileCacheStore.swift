@@ -1,3 +1,10 @@
+//
+//  CityProfileCacheStore.swift
+//  Lociq
+//
+//  Persists and restores the last successful city profile for fast launches.
+//
+
 import CoreLocation
 import Foundation
 

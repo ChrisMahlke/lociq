@@ -1,3 +1,10 @@
+//
+//  CensusGeocoderClient.swift
+//  Lociq
+//
+//  Resolves device coordinates into Census county and place geography.
+//
+
 import Foundation
 
 struct CensusGeographiesBundle: Sendable {

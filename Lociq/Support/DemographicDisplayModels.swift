@@ -1,3 +1,10 @@
+//
+//  DemographicDisplayModels.swift
+//  Lociq
+//
+//  Defines compact display models used by the demographic UI.
+//
+
 import Foundation
 
 struct DemographicMetric: Identifiable, Codable, Sendable {

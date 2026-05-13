@@ -1,3 +1,10 @@
+//
+//  LocationProfileViewModelTests.swift
+//  LociqTests
+//
+//  Verifies profile ViewModel state transitions, cache behavior, and retry logic.
+//
+
 import CoreLocation
 import Foundation
 import Testing
@@ -47,7 +54,7 @@ struct LocationProfileViewModelTests {
         }
     }
 
-    /// Verifies stale cached profiles are shown as cached while avoiding blank launch states.
+    /// Verifies stale cached profiles are shown without exposing cache state to users.
     @Test func staleCachedProfileIsDisplayedAsCached() async throws {
         let now = Date(timeIntervalSinceReferenceDate: 200_000)
         let store = Self.makeCacheStore()
@@ -65,7 +72,7 @@ struct LocationProfileViewModelTests {
             return
         }
         #expect(isStale)
-        #expect(viewModel.snapshot.dateLabel == "CACHED")
+        #expect(viewModel.snapshot.dateLabel.isEmpty)
     }
 
     /// Verifies successful location loads save a fresh cache entry using the injected clock.

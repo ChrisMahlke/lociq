@@ -1,3 +1,10 @@
+//
+//  TIGERBoundaryClient.swift
+//  Lociq
+//
+//  Fetches city and place boundary GeoJSON from Census TIGERweb.
+//
+
 import Foundation
 
 final class TIGERBoundaryClient: @unchecked Sendable {

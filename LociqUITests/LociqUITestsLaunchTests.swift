@@ -2,7 +2,7 @@
 //  LociqUITestsLaunchTests.swift
 //  LociqUITests
 //
-//  Created by Chris Mahlke on 3/2/26.
+//  Captures launch screenshots for lightweight visual review.
 //
 
 import XCTest

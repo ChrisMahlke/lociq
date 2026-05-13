@@ -1,3 +1,10 @@
+//
+//  DemographicContentViews.swift
+//  Lociq
+//
+//  Renders the minimal city title, summary metrics, and detail rows.
+//
+
 import SwiftUI
 
 struct HeaderBlock: View {

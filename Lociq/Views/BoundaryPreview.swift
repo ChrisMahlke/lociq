@@ -1,3 +1,10 @@
+//
+//  BoundaryPreview.swift
+//  Lociq
+//
+//  Draws the city boundary, approximate location pulse, and city connector line.
+//
+
 import CoreLocation
 import SwiftUI
 

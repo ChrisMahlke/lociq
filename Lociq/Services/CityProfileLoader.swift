@@ -1,3 +1,10 @@
+//
+//  CityProfileLoader.swift
+//  Lociq
+//
+//  Maps city profile service results into UI-ready loaded or unavailable states.
+//
+
 import CoreLocation
 import Foundation
 

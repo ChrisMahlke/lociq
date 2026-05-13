@@ -1,3 +1,10 @@
+//
+//  ACSDemographicsVariableCatalog.swift
+//  Lociq
+//
+//  Defines the ACS variable set used to build the city demographic snapshot.
+//
+
 import Foundation
 
 enum ACSDemographicsVariableCatalog {

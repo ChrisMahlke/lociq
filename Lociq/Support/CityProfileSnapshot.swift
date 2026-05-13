@@ -1,3 +1,10 @@
+//
+//  CityProfileSnapshot.swift
+//  Lociq
+//
+//  Builds the UI-ready city demographic snapshot from loaded profile data.
+//
+
 import Foundation
 
 struct DemographicSnapshot: Codable, Sendable {

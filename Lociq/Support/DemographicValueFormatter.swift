@@ -1,3 +1,10 @@
+//
+//  DemographicValueFormatter.swift
+//  Lociq
+//
+//  Formats demographic values and Census geography names for compact display.
+//
+
 import Foundation
 
 enum DemographicValueFormatter {

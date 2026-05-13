@@ -1,3 +1,10 @@
+//
+//  GeoJSONBoundaryPathBuilderTests.swift
+//  LociqTests
+//
+//  Verifies boundary projection and coordinate placement behavior.
+//
+
 import CoreLocation
 import CoreGraphics
 import Testing

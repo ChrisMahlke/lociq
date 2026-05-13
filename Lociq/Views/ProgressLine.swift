@@ -1,3 +1,10 @@
+//
+//  ProgressLine.swift
+//  Lociq
+//
+//  Renders the minimal one-pixel loading and progress indicator.
+//
+
 import SwiftUI
 
 struct ProgressLine: View {

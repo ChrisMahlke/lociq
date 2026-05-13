@@ -1,3 +1,10 @@
+//
+//  CensusHTTPClient.swift
+//  Lociq
+//
+//  Provides shared HTTP and JSON decoding behavior for Census-backed services.
+//
+
 import Foundation
 
 final class CensusHTTPClient: @unchecked Sendable {

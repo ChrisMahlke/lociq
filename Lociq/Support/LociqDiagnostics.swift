@@ -1,3 +1,10 @@
+//
+//  LociqDiagnostics.swift
+//  Lociq
+//
+//  Records lightweight diagnostics for profile loading without changing the UI.
+//
+
 import Foundation
 import OSLog
 

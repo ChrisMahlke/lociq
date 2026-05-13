@@ -1,3 +1,10 @@
+//
+//  ACSDemographicsMapper.swift
+//  Lociq
+//
+//  Converts raw ACS response values into normalized demographic models.
+//
+
 import Foundation
 
 struct ACSDemographicsMapper {

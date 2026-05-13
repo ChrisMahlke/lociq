@@ -1,3 +1,10 @@
+//
+//  MinimalLayout.swift
+//  Lociq
+//
+//  Computes stable responsive measurements for the iPhone-only layout.
+//
+
 import SwiftUI
 
 struct MinimalLayout {

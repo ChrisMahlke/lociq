@@ -2,6 +2,8 @@
 //  LociqUITests.swift
 //  LociqUITests
 //
+//  Verifies the minimal app shell launches successfully in UI automation.
+//
 
 import XCTest
 

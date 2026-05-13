@@ -1,3 +1,10 @@
+//
+//  DebugLocationOverride.swift
+//  Lociq
+//
+//  Provides launch-argument location overrides for deterministic local testing.
+//
+
 import CoreLocation
 import Foundation
 

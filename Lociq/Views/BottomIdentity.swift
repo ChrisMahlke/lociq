@@ -1,3 +1,10 @@
+//
+//  BottomIdentity.swift
+//  Lociq
+//
+//  Renders the LOC IQ mark, bottom action, and loading line.
+//
+
 import SwiftUI
 
 struct BottomIdentity: View {

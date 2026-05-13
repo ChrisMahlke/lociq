@@ -1,3 +1,10 @@
+//
+//  LociqMotion.swift
+//  Lociq
+//
+//  Centralizes animation timings and reduced-motion variants.
+//
+
 import SwiftUI
 
 enum LociqMotion {

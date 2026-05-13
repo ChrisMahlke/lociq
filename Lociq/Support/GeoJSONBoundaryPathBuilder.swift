@@ -1,3 +1,10 @@
+//
+//  GeoJSONBoundaryPathBuilder.swift
+//  Lociq
+//
+//  Projects GeoJSON boundaries into north-up Web Mercator SwiftUI paths.
+//
+
 import CoreLocation
 import SwiftUI
 

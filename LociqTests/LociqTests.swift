@@ -2,7 +2,7 @@
 //  LociqTests.swift
 //  LociqTests
 //
-//  Created by Chris Mahlke on 3/2/26.
+//  Verifies snapshot formatting, display values, and cache decoding behavior.
 //
 
 import CoreLocation
