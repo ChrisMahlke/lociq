@@ -5,46 +5,35 @@
 //  Created by Chris Mahlke on 3/6/26.
 //
 
-import Combine
 import CoreLocation
 import SwiftUI
 
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
-    @StateObject private var locationAccess = LocationAccessModel()
-    @StateObject private var locationProfile = ACSLocationProfileModel()
+    @StateObject private var locationProfile: LocationProfileViewModel
     @State private var isShowingDetails = false
     @State private var isLoadingContent = false
 
-    private let debugLocationOverride = DebugLocationOverride.current
-
-    private var canDisplayLocationProfile: Bool {
-        locationAccess.canUseLocation || debugLocationOverride != nil
+    init() {
+        _locationProfile = StateObject(
+            wrappedValue: LocationProfileViewModel(debugCoordinate: DebugLocationOverride.current?.coordinate)
+        )
     }
 
     private var activeCoordinate: CLLocationCoordinate2D? {
-        debugLocationOverride?.coordinate ?? locationAccess.coordinate
-    }
-
-    private var shouldShowLocationPlaceholder: Bool {
-        debugLocationOverride == nil && locationAccess.isUnavailable
+        locationProfile.coordinate
     }
 
     private var displaySnapshot: DemographicSnapshot {
-        guard !shouldShowLocationPlaceholder else { return .placeholder }
-        return locationProfile.snapshot ?? .loading
+        locationProfile.snapshot
     }
 
     private var canShowBoundary: Bool {
-        !isWaitingForInitialData
-            && !shouldShowLocationPlaceholder
-            && locationProfile.boundary != nil
+        locationProfile.canShowBoundary
     }
 
     private var isWaitingForInitialData: Bool {
-        !shouldShowLocationPlaceholder
-            && locationProfile.boundary == nil
-            && (locationProfile.snapshot == nil || locationProfile.isLoading)
+        locationProfile.isWaitingForInitialData
     }
 
     var body: some View {
@@ -60,7 +49,7 @@ struct ContentView: View {
                     ZipBoundaryPreview(
                         boundary: boundary,
                         coordinate: activeCoordinate,
-                        traceToken: locationProfile.traceToken + (canDisplayLocationProfile ? 1 : 0)
+                        traceToken: locationProfile.traceToken
                     )
                         .frame(
                             width: min(max(geometry.size.width * 0.28, 96), 142),
@@ -103,7 +92,7 @@ struct ContentView: View {
                 BottomIdentity(
                     snapshot: displaySnapshot,
                     isShowingDetails: isShowingDetails,
-                    isLoading: isLoadingContent || locationProfile.isLoading || isWaitingForInitialData,
+                    isLoading: isLoadingContent || locationProfile.isLoading,
                     isWaitingForInitialData: isWaitingForInitialData
                 ) {
                     cycleContent()
@@ -128,7 +117,7 @@ struct ContentView: View {
                                 y: boundaryRect.minY + boundaryPathCenter.y
                             ),
                             end: CGPoint(x: cityRect.minX - 9, y: cityRect.midY),
-                            traceToken: locationProfile.traceToken + (canDisplayLocationProfile ? 1 : 0)
+                            traceToken: locationProfile.traceToken
                         )
                     }
                 }
@@ -139,18 +128,11 @@ struct ContentView: View {
         .background(Color.lociqInk)
         .preferredColorScheme(.dark)
         .onAppear {
-            if let debugLocationOverride {
-                locationProfile.load(for: debugLocationOverride.coordinate)
-            } else {
-                locationAccess.requestAccessIfNeeded()
-            }
+            locationProfile.activate()
         }
         .onChange(of: scenePhase) { phase in
-            guard phase == .active, debugLocationOverride == nil else { return }
-            locationAccess.requestAccessIfNeeded()
-        }
-        .onReceive(locationAccess.$coordinate.compactMap { $0 }) { coordinate in
-            locationProfile.load(for: coordinate)
+            guard phase == .active else { return }
+            locationProfile.activate()
         }
     }
 
@@ -176,65 +158,6 @@ struct ContentView: View {
     }
 }
 
-private final class LocationAccessModel: NSObject, ObservableObject, CLLocationManagerDelegate {
-    @Published private(set) var authorizationStatus: CLAuthorizationStatus
-    @Published private(set) var coordinate: CLLocationCoordinate2D?
-
-    private let manager = CLLocationManager()
-
-    var canUseLocation: Bool {
-        switch authorizationStatus {
-        case .authorizedAlways, .authorizedWhenInUse:
-            return true
-        case .denied, .notDetermined, .restricted:
-            return false
-        @unknown default:
-            return false
-        }
-    }
-
-    var isUnavailable: Bool {
-        switch authorizationStatus {
-        case .denied, .restricted:
-            return true
-        case .authorizedAlways, .authorizedWhenInUse, .notDetermined:
-            return false
-        @unknown default:
-            return true
-        }
-    }
-
-    override init() {
-        authorizationStatus = manager.authorizationStatus
-        super.init()
-        manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-    }
-
-    func requestAccessIfNeeded() {
-        authorizationStatus = manager.authorizationStatus
-        if authorizationStatus == .notDetermined {
-            manager.requestWhenInUseAuthorization()
-        } else if canUseLocation {
-            manager.requestLocation()
-        }
-    }
-
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorizationStatus = manager.authorizationStatus
-        guard canUseLocation else { return }
-        manager.requestLocation()
-    }
-
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        coordinate = locations.last?.coordinate
-    }
-
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        authorizationStatus = manager.authorizationStatus
-    }
-}
-
 private struct DebugLocationOverride {
     let coordinate: CLLocationCoordinate2D
 
@@ -250,103 +173,6 @@ private struct DebugLocationOverride {
         }
 
         return nil
-    }
-}
-
-@MainActor
-private final class ACSLocationProfileModel: ObservableObject {
-    @Published private(set) var snapshot: DemographicSnapshot?
-    @Published private(set) var boundary: GeoJSONFeatureCollection?
-    @Published private(set) var traceToken = 0
-    @Published private(set) var isLoading = false
-
-    private let censusService: CensusZipDemographicsService
-    private let geocoderClient: CensusGeocoderClient
-    private let boundaryClient: TIGERBoundaryClient
-    private let hasCensusAPIKey: Bool
-    private var lastCoordinateKey: String?
-
-    init() {
-        let httpClient = CensusHTTPClient(session: .shared)
-        let censusAPIKey = AppConfig.censusAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        censusService = CensusZipDemographicsService(censusApiKey: censusAPIKey)
-        geocoderClient = CensusGeocoderClient(httpClient: httpClient)
-        boundaryClient = TIGERBoundaryClient(httpClient: httpClient)
-        hasCensusAPIKey = !censusAPIKey.isEmpty
-    }
-
-    func load(for coordinate: CLLocationCoordinate2D) {
-        let coordinateKey = String(format: "%.4f,%.4f", coordinate.latitude, coordinate.longitude)
-        guard coordinateKey != lastCoordinateKey else { return }
-        lastCoordinateKey = coordinateKey
-
-        isLoading = true
-        snapshot = .loading
-        boundary = nil
-
-        Task {
-            guard hasCensusAPIKey else {
-                await loadLocationShell(for: coordinate, status: .censusKeyMissing)
-                isLoading = false
-                return
-            }
-
-            do {
-                let profile = try await censusService.fetchPlaceProfile(
-                    latitude: coordinate.latitude,
-                    longitude: coordinate.longitude
-                )
-                guard let cityDemographics = profile.scaleDemographics.place else {
-                    var fallbackBoundary = profile.boundaries.city
-                    if fallbackBoundary == nil {
-                        fallbackBoundary = await boundaryClient.fetchPlaceBoundary(place: profile.zipBundle.place)
-                    }
-                    snapshot = DemographicSnapshot.status(
-                        for: .acsUnavailable,
-                        market: DemographicValueFormatter.title(from: profile).uppercased()
-                    )
-                    boundary = fallbackBoundary
-                    traceToken += 1
-                    isLoading = false
-                    return
-                }
-
-                var cityBoundary = profile.boundaries.city
-                if cityBoundary == nil {
-                    cityBoundary = await boundaryClient.fetchPlaceBoundary(place: profile.zipBundle.place)
-                }
-
-                snapshot = DemographicSnapshot(profile: profile, demographics: cityDemographics)
-                boundary = cityBoundary
-                traceToken += 1
-            } catch {
-                await loadLocationShell(for: coordinate, status: .acsUnavailable)
-            }
-            isLoading = false
-        }
-    }
-
-    private func loadLocationShell(for coordinate: CLLocationCoordinate2D, status: DemographicSnapshot.LocationStatus) async {
-        do {
-            let geography = try await geocoderClient.fetchGeographiesFromCoordinate(
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-            let areaTitle = DemographicValueFormatter.cityTitle(from: geography) ?? "CITY UNAVAILABLE"
-            let resolvedBoundary = await boundaryClient.fetchPlaceBoundary(place: geography.place)
-
-            snapshot = DemographicSnapshot.status(for: status, market: areaTitle.uppercased())
-            if let resolvedBoundary {
-                boundary = resolvedBoundary
-            } else {
-                boundary = nil
-            }
-            traceToken += 1
-        } catch {
-            boundary = nil
-            snapshot = DemographicSnapshot.status(for: status, market: status.fallbackMarket)
-            traceToken += 1
-        }
     }
 }
 
@@ -679,191 +505,6 @@ private struct BoundaryPreviewShape: Shape {
     }
 }
 
-private enum GeoJSONBoundaryPathBuilder {
-    nonisolated static func path(
-        for boundary: GeoJSONFeatureCollection,
-        in rect: CGRect,
-        fittingTo fittingBoundary: GeoJSONFeatureCollection? = nil
-    ) -> Path? {
-        guard let projectedBoundary = projectedBoundary(for: boundary, in: rect, fittingTo: fittingBoundary) else {
-            return nil
-        }
-
-        var path = Path()
-        for ring in projectedBoundary.rings {
-            var didMove = false
-            for point in ring {
-                if didMove {
-                    path.addLine(to: point)
-                } else {
-                    path.move(to: point)
-                    didMove = true
-                }
-            }
-            path.closeSubpath()
-        }
-
-        return path
-    }
-
-    nonisolated static func center(for boundary: GeoJSONFeatureCollection?, fallbackRect: CGRect) -> CGPoint {
-        guard
-            let boundary,
-            let projectedBoundary = projectedBoundary(
-                for: boundary,
-                in: CGRect(origin: .zero, size: fallbackRect.size)
-            )
-        else {
-            return CGPoint(x: fallbackRect.width / 2, y: fallbackRect.height / 2)
-        }
-
-        return CGPoint(x: projectedBoundary.bounds.midX, y: projectedBoundary.bounds.midY)
-    }
-
-    nonisolated static func point(
-        for coordinate: CLLocationCoordinate2D,
-        in rect: CGRect,
-        fittingTo boundary: GeoJSONFeatureCollection
-    ) -> CGPoint? {
-        guard
-            let projectedBoundary = projectedBoundary(for: boundary, in: rect),
-            let projectedPoint = googleMapsWorldPoint(
-                longitude: coordinate.longitude,
-                latitude: coordinate.latitude
-            )
-        else {
-            return nil
-        }
-
-        let x = projectedBoundary.xOffset + (projectedPoint.x - projectedBoundary.minProjectedX) * projectedBoundary.scale
-        let y = projectedBoundary.yOffset + (projectedPoint.y - projectedBoundary.minProjectedY) * projectedBoundary.scale
-        let point = CGPoint(x: x, y: y)
-        return rect.insetBy(dx: -2, dy: -2).contains(point) ? point : nil
-    }
-
-    nonisolated private static func projectedBoundary(
-        for boundary: GeoJSONFeatureCollection,
-        in rect: CGRect,
-        fittingTo fittingBoundary: GeoJSONFeatureCollection? = nil
-    ) -> ProjectedBoundary? {
-        let rings = boundary.features
-            .compactMap(\.geometry)
-            .flatMap(exteriorRings(from:))
-            .filter { $0.count > 2 }
-
-        guard !rings.isEmpty else { return nil }
-
-        let fittingRings = fittingBoundary?.features
-            .compactMap(\.geometry)
-            .flatMap(exteriorRings(from:))
-            .filter { $0.count > 2 }
-        let boundsRings = fittingRings?.isEmpty == false ? fittingRings ?? rings : rings
-
-        let points = rings.flatMap { ring in
-            ring.compactMap { coordinate -> CGPoint? in
-                guard coordinate.count >= 2 else { return nil }
-                return googleMapsWorldPoint(longitude: coordinate[0], latitude: coordinate[1])
-            }
-        }
-        let boundsPoints = boundsRings.flatMap { ring in
-            ring.compactMap { coordinate -> CGPoint? in
-                guard coordinate.count >= 2 else { return nil }
-                return googleMapsWorldPoint(longitude: coordinate[0], latitude: coordinate[1])
-            }
-        }
-
-        guard
-            !points.isEmpty,
-            let minProjectedX = boundsPoints.map(\.x).min(),
-            let maxProjectedX = boundsPoints.map(\.x).max(),
-            let minProjectedY = boundsPoints.map(\.y).min(),
-            let maxProjectedY = boundsPoints.map(\.y).max(),
-            maxProjectedX > minProjectedX,
-            maxProjectedY > minProjectedY
-        else {
-            return nil
-        }
-
-        let projectedWidth = maxProjectedX - minProjectedX
-        let projectedHeight = maxProjectedY - minProjectedY
-        let scale = min(rect.width / projectedWidth, rect.height / projectedHeight) * 0.92
-        let drawingWidth = projectedWidth * scale
-        let drawingHeight = projectedHeight * scale
-        let xOffset = rect.midX - drawingWidth / 2
-        let yOffset = rect.midY - drawingHeight / 2
-
-        var projectedRings: [[CGPoint]] = []
-        for ring in rings {
-            var projectedRing: [CGPoint] = []
-            for coordinate in ring where coordinate.count >= 2 {
-                guard let projectedPoint = googleMapsWorldPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
-                    continue
-                }
-                let x = xOffset + (projectedPoint.x - minProjectedX) * scale
-                let y = yOffset + (projectedPoint.y - minProjectedY) * scale
-                let point = CGPoint(x: x, y: y)
-                projectedRing.append(point)
-            }
-            if projectedRing.count > 2 {
-                projectedRings.append(projectedRing)
-            }
-        }
-
-        guard !projectedRings.isEmpty else { return nil }
-        let allProjectedPoints = projectedRings.flatMap { $0 }
-        guard
-            let minX = allProjectedPoints.map(\.x).min(),
-            let maxX = allProjectedPoints.map(\.x).max(),
-            let minY = allProjectedPoints.map(\.y).min(),
-            let maxY = allProjectedPoints.map(\.y).max()
-        else {
-            return nil
-        }
-
-        return ProjectedBoundary(
-            rings: projectedRings,
-            bounds: CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY),
-            minProjectedX: minProjectedX,
-            minProjectedY: minProjectedY,
-            xOffset: xOffset,
-            yOffset: yOffset,
-            scale: scale
-        )
-    }
-
-    private struct ProjectedBoundary {
-        let rings: [[CGPoint]]
-        let bounds: CGRect
-        let minProjectedX: CGFloat
-        let minProjectedY: CGFloat
-        let xOffset: CGFloat
-        let yOffset: CGFloat
-        let scale: CGFloat
-    }
-
-    nonisolated private static func googleMapsWorldPoint(longitude: Double, latitude: Double) -> CGPoint? {
-        guard longitude.isFinite, latitude.isFinite else { return nil }
-        let clampedLatitude = min(max(latitude, -85.05112878), 85.05112878)
-        let latitudeRadians = clampedLatitude * .pi / 180
-        let sinLatitude = sin(latitudeRadians)
-        return CGPoint(
-            x: (longitude + 180) / 360,
-            y: 0.5 - log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * .pi)
-        )
-    }
-
-    nonisolated private static func exteriorRings(from geometry: GeoJSONGeometry) -> [[[Double]]] {
-        switch geometry {
-        case .polygon(let rings):
-            return rings.first.map { [$0] } ?? []
-        case .multiPolygon(let polygons):
-            return polygons.compactMap(\.first)
-        case .other:
-            return []
-        }
-    }
-}
-
 private struct DetailSectionView: View {
     let section: DemographicDetailSection
 
@@ -995,273 +636,6 @@ private struct ProgressLine: View {
             }
         }
         .accessibilityHidden(true)
-    }
-}
-
-private struct DemographicSnapshot {
-    enum LocationStatus {
-        case censusKeyMissing
-        case acsUnavailable
-
-        var fallbackMarket: String {
-            switch self {
-            case .censusKeyMissing:
-                return "CENSUS KEY"
-            case .acsUnavailable:
-                return "ACS"
-            }
-        }
-    }
-
-    let market: String
-    let dateLabel: String
-    let cadence: String
-    let mode: String
-    let confidence: Double
-    let hasDemographicData: Bool
-    let metrics: [DemographicMetric]
-    let detailSections: [DemographicDetailSection]
-
-    static let placeholder = DemographicSnapshot(
-        market: "LOCATION",
-        dateLabel: "ENABLE ACCESS",
-        cadence: "DEMOGRAPHICS PAUSED",
-        mode: "LOCATION",
-        confidence: 0,
-        hasDemographicData: false,
-        metrics: [
-            DemographicMetric(
-                title: "ACCESS",
-                primaryValue: "--",
-                detail: "ENABLE LOCATION"
-            )
-        ],
-        detailSections: []
-    )
-
-    static let loading = DemographicSnapshot.status(
-        market: "LOCATING",
-        dateLabel: "ACS",
-        cadence: "READING AREA",
-        mode: "LOADING"
-    )
-
-    static func status(for status: LocationStatus, market: String) -> DemographicSnapshot {
-        switch status {
-        case .censusKeyMissing:
-            return DemographicSnapshot.status(
-                market: market,
-                dateLabel: "CENSUS KEY",
-                cadence: "ADD API KEY",
-                mode: "NO KEY"
-            )
-        case .acsUnavailable:
-            return DemographicSnapshot.status(
-                market: market,
-                dateLabel: "ACS",
-                cadence: "TRY AGAIN LATER",
-                mode: "OFFLINE"
-            )
-        }
-    }
-
-    private static func status(
-        market: String,
-        dateLabel: String,
-        cadence: String,
-        mode: String
-    ) -> DemographicSnapshot {
-        DemographicSnapshot(
-            market: market,
-            dateLabel: dateLabel,
-            cadence: cadence,
-            mode: mode,
-            confidence: 0,
-            hasDemographicData: false,
-            metrics: [
-                DemographicMetric(title: "CITY PROFILE", primaryValue: "--", detail: cadence)
-            ],
-            detailSections: []
-        )
-    }
-}
-
-private extension DemographicSnapshot {
-    init(profile: ResolvedPlaceProfile, demographics: Demographics) {
-        let households = DemographicValueFormatter.households(from: demographics)
-        let ownerPct = DemographicValueFormatter.percent(demographics.ownerOccupiedPct)
-
-        self.init(
-            market: DemographicValueFormatter.title(from: profile).uppercased(),
-            dateLabel: "",
-            cadence: "",
-            mode: "DEMOGRAPHICS",
-            confidence: 0.84,
-            hasDemographicData: true,
-            metrics: [
-                DemographicMetric(
-                    title: "POPULATION",
-                    primaryValue: DemographicValueFormatter.number(demographics.population),
-                    detail: "MEDIAN AGE \(DemographicValueFormatter.decimal(demographics.medianAge))"
-                ),
-                DemographicMetric(
-                    title: "HOUSEHOLDS",
-                    primaryValue: DemographicValueFormatter.number(households),
-                    detail: "OCCUPIED HOMES"
-                ),
-                DemographicMetric(
-                    title: "INCOME",
-                    primaryValue: DemographicValueFormatter.currency(demographics.medianHouseholdIncome),
-                    detail: "MEDIAN HOUSEHOLD"
-                ),
-                DemographicMetric(
-                    title: "RENTERS",
-                    primaryValue: DemographicValueFormatter.percent(demographics.renterOccupiedPct),
-                    detail: "\(ownerPct) OWNER OCCUPIED"
-                ),
-                DemographicMetric(
-                    title: "EDUCATION",
-                    primaryValue: DemographicValueFormatter.percent(demographics.bachelorsOrHigherPct),
-                    detail: "BACHELOR'S OR HIGHER"
-                )
-            ],
-            detailSections: [
-                DemographicDetailSection(
-                    title: "AGE",
-                    rows: [
-                        DemographicDetailRow(label: "UNDER 18", value: DemographicValueFormatter.percent(demographics.under18Pct)),
-                        DemographicDetailRow(label: "18 TO 34", value: DemographicValueFormatter.percent(demographics.age18To34Pct)),
-                        DemographicDetailRow(label: "35 TO 64", value: DemographicValueFormatter.percent(demographics.age35To64Pct)),
-                        DemographicDetailRow(label: "65 PLUS", value: DemographicValueFormatter.percent(demographics.age65PlusPct))
-                    ]
-                ),
-                DemographicDetailSection(
-                    title: "HOUSING",
-                    rows: [
-                        DemographicDetailRow(label: "MEDIAN RENT", value: DemographicValueFormatter.currency(demographics.medianGrossRent)),
-                        DemographicDetailRow(label: "MEDIAN VALUE", value: DemographicValueFormatter.currency(demographics.medianHomeValue)),
-                        DemographicDetailRow(label: "VACANCY", value: DemographicValueFormatter.percent(demographics.vacancyRatePct))
-                    ]
-                ),
-                DemographicDetailSection(
-                    title: "MOBILITY",
-                    rows: [
-                        DemographicDetailRow(label: "TRANSIT", value: DemographicValueFormatter.percent(demographics.transitCommutersPct)),
-                        DemographicDetailRow(label: "REMOTE WORK", value: DemographicValueFormatter.percent(demographics.workersWfhPct)),
-                        DemographicDetailRow(label: "AVG COMMUTE", value: DemographicValueFormatter.minutes(demographics.averageCommuteMinutes))
-                    ]
-                )
-            ]
-        )
-    }
-}
-
-private enum DemographicValueFormatter {
-    private static let integerFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.maximumFractionDigits = 0
-        return formatter
-    }()
-
-    private static let currencyFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.maximumFractionDigits = 0
-        return formatter
-    }()
-
-    static func title(from profile: ResolvedPlaceProfile) -> String {
-        if let placeName = profile.zipBundle.place?.name, !placeName.isEmpty {
-            return cleanGeographyName(placeName)
-        }
-
-        return cleanGeographyName(profile.zipBundle.demographics.name)
-    }
-
-    static func title(from geography: CensusGeographiesBundle) -> String {
-        if let placeName = geography.place?.name, !placeName.isEmpty {
-            return cleanGeographyName(placeName)
-        }
-        if let countyName = geography.county?.name, !countyName.isEmpty {
-            return cleanGeographyName(countyName)
-        }
-        return "ZIP \(geography.zcta)"
-    }
-
-    static func cityTitle(from geography: CensusGeographiesBundle) -> String? {
-        guard let placeName = geography.place?.name, !placeName.isEmpty else {
-            return nil
-        }
-
-        return cleanGeographyName(placeName)
-    }
-
-    static func households(from demographics: Demographics) -> Int? {
-        if let owner = demographics.ownerOccupied, let renter = demographics.renterOccupied {
-            return owner + renter
-        }
-        return demographics.housingUnits
-    }
-
-    static func number(_ value: Int?) -> String {
-        guard let value else { return "--" }
-        return integerFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
-
-    static func currency(_ value: Int?) -> String {
-        guard let value, value >= 0 else { return "--" }
-        return currencyFormatter.string(from: NSNumber(value: value)) ?? "$\(value)"
-    }
-
-    static func decimal(_ value: Double?) -> String {
-        guard let value, value >= 0 else { return "--" }
-        return String(format: "%.1f", value)
-    }
-
-    static func percent(_ value: Double?) -> String {
-        guard let value, value >= 0 else { return "--" }
-        return "\(Int(value.rounded()))%"
-    }
-
-    static func minutes(_ value: Double?) -> String {
-        guard let value, value >= 0 else { return "--" }
-        return "\(Int(value.rounded())) MIN"
-    }
-
-    private static func cleanGeographyName(_ name: String) -> String {
-        name
-            .replacingOccurrences(of: " city", with: "")
-            .replacingOccurrences(of: " town", with: "")
-            .replacingOccurrences(of: " CDP", with: "")
-            .replacingOccurrences(of: "ZCTA5 ", with: "ZIP ")
-            .replacingOccurrences(of: ", United States", with: "")
-    }
-}
-
-private struct DemographicMetric: Identifiable {
-    let id = UUID()
-    let title: String
-    let primaryValue: String
-    let detail: String
-}
-
-private struct DemographicDetailSection: Identifiable {
-    let id = UUID()
-    let title: String
-    let rows: [DemographicDetailRow]
-}
-
-private struct DemographicDetailRow: Identifiable {
-    let id = UUID()
-    let label: String
-    let value: String
-    let progress: Double?
-
-    init(label: String, value: String, progress: Double? = nil) {
-        self.label = label
-        self.value = value
-        self.progress = progress
     }
 }
 
