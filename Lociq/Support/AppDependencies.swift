@@ -25,10 +25,7 @@ struct AppDependencies {
                 ApplePlaceSearchService()
             },
             makeNeighborhoodDiscoveryService: {
-                NeighborhoodDiscoveryService(
-                    censusService: censusLookupService,
-                    geminiClient: GeminiDiscoveryClient.makeDefaultIfAvailable()
-                )
+                NeighborhoodDiscoveryService(censusService: censusLookupService)
             },
             neighborhoodLibraryStore: libraryStore
         )

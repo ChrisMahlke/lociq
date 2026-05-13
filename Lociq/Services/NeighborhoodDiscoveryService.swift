@@ -3,14 +3,9 @@ import Foundation
 
 final class NeighborhoodDiscoveryService: @unchecked Sendable, NeighborhoodDiscoveryServing {
     private let censusService: any CensusNeighborhoodServing
-    private let geminiClient: GeminiDiscoveryClient?
 
-    nonisolated init(
-        censusService: any CensusNeighborhoodServing,
-        geminiClient: GeminiDiscoveryClient?
-    ) {
+    nonisolated init(censusService: any CensusNeighborhoodServing) {
         self.censusService = censusService
-        self.geminiClient = geminiClient
     }
 
     func discoverNeighborhoods(
@@ -30,28 +25,6 @@ final class NeighborhoodDiscoveryService: @unchecked Sendable, NeighborhoodDisco
         let candidates = try await nearbyCandidates(around: seedCandidate)
         guard !candidates.isEmpty else {
             throw NeighborhoodDiscoveryError.noCandidates
-        }
-
-        if let geminiClient {
-            do {
-                let plan = try await geminiClient.planRecommendations(
-                    seed: seedCandidate,
-                    candidates: candidates,
-                    recentPlaces: recentPlaces
-                )
-                let recommendations = merge(plan: plan, candidates: candidates, scale: seed.snapshot.preferredScale)
-                if recommendations.count == 3 {
-                    return NeighborhoodDiscoveryResult(
-                        seedTitle: seedCandidate.title,
-                        summary: plan.summary,
-                        source: .gemini,
-                        recommendations: recommendations,
-                        generatedAt: Date()
-                    )
-                }
-            } catch {
-                // Fall through to the local heuristic path.
-            }
         }
 
         let recommendations = NeighborhoodDiscoveryHeuristicRanker.recommendations(
@@ -133,43 +106,6 @@ final class NeighborhoodDiscoveryService: @unchecked Sendable, NeighborhoodDisco
             guard !seenIDs.contains(candidate.id) else { return false }
             seenIDs.insert(candidate.id)
             return true
-        }
-    }
-
-    private func merge(
-        plan: GeminiDiscoveryPlan,
-        candidates: [DiscoveryCandidateProfile],
-        scale: BoundaryOverlayScale
-    ) -> [NeighborhoodDiscoveryRecommendation] {
-        let candidateByID = Dictionary(uniqueKeysWithValues: candidates.map { ($0.id, $0) })
-        var used: Set<String> = []
-
-        return plan.recommendations.compactMap { selection in
-            guard
-                let candidate = candidateByID[selection.candidateID],
-                !used.contains(candidate.id)
-            else {
-                return nil
-            }
-            used.insert(candidate.id)
-
-            return NeighborhoodDiscoveryRecommendation(
-                id: "\(selection.kind.rawValue)-\(candidate.id)",
-                kind: selection.kind,
-                title: candidate.title,
-                subtitle: candidate.subtitle,
-                summary: selection.summary,
-                highlights: Array(selection.highlights.prefix(3)),
-                destination: NeighborhoodLookupSnapshot(
-                    id: candidate.id,
-                    title: candidate.title,
-                    subtitle: candidate.subtitle,
-                    zipCode: candidate.zipCode,
-                    latitude: candidate.latitude,
-                    longitude: candidate.longitude,
-                    preferredScale: scale
-                )
-            )
         }
     }
 

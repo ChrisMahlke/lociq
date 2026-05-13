@@ -181,7 +181,6 @@ enum AppStrings {
         static var discoveryNeedsPlaceBody: String { L10n.tr("Open a neighborhood on the map, or revisit a recent place, to generate discovery recommendations.") }
         static var discoveryLoadFailedBody: String { L10n.tr("Neighborhood intelligence could not generate discovery recommendations right now. Try again in a moment.") }
         static var discoveryNoCandidatesBody: String { L10n.tr("Neighborhood intelligence could not find enough nearby candidates to recommend from this place.") }
-        static var discoverySourceGemini: String { L10n.tr("Gemini") }
         static var discoverySourceLocal: String { L10n.tr("Local ranking") }
         static var discoveryHiddenGemTitle: String { L10n.tr("Hidden gem nearby") }
         static var discoverySimilarTitle: String { L10n.tr("Similar to this place") }

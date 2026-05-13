@@ -6,6 +6,7 @@ final class TIGERBoundaryClient: @unchecked Sendable {
     private let httpClient: CensusHTTPClient
     private let zctaLayerId = "2"
     private let tractLayerId = "8"
+    private let blockGroupLayerId = "10"
     private let blockLayerId = "12"
     private let incorporatedPlacesLayerId = "28"
     private let cdpLayerId = "30"
@@ -51,6 +52,22 @@ final class TIGERBoundaryClient: @unchecked Sendable {
         return try? await fetchBoundaryGeoJSON(
             layerId: blockLayerId,
             whereClause: "GEOID='\(blockFIPS)'",
+            outFields: "GEOID,NAME"
+        )
+    }
+
+    func fetchBlockGroupBoundary(blockGroupGeoid: String?) async -> GeoJSONFeatureCollection? {
+        guard
+            let blockGroupGeoid,
+            blockGroupGeoid.count == 12,
+            isValid(value: blockGroupGeoid, regex: #"^\d{12}$"#)
+        else {
+            return nil
+        }
+
+        return try? await fetchBoundaryGeoJSON(
+            layerId: blockGroupLayerId,
+            whereClause: "GEOID='\(blockGroupGeoid)'",
             outFields: "GEOID,NAME"
         )
     }
