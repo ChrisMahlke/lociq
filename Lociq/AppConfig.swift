@@ -2,60 +2,12 @@
 //  AppConfig.swift
 //  Lociq
 //
-//  Centralized runtime configuration values used across services and SDK setup.
+//  Centralized runtime configuration values used across services.
 //
 
 import Foundation
 
-/// Environment and API configuration consumed by application services.
 enum AppConfig {
-    struct KeyDiagnostics {
-        let environmentValue: String?
-        let plistValue: String?
-
-        var summary: String {
-            [
-                "GOOGLE_MAPS_API_KEY env: \(redacted(environmentValue))",
-                "GoogleMapsAPIKey plist: \(redacted(plistValue))"
-            ].joined(separator: "\n")
-        }
-
-        private func redacted(_ value: String?) -> String {
-            let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            guard !trimmed.isEmpty else {
-                return "<empty>"
-            }
-
-            if trimmed.count <= 8 {
-                return "<set>"
-            }
-
-            return "\(trimmed.prefix(6))...\(trimmed.suffix(4))"
-        }
-    }
-
-    /// Google Maps iOS SDK key used when initializing `GMSServices`.
-    ///
-    /// Resolution order:
-    /// 1) `GOOGLE_MAPS_API_KEY` environment variable for local debugging or CI
-    /// 2) `GoogleMapsAPIKey` (or legacy `GOOGLE_MAPS_API_KEY`) in Info.plist,
-    ///    typically populated from `Config/GoogleMaps.xcconfig`
-    nonisolated static var googleMapsAPIKey: String {
-        value(forAnyOf: ["GOOGLE_MAPS_API_KEY", "GoogleMapsAPIKey"])
-    }
-
-    nonisolated static var hasGoogleMapsAPIKey: Bool {
-        !googleMapsAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    nonisolated static var googleMapsDiagnostics: KeyDiagnostics {
-        KeyDiagnostics(
-            environmentValue: ProcessInfo.processInfo.environment["GOOGLE_MAPS_API_KEY"],
-            plistValue: Bundle.main.object(forInfoDictionaryKey: "GoogleMapsAPIKey") as? String
-        )
-    }
-
-    /// Census API key used for ACS demographic requests.
     nonisolated static var censusAPIKey: String {
         value(forAnyOf: ["CENSUS_API_KEY", "CensusAPIKey"])
     }

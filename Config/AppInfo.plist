@@ -20,8 +20,6 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CensusAPIKey</key>
 	<string>$(CENSUS_API_KEY)</string>
-	<key>GoogleMapsAPIKey</key>
-	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>

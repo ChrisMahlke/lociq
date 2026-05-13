@@ -13,20 +13,19 @@ import Testing
 @MainActor
 struct LociqTests {
     @Test func formatsNumberAndCurrencyValues() async throws {
-        #expect(InsightsFormatting.number(12345) == "12,345")
-        #expect(InsightsFormatting.currency(987654) == "$987,654")
+        #expect(DemographicValueFormatter.number(12345) == "12,345")
+        #expect(DemographicValueFormatter.currency(987654) == "$987,654")
     }
 
-    @Test func normalizesPercentValuesIntoUnitInterval() async throws {
-        #expect(InsightsFormatting.normalizedPercent(nil) == 0)
-        #expect(InsightsFormatting.normalizedPercent(25) == 0.25)
-        #expect(InsightsFormatting.normalizedPercent(140) == 1)
+    @Test func formatsUnavailableValuesMinimally() async throws {
+        #expect(DemographicValueFormatter.number(nil) == "--")
+        #expect(DemographicValueFormatter.currency(nil) == "--")
+        #expect(DemographicValueFormatter.percent(nil) == "--")
     }
 
-    @Test func computesDemographicShareSafely() async throws {
-        #expect(InsightsFormatting.demographicShare(25, totalPopulation: 100) == 0.25)
-        #expect(InsightsFormatting.demographicShare(nil, totalPopulation: 100) == 0)
-        #expect(InsightsFormatting.demographicShare(10, totalPopulation: 0) == 0)
+    @Test func formatsPercentAndMinutes() async throws {
+        #expect(DemographicValueFormatter.percent(64.7) == "65%")
+        #expect(DemographicValueFormatter.minutes(27.2) == "27 MIN")
     }
 
     @Test func cityProfileSnapshotUsesPlaceLevelDemographics() async throws {
@@ -40,29 +39,18 @@ struct LociqTests {
                     countyFIPS: "017",
                     geoid: "25017"
                 ),
-                tract: nil,
                 place: PlaceInfo(
                     name: "Cambridge city, Massachusetts",
                     stateFIPS: "25",
                     placeFIPS: "11000",
                     type: .incorporatedPlace
                 ),
-                isIncorporatedPlace: true,
-                boundary: Self.sampleBoundary(),
-                boundaryMetrics: nil,
-                demographics: Self.zipDemographics(),
-                insights: []
+                demographics: Self.zipDemographics()
             ),
-            boundaries: NeighborhoodBoundarySet(
-                zip: Self.sampleBoundary(),
-                city: Self.sampleBoundary(),
-                tract: nil,
-                block: nil
-            ),
+            boundaries: NeighborhoodBoundarySet(city: Self.sampleBoundary()),
             scaleDemographics: ScaleDemographicsBundle(
                 place: demographics,
-                zip: Self.zipDemographics(),
-                tract: nil
+                zip: Self.zipDemographics()
             )
         )
 
@@ -72,7 +60,7 @@ struct LociqTests {
         #expect(snapshot.metrics.first?.title == "POPULATION")
         #expect(snapshot.metrics.first?.primaryValue == "118,214")
         #expect(snapshot.metrics.first?.detail == "MEDIAN AGE 30.8")
-        #expect(snapshot.detailSections.map(\.title) == ["AGE", "HOUSING", "MOBILITY"])
+        #expect(snapshot.detailSections.map { $0.title } == ["AGE", "HOUSING", "MOBILITY"])
     }
 
     @Test func cachedCityProfileDecodesCacheWithoutHorizontalAccuracy() async throws {

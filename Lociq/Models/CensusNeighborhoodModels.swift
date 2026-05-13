@@ -2,123 +2,31 @@
 //  CensusNeighborhoodModels.swift
 //  Lociq
 //
-//  Shared domain models for neighborhood lookup, GeoJSON, and generated insights.
+//  Shared Census, ACS, and GeoJSON models for the minimal city profile.
 //
 
-import CoreLocation
 import Foundation
 
-public struct ZipLookupResult: Sendable {
-    public let zcta: String
-    public let county: CountyInfo?
-    public let tract: TractInfo?
-    public let place: PlaceInfo?
-    public let isIncorporatedPlace: Bool
-    public let boundary: GeoJSONFeatureCollection
-    public let boundaryMetrics: BoundaryMetrics?
-    public let demographics: Demographics
-    public let insights: [Insight]
-
-    public init(
-        zcta: String,
-        county: CountyInfo?,
-        tract: TractInfo?,
-        place: PlaceInfo?,
-        isIncorporatedPlace: Bool,
-        boundary: GeoJSONFeatureCollection,
-        boundaryMetrics: BoundaryMetrics?,
-        demographics: Demographics,
-        insights: [Insight]
-    ) {
-        self.zcta = zcta
-        self.county = county
-        self.tract = tract
-        self.place = place
-        self.isIncorporatedPlace = isIncorporatedPlace
-        self.boundary = boundary
-        self.boundaryMetrics = boundaryMetrics
-        self.demographics = demographics
-        self.insights = insights
-    }
+struct ZipLookupResult: Sendable {
+    let zcta: String
+    let county: CountyInfo?
+    let place: PlaceInfo?
+    let demographics: Demographics
 }
 
-public struct NeighborhoodBoundarySet: Sendable {
-    public let zip: GeoJSONFeatureCollection
-    public let city: GeoJSONFeatureCollection?
-    public let tract: GeoJSONFeatureCollection?
-    public let blockGroup: GeoJSONFeatureCollection?
-    public let block: GeoJSONFeatureCollection?
-
-    public init(
-        zip: GeoJSONFeatureCollection,
-        city: GeoJSONFeatureCollection? = nil,
-        tract: GeoJSONFeatureCollection?,
-        blockGroup: GeoJSONFeatureCollection? = nil,
-        block: GeoJSONFeatureCollection?
-    ) {
-        self.zip = zip
-        self.city = city
-        self.tract = tract
-        self.blockGroup = blockGroup
-        self.block = block
-    }
+struct NeighborhoodBoundarySet: Sendable {
+    let city: GeoJSONFeatureCollection?
 }
 
 struct ScaleDemographicsBundle: Sendable {
     let place: Demographics?
     let zip: Demographics
-    let tract: Demographics?
-    let blockGroup: Demographics?
-
-    init(place: Demographics? = nil, zip: Demographics, tract: Demographics?, blockGroup: Demographics? = nil) {
-        self.place = place
-        self.zip = zip
-        self.tract = tract
-        self.blockGroup = blockGroup
-    }
 }
 
 struct ResolvedPlaceProfile: Sendable {
     let zipBundle: ZipLookupResult
     let boundaries: NeighborhoodBoundarySet
     let scaleDemographics: ScaleDemographicsBundle
-
-    init(
-        zipBundle: ZipLookupResult,
-        boundaries: NeighborhoodBoundarySet,
-        scaleDemographics: ScaleDemographicsBundle
-    ) {
-        self.zipBundle = zipBundle
-        self.boundaries = boundaries
-        self.scaleDemographics = scaleDemographics
-    }
-}
-
-struct ComparisonProfileResult: Sendable {
-    let id: String
-    let title: String
-    let subtitle: String
-    let demographics: Demographics
-    let metricsSource: MetricsSource
-
-    init(
-        id: String,
-        title: String,
-        subtitle: String,
-        demographics: Demographics,
-        metricsSource: MetricsSource
-    ) {
-        self.id = id
-        self.title = title
-        self.subtitle = subtitle
-        self.demographics = demographics
-        self.metricsSource = metricsSource
-    }
-}
-
-public enum NeighborhoodScale: Sendable {
-    case zip
-    case tract
 }
 
 public struct CountyInfo: Sendable {
@@ -169,32 +77,6 @@ public struct PlaceInfo: Sendable {
         self.placeFIPS = placeFIPS
         self.type = type
     }
-}
-
-public struct BoundaryMetrics: Sendable {
-    public let centroid: CLLocationCoordinate2D?
-    public let bbox: BoundingBox?
-    public let areaKm2Approx: Double?
-    public let perimeterKmApprox: Double?
-
-    public init(
-        centroid: CLLocationCoordinate2D?,
-        bbox: BoundingBox?,
-        areaKm2Approx: Double?,
-        perimeterKmApprox: Double?
-    ) {
-        self.centroid = centroid
-        self.bbox = bbox
-        self.areaKm2Approx = areaKm2Approx
-        self.perimeterKmApprox = perimeterKmApprox
-    }
-}
-
-public struct BoundingBox: Sendable {
-    public let minLat: Double
-    public let minLon: Double
-    public let maxLat: Double
-    public let maxLon: Double
 }
 
 public struct Demographics: Sendable {
@@ -297,35 +179,6 @@ public struct Demographics: Sendable {
         self.blackAlone = blackAlone
         self.asianAlone = asianAlone
         self.hispanicOrLatino = hispanicOrLatino
-    }
-}
-
-public struct Insight: Sendable {
-    public enum Severity: String, Sendable {
-        case neutral
-        case positive
-        case caution
-    }
-
-    public enum Category: String, Sendable {
-        case housing
-        case affordability
-        case mobility
-        case demographics
-        case governance
-        case geography
-    }
-
-    public let category: Category
-    public let severity: Severity
-    public let title: String
-    public let detail: String
-
-    public init(category: Category, severity: Severity, title: String, detail: String) {
-        self.category = category
-        self.severity = severity
-        self.title = title
-        self.detail = detail
     }
 }
 

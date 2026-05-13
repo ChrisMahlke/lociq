@@ -4,7 +4,7 @@ import Testing
 @testable import Lociq
 
 struct GeoJSONBoundaryPathBuilderTests {
-    @Test func projectedPointsUseGoogleMapsNorthUpOrientation() {
+    @Test func projectedPointsUseNorthUpWebMercatorOrientation() {
         let boundary = squareBoundary()
         let rect = CGRect(x: 0, y: 0, width: 100, height: 100)
 

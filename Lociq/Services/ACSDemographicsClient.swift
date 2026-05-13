@@ -17,19 +17,7 @@ final class ACSDemographicsClient: @unchecked Sendable {
         try await fetchACSDemographics(
             forQuery: "zip code tabulation area:\(zcta)",
             inQuery: nil,
-            fallbackName: AppStrings.Formats.zip(zcta)
-        )
-    }
-
-    func fetchDemographics(tractGeoid: String) async throws -> Demographics {
-        let state = String(tractGeoid.prefix(2))
-        let county = String(tractGeoid.dropFirst(2).prefix(3))
-        let tract = String(tractGeoid.suffix(6))
-
-        return try await fetchACSDemographics(
-            forQuery: "tract:\(tract)",
-            inQuery: "state:\(state) county:\(county)",
-            fallbackName: AppStrings.Formats.tract(tractGeoid)
+            fallbackName: "ZIP \(zcta)"
         )
     }
 
@@ -47,23 +35,6 @@ final class ACSDemographicsClient: @unchecked Sendable {
             forQuery: "place:\(placeFIPS)",
             inQuery: "state:\(state)",
             fallbackName: place.name
-        )
-    }
-
-    func fetchDemographics(blockGroupGeoid: String) async throws -> Demographics {
-        guard blockGroupGeoid.count >= 12 else {
-            throw ServiceError.noDemographicsFound
-        }
-
-        let state = String(blockGroupGeoid.prefix(2))
-        let county = String(blockGroupGeoid.dropFirst(2).prefix(3))
-        let tract = String(blockGroupGeoid.dropFirst(5).prefix(6))
-        let blockGroup = String(blockGroupGeoid.dropFirst(11).prefix(1))
-
-        return try await fetchACSDemographics(
-            forQuery: "block group:\(blockGroup)",
-            inQuery: "state:\(state) county:\(county) tract:\(tract)",
-            fallbackName: "Block Group \(blockGroupGeoid)"
         )
     }
 
