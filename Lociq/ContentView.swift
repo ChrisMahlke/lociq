@@ -35,6 +35,12 @@ struct ContentView: View {
         return locationProfile.snapshot ?? .loading
     }
 
+    private var canShowBoundary: Bool {
+        !isWaitingForInitialData
+            && !shouldShowLocationPlaceholder
+            && locationProfile.boundary != nil
+    }
+
     private var isWaitingForInitialData: Bool {
         !shouldShowLocationPlaceholder
             && locationProfile.boundary == nil
@@ -50,9 +56,9 @@ struct ContentView: View {
             ZStack(alignment: .topTrailing) {
                 MinimalBackground()
 
-                if !isWaitingForInitialData {
+                if canShowBoundary, let boundary = locationProfile.boundary {
                     ZipBoundaryPreview(
-                        boundary: locationProfile.boundary,
+                        boundary: boundary,
                         coordinate: activeCoordinate,
                         traceToken: locationProfile.traceToken + (canDisplayLocationProfile ? 1 : 0)
                     )
@@ -66,7 +72,7 @@ struct ContentView: View {
                         .padding(.top, topInset + 96)
                         .padding(.leading, 30)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        .accessibilityLabel("Sample ZIP code boundary")
+                        .accessibilityLabel("City boundary")
                 }
 
                 if !isWaitingForInitialData {
@@ -77,6 +83,10 @@ struct ContentView: View {
                             FadingContentPanel(
                                 snapshot: displaySnapshot,
                                 isShowingDetails: isShowingDetails
+                            )
+                            .frame(
+                                maxWidth: isShowingDetails ? min(geometry.size.width * 0.50, 246) : .infinity,
+                                alignment: .trailing
                             )
                         }
                         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -146,6 +156,7 @@ struct ContentView: View {
 
     private func cycleContent() {
         guard !isLoadingContent else { return }
+        guard displaySnapshot.hasDemographicData else { return }
 
         withAnimation(.easeInOut(duration: 0.18)) {
             isLoadingContent = true
@@ -271,6 +282,7 @@ private final class ACSLocationProfileModel: ObservableObject {
 
         isLoading = true
         snapshot = .loading
+        boundary = nil
 
         Task {
             guard hasCensusAPIKey else {
@@ -320,7 +332,7 @@ private final class ACSLocationProfileModel: ObservableObject {
                 latitude: coordinate.latitude,
                 longitude: coordinate.longitude
             )
-            let areaTitle = DemographicValueFormatter.title(from: geography)
+            let areaTitle = DemographicValueFormatter.cityTitle(from: geography) ?? "CITY UNAVAILABLE"
             let resolvedBoundary = await boundaryClient.fetchPlaceBoundary(place: geography.place)
 
             snapshot = DemographicSnapshot.status(for: status, market: areaTitle.uppercased())
@@ -452,7 +464,7 @@ private struct BottomIdentity: View {
 
                     Spacer(minLength: 28)
 
-                    if !isWaitingForInitialData {
+                    if !isWaitingForInitialData && snapshot.hasDemographicData {
                         Button(action: onShowDetails) {
                             Image(systemName: iconName)
                                 .font(.system(size: 17, weight: .medium))
@@ -520,7 +532,7 @@ private struct DetailContent: View {
 }
 
 private struct ZipBoundaryPreview: View {
-    let boundary: GeoJSONFeatureCollection?
+    let boundary: GeoJSONFeatureCollection
     let coordinate: CLLocationCoordinate2D?
     let traceToken: Int
     @State private var traceProgress: CGFloat = 0
@@ -536,7 +548,6 @@ private struct ZipBoundaryPreview: View {
                     )
 
                 if let coordinate,
-                   let boundary,
                    let locationPoint = GeoJSONBoundaryPathBuilder.point(
                     for: coordinate,
                     in: CGRect(origin: .zero, size: proxy.size),
@@ -650,19 +661,18 @@ private struct BoundaryCityConnectionPreferenceKey: PreferenceKey {
 }
 
 private struct BoundaryPreviewShape: Shape {
-    let boundary: GeoJSONFeatureCollection?
+    let boundary: GeoJSONFeatureCollection
     var fittingBoundary: GeoJSONFeatureCollection?
 
     func path(in rect: CGRect) -> Path {
         guard
-            let boundary,
             let boundaryPath = GeoJSONBoundaryPathBuilder.path(
                 for: boundary,
                 in: rect,
                 fittingTo: fittingBoundary
             )
         else {
-            return SampleZipBoundaryShape().path(in: rect)
+            return Path()
         }
 
         return boundaryPath
@@ -854,100 +864,27 @@ private enum GeoJSONBoundaryPathBuilder {
     }
 }
 
-private struct SampleZipBoundaryShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX + rect.width * 0.47, y: rect.minY + rect.height * 0.02))
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.65, y: rect.minY + rect.height * 0.08),
-            control1: CGPoint(x: rect.minX + rect.width * 0.54, y: rect.minY + rect.height * 0.03),
-            control2: CGPoint(x: rect.minX + rect.width * 0.58, y: rect.minY + rect.height * 0.06)
-        )
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.75, y: rect.minY + rect.height * 0.06))
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.87, y: rect.minY + rect.height * 0.21),
-            control1: CGPoint(x: rect.minX + rect.width * 0.80, y: rect.minY + rect.height * 0.09),
-            control2: CGPoint(x: rect.minX + rect.width * 0.84, y: rect.minY + rect.height * 0.14)
-        )
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.95, y: rect.minY + rect.height * 0.29))
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.89, y: rect.minY + rect.height * 0.45),
-            control1: CGPoint(x: rect.minX + rect.width * 0.96, y: rect.minY + rect.height * 0.36),
-            control2: CGPoint(x: rect.minX + rect.width * 0.93, y: rect.minY + rect.height * 0.40)
-        )
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.81, y: rect.minY + rect.height * 0.53))
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.91, y: rect.minY + rect.height * 0.71),
-            control1: CGPoint(x: rect.minX + rect.width * 0.83, y: rect.minY + rect.height * 0.61),
-            control2: CGPoint(x: rect.minX + rect.width * 0.89, y: rect.minY + rect.height * 0.65)
-        )
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.96, y: rect.minY + rect.height * 0.82))
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.78, y: rect.minY + rect.height * 0.92),
-            control1: CGPoint(x: rect.minX + rect.width * 0.90, y: rect.minY + rect.height * 0.88),
-            control2: CGPoint(x: rect.minX + rect.width * 0.85, y: rect.minY + rect.height * 0.91)
-        )
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.59, y: rect.minY + rect.height * 0.98),
-            control1: CGPoint(x: rect.minX + rect.width * 0.72, y: rect.minY + rect.height * 0.91),
-            control2: CGPoint(x: rect.minX + rect.width * 0.67, y: rect.minY + rect.height * 0.96)
-        )
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.42, y: rect.minY + rect.height * 0.92))
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.28, y: rect.minY + rect.height * 0.87),
-            control1: CGPoint(x: rect.minX + rect.width * 0.37, y: rect.minY + rect.height * 0.95),
-            control2: CGPoint(x: rect.minX + rect.width * 0.33, y: rect.minY + rect.height * 0.91)
-        )
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.14, y: rect.minY + rect.height * 0.74))
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.19, y: rect.minY + rect.height * 0.58),
-            control1: CGPoint(x: rect.minX + rect.width * 0.10, y: rect.minY + rect.height * 0.67),
-            control2: CGPoint(x: rect.minX + rect.width * 0.13, y: rect.minY + rect.height * 0.62)
-        )
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.45))
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.09, y: rect.minY + rect.height * 0.29),
-            control1: CGPoint(x: rect.minX + rect.width * 0.17, y: rect.minY + rect.height * 0.40),
-            control2: CGPoint(x: rect.minX + rect.width * 0.12, y: rect.minY + rect.height * 0.35)
-        )
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.04, y: rect.minY + rect.height * 0.17))
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.10),
-            control1: CGPoint(x: rect.minX + rect.width * 0.11, y: rect.minY + rect.height * 0.13),
-            control2: CGPoint(x: rect.minX + rect.width * 0.17, y: rect.minY + rect.height * 0.10)
-        )
-        path.addCurve(
-            to: CGPoint(x: rect.minX + rect.width * 0.47, y: rect.minY + rect.height * 0.02),
-            control1: CGPoint(x: rect.minX + rect.width * 0.33, y: rect.minY + rect.height * 0.12),
-            control2: CGPoint(x: rect.minX + rect.width * 0.40, y: rect.minY + rect.height * 0.05)
-        )
-        path.closeSubpath()
-        return path
-    }
-}
-
 private struct DetailSectionView: View {
     let section: DemographicDetailSection
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 10) {
             Text(section.title)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.72))
+                .font(.system(size: 13, weight: .ultraLight, design: .rounded))
+                .foregroundStyle(.white.opacity(0.54))
 
             VStack(alignment: .trailing, spacing: 7) {
                 ForEach(section.rows) { row in
                     VStack(alignment: .trailing, spacing: 6) {
-                        HStack(alignment: .firstTextBaseline, spacing: 18) {
-                            Text(row.label)
-                                .font(.system(size: 12, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.46))
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            DetailRowLabel(label: row.label)
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.78)
+                                .minimumScaleFactor(0.72)
                                 .allowsTightening(true)
-                                .padding(.leading, 38)
+                                .padding(.leading, 2)
+                                .layoutPriority(1)
 
-                            Spacer(minLength: 16)
+                            Spacer(minLength: 10)
 
                             Text(row.value)
                                 .font(.system(size: 17, weight: .light, design: .rounded))
@@ -973,6 +910,46 @@ private struct DetailSectionView: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct DetailRowLabel: View {
+    let label: String
+
+    var body: some View {
+        labelText
+            .foregroundStyle(.white.opacity(0.46))
+    }
+
+    private var labelText: Text {
+        switch label {
+        case "UNDER 18":
+            return word("UNDER") + space + number("18")
+        case "18 TO 34":
+            return number("18") + space + word("TO") + space + number("34")
+        case "35 TO 64":
+            return number("35") + space + word("TO") + space + number("64")
+        case "65 PLUS":
+            return number("65") + space + word("PLUS")
+        default:
+            return Text(label)
+                .font(.system(size: 12, weight: .regular, design: .rounded))
+        }
+    }
+
+    private var space: Text {
+        Text(" ")
+            .font(.system(size: 12, weight: .regular, design: .rounded))
+    }
+
+    private func word(_ text: String) -> Text {
+        Text(text)
+            .font(.system(size: 9.5, weight: .regular, design: .rounded))
+    }
+
+    private func number(_ text: String) -> Text {
+        Text(text)
+            .font(.system(size: 12.5, weight: .regular, design: .rounded))
     }
 }
 
@@ -1041,69 +1018,25 @@ private struct DemographicSnapshot {
     let cadence: String
     let mode: String
     let confidence: Double
+    let hasDemographicData: Bool
     let metrics: [DemographicMetric]
     let detailSections: [DemographicDetailSection]
 
     static let placeholder = DemographicSnapshot(
-        market: "LOCATION OFF",
-        dateLabel: "ALLOW LOCATION",
+        market: "LOCATION",
+        dateLabel: "ENABLE ACCESS",
         cadence: "DEMOGRAPHICS PAUSED",
-        mode: "LOCATION OFF",
+        mode: "LOCATION",
         confidence: 0,
+        hasDemographicData: false,
         metrics: [
             DemographicMetric(
-                title: "POPULATION",
+                title: "ACCESS",
                 primaryValue: "--",
-                detail: "WAITING FOR AREA"
-            ),
-            DemographicMetric(
-                title: "HOUSEHOLDS",
-                primaryValue: "--",
-                detail: "WAITING FOR AREA"
-            ),
-            DemographicMetric(
-                title: "INCOME",
-                primaryValue: "--",
-                detail: "WAITING FOR AREA"
-            ),
-            DemographicMetric(
-                title: "RENTERS",
-                primaryValue: "--",
-                detail: "WAITING FOR AREA"
-            ),
-            DemographicMetric(
-                title: "EDUCATION",
-                primaryValue: "--",
-                detail: "WAITING FOR AREA"
+                detail: "ENABLE LOCATION"
             )
         ],
-        detailSections: [
-            DemographicDetailSection(
-                title: "AGE",
-                rows: [
-                    DemographicDetailRow(label: "UNDER 18", value: "--"),
-                    DemographicDetailRow(label: "18 TO 34", value: "--"),
-                    DemographicDetailRow(label: "35 TO 64", value: "--"),
-                    DemographicDetailRow(label: "65 PLUS", value: "--")
-                ]
-            ),
-            DemographicDetailSection(
-                title: "HOUSING",
-                rows: [
-                    DemographicDetailRow(label: "MEDIAN RENT", value: "--"),
-                    DemographicDetailRow(label: "MEDIAN VALUE", value: "--"),
-                    DemographicDetailRow(label: "VACANCY", value: "--")
-                ]
-            ),
-            DemographicDetailSection(
-                title: "MOBILITY",
-                rows: [
-                    DemographicDetailRow(label: "TRANSIT", value: "--"),
-                    DemographicDetailRow(label: "REMOTE WORK", value: "--"),
-                    DemographicDetailRow(label: "AVG COMMUTE", value: "--")
-                ]
-            )
-        ]
+        detailSections: []
     )
 
     static let loading = DemographicSnapshot.status(
@@ -1144,40 +1077,11 @@ private struct DemographicSnapshot {
             cadence: cadence,
             mode: mode,
             confidence: 0,
+            hasDemographicData: false,
             metrics: [
-                DemographicMetric(title: "POPULATION", primaryValue: "--", detail: "WAITING FOR AREA"),
-                DemographicMetric(title: "HOUSEHOLDS", primaryValue: "--", detail: "WAITING FOR AREA"),
-                DemographicMetric(title: "INCOME", primaryValue: "--", detail: "WAITING FOR AREA"),
-                DemographicMetric(title: "RENTERS", primaryValue: "--", detail: "WAITING FOR AREA"),
-                DemographicMetric(title: "EDUCATION", primaryValue: "--", detail: "WAITING FOR AREA")
+                DemographicMetric(title: "CITY PROFILE", primaryValue: "--", detail: cadence)
             ],
-            detailSections: [
-                DemographicDetailSection(
-                    title: "AGE",
-                    rows: [
-                        DemographicDetailRow(label: "UNDER 18", value: "--"),
-                        DemographicDetailRow(label: "18 TO 34", value: "--"),
-                        DemographicDetailRow(label: "35 TO 64", value: "--"),
-                        DemographicDetailRow(label: "65 PLUS", value: "--")
-                    ]
-                ),
-                DemographicDetailSection(
-                    title: "HOUSING",
-                    rows: [
-                        DemographicDetailRow(label: "MEDIAN RENT", value: "--"),
-                        DemographicDetailRow(label: "MEDIAN VALUE", value: "--"),
-                        DemographicDetailRow(label: "VACANCY", value: "--")
-                    ]
-                ),
-                DemographicDetailSection(
-                    title: "MOBILITY",
-                    rows: [
-                        DemographicDetailRow(label: "TRANSIT", value: "--"),
-                        DemographicDetailRow(label: "REMOTE WORK", value: "--"),
-                        DemographicDetailRow(label: "AVG COMMUTE", value: "--")
-                    ]
-                )
-            ]
+            detailSections: []
         )
     }
 }
@@ -1193,6 +1097,7 @@ private extension DemographicSnapshot {
             cadence: "",
             mode: "DEMOGRAPHICS",
             confidence: 0.84,
+            hasDemographicData: true,
             metrics: [
                 DemographicMetric(
                     title: "POPULATION",
@@ -1282,6 +1187,14 @@ private enum DemographicValueFormatter {
             return cleanGeographyName(countyName)
         }
         return "ZIP \(geography.zcta)"
+    }
+
+    static func cityTitle(from geography: CensusGeographiesBundle) -> String? {
+        guard let placeName = geography.place?.name, !placeName.isEmpty else {
+            return nil
+        }
+
+        return cleanGeographyName(placeName)
     }
 
     static func households(from demographics: Demographics) -> Int? {
