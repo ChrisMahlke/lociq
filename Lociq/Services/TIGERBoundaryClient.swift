@@ -6,7 +6,10 @@ final class TIGERBoundaryClient: @unchecked Sendable {
     private let httpClient: CensusHTTPClient
     private let zctaLayerId = "2"
     private let tractLayerId = "8"
+    private let blockGroupLayerId = "10"
     private let blockLayerId = "12"
+    private let incorporatedPlacesLayerId = "28"
+    private let cdpLayerId = "30"
     private let tigerwebMapServerBaseURL = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer"
 
     nonisolated init(httpClient: CensusHTTPClient) {
@@ -50,6 +53,41 @@ final class TIGERBoundaryClient: @unchecked Sendable {
             layerId: blockLayerId,
             whereClause: "GEOID='\(blockFIPS)'",
             outFields: "GEOID,NAME"
+        )
+    }
+
+    func fetchBlockGroupBoundary(blockGroupGeoid: String?) async -> GeoJSONFeatureCollection? {
+        guard
+            let blockGroupGeoid,
+            blockGroupGeoid.count == 12,
+            isValid(value: blockGroupGeoid, regex: #"^\d{12}$"#)
+        else {
+            return nil
+        }
+
+        return try? await fetchBoundaryGeoJSON(
+            layerId: blockGroupLayerId,
+            whereClause: "GEOID='\(blockGroupGeoid)'",
+            outFields: "GEOID,NAME"
+        )
+    }
+
+    func fetchPlaceBoundary(place: PlaceInfo?) async -> GeoJSONFeatureCollection? {
+        guard
+            let place,
+            let state = place.stateFIPS,
+            let placeFIPS = place.placeFIPS,
+            isValid(value: state, regex: #"^\d{2}$"#),
+            isValid(value: placeFIPS, regex: #"^\d{5}$"#)
+        else {
+            return nil
+        }
+
+        let layerId = place.type == .censusDesignatedPlace ? cdpLayerId : incorporatedPlacesLayerId
+        return try? await fetchBoundaryGeoJSON(
+            layerId: layerId,
+            whereClause: "STATE='\(state)' AND PLACE='\(placeFIPS)'",
+            outFields: "STATE,PLACE,GEOID,NAME"
         )
     }
 

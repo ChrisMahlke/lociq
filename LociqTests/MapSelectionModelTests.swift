@@ -229,6 +229,7 @@ private actor StubCensusNeighborhoodService: CensusNeighborhoodServing {
         latitude: Double,
         longitude: Double,
         tractGeoid: String?,
+        place: PlaceInfo?,
         zipBoundary: GeoJSONFeatureCollection
     ) async -> NeighborhoodBoundarySet {
         boundaries
@@ -316,6 +317,7 @@ private actor DelayedProfileCensusNeighborhoodService: CensusNeighborhoodServing
         latitude: Double,
         longitude: Double,
         tractGeoid: String?,
+        place: PlaceInfo?,
         zipBoundary: GeoJSONFeatureCollection
     ) async -> NeighborhoodBoundarySet {
         let key = coordinateKey(latitude: latitude, longitude: longitude)

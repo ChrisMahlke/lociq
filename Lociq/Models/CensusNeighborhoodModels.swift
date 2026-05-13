@@ -44,23 +44,37 @@ public struct ZipLookupResult: Sendable {
 
 public struct NeighborhoodBoundarySet: Sendable {
     public let zip: GeoJSONFeatureCollection
+    public let city: GeoJSONFeatureCollection?
     public let tract: GeoJSONFeatureCollection?
+    public let blockGroup: GeoJSONFeatureCollection?
     public let block: GeoJSONFeatureCollection?
 
-    public init(zip: GeoJSONFeatureCollection, tract: GeoJSONFeatureCollection?, block: GeoJSONFeatureCollection?) {
+    public init(
+        zip: GeoJSONFeatureCollection,
+        city: GeoJSONFeatureCollection? = nil,
+        tract: GeoJSONFeatureCollection?,
+        blockGroup: GeoJSONFeatureCollection? = nil,
+        block: GeoJSONFeatureCollection?
+    ) {
         self.zip = zip
+        self.city = city
         self.tract = tract
+        self.blockGroup = blockGroup
         self.block = block
     }
 }
 
 struct ScaleDemographicsBundle: Sendable {
+    let place: Demographics?
     let zip: Demographics
     let tract: Demographics?
+    let blockGroup: Demographics?
 
-    init(zip: Demographics, tract: Demographics?) {
+    init(place: Demographics? = nil, zip: Demographics, tract: Demographics?, blockGroup: Demographics? = nil) {
+        self.place = place
         self.zip = zip
         self.tract = tract
+        self.blockGroup = blockGroup
     }
 }
 
@@ -199,6 +213,16 @@ public struct Demographics: Sendable {
     public let workersTotal: Int?
     public let workersWfh: Int?
     public let workersWfhPct: Double?
+    public let transitCommuters: Int?
+    public let transitCommutersPct: Double?
+    public let averageCommuteMinutes: Double?
+    public let vacantHousingUnits: Int?
+    public let vacancyRatePct: Double?
+    public let under18Pct: Double?
+    public let age18To34Pct: Double?
+    public let age35To64Pct: Double?
+    public let age65PlusPct: Double?
+    public let bachelorsOrHigherPct: Double?
     public let povertyUniverse: Int?
     public let povertyBelow: Int?
     public let povertyRatePct: Double?
@@ -223,6 +247,16 @@ public struct Demographics: Sendable {
         workersTotal: Int?,
         workersWfh: Int?,
         workersWfhPct: Double?,
+        transitCommuters: Int? = nil,
+        transitCommutersPct: Double? = nil,
+        averageCommuteMinutes: Double? = nil,
+        vacantHousingUnits: Int? = nil,
+        vacancyRatePct: Double? = nil,
+        under18Pct: Double? = nil,
+        age18To34Pct: Double? = nil,
+        age35To64Pct: Double? = nil,
+        age65PlusPct: Double? = nil,
+        bachelorsOrHigherPct: Double? = nil,
         povertyUniverse: Int?,
         povertyBelow: Int?,
         povertyRatePct: Double?,
@@ -246,6 +280,16 @@ public struct Demographics: Sendable {
         self.workersTotal = workersTotal
         self.workersWfh = workersWfh
         self.workersWfhPct = workersWfhPct
+        self.transitCommuters = transitCommuters
+        self.transitCommutersPct = transitCommutersPct
+        self.averageCommuteMinutes = averageCommuteMinutes
+        self.vacantHousingUnits = vacantHousingUnits
+        self.vacancyRatePct = vacancyRatePct
+        self.under18Pct = under18Pct
+        self.age18To34Pct = age18To34Pct
+        self.age35To64Pct = age35To64Pct
+        self.age65PlusPct = age65PlusPct
+        self.bachelorsOrHigherPct = bachelorsOrHigherPct
         self.povertyUniverse = povertyUniverse
         self.povertyBelow = povertyBelow
         self.povertyRatePct = povertyRatePct

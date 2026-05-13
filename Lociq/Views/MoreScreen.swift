@@ -234,13 +234,13 @@ private struct DiscoveryModeCard: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            if let result = model.result {
-                Text(result.source == .gemini ? AppStrings.Labels.discoverySourceGemini : AppStrings.Labels.discoverySourceLocal)
+            if model.result != nil {
+                Text(AppStrings.Labels.discoverySourceLocal)
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(result.source == .gemini ? .purple : .indigo)
+                    .foregroundStyle(.indigo)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background((result.source == .gemini ? Color.purple : Color.indigo).opacity(0.12), in: Capsule())
+                    .background(Color.indigo.opacity(0.12), in: Capsule())
             }
         }
     }

@@ -55,27 +55,24 @@ final class DirectCensusZipDemographicsClient: @unchecked Sendable {
 
     func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile {
         let bundle = try await fetchZipBundle(latitude: latitude, longitude: longitude)
-        let boundaries = await fetchNeighborhoodBoundaries(
-            latitude: latitude,
-            longitude: longitude,
-            tractGeoid: bundle.tract?.geoid,
-            zipBoundary: bundle.boundary
-        )
-
-        let tractDemographics = try? await fetchDemographics(
-            for: .tract,
-            zcta: bundle.zcta,
-            tractGeoid: bundle.tract?.geoid,
-            latitude: latitude,
-            longitude: longitude
+        let cityBoundary = await boundaryClient.fetchPlaceBoundary(place: bundle.place)
+        let placeDemographics = try? await fetchPlaceDemographics(place: bundle.place)
+        let boundaries = NeighborhoodBoundarySet(
+            zip: bundle.boundary,
+            city: cityBoundary,
+            tract: nil,
+            blockGroup: nil,
+            block: nil
         )
 
         return ResolvedPlaceProfile(
             zipBundle: bundle,
             boundaries: boundaries,
             scaleDemographics: ScaleDemographicsBundle(
+                place: placeDemographics,
                 zip: bundle.demographics,
-                tract: tractDemographics
+                tract: nil,
+                blockGroup: nil
             )
         )
     }
@@ -84,17 +81,23 @@ final class DirectCensusZipDemographicsClient: @unchecked Sendable {
         latitude: Double,
         longitude: Double,
         tractGeoid: String?,
+        place: PlaceInfo?,
         zipBoundary: GeoJSONFeatureCollection
     ) async -> NeighborhoodBoundarySet {
         let blockFIPS = try? await blockClient.fetchBlockFIPS(latitude: latitude, longitude: longitude)
         let tractToUse = tractGeoidFromBlockFIPS(blockFIPS) ?? tractGeoid
+        let blockGroupToUse = blockGroupGeoidFromBlockFIPS(blockFIPS)
 
+        async let cityBoundaryTask = boundaryClient.fetchPlaceBoundary(place: place)
         async let tractBoundaryTask = boundaryClient.fetchTractBoundary(tractGeoid: tractToUse)
+        async let blockGroupBoundaryTask = boundaryClient.fetchBlockGroupBoundary(blockGroupGeoid: blockGroupToUse)
         async let blockBoundaryTask = boundaryClient.fetchBlockBoundary(blockFIPS: blockFIPS)
 
         return await NeighborhoodBoundarySet(
             zip: zipBoundary,
+            city: cityBoundaryTask,
             tract: tractBoundaryTask,
+            blockGroup: blockGroupBoundaryTask,
             block: blockBoundaryTask
         )
     }
@@ -162,6 +165,27 @@ final class DirectCensusZipDemographicsClient: @unchecked Sendable {
     private func tractGeoidFromBlockFIPS(_ blockFIPS: String?) -> String? {
         guard let blockFIPS, blockFIPS.count >= 11 else { return nil }
         return String(blockFIPS.prefix(11))
+    }
+
+    private func blockGroupGeoidFromBlockFIPS(_ blockFIPS: String?) -> String? {
+        guard let blockFIPS, blockFIPS.count >= 12 else { return nil }
+        return String(blockFIPS.prefix(12))
+    }
+
+    private func fetchBlockGroupDemographics(blockFIPS: String?) async throws -> Demographics {
+        guard let blockGroupGeoid = blockGroupGeoidFromBlockFIPS(blockFIPS) else {
+            throw CensusZipDemographicsService.ServiceError.noDemographicsFound
+        }
+
+        return try await demographicsClient.fetchDemographics(blockGroupGeoid: blockGroupGeoid)
+    }
+
+    private func fetchPlaceDemographics(place: PlaceInfo?) async throws -> Demographics {
+        guard let place else {
+            throw CensusZipDemographicsService.ServiceError.noDemographicsFound
+        }
+
+        return try await demographicsClient.fetchDemographics(place: place)
     }
 
     private func makeComparisonTitle(bundle: ZipLookupResult, fallbackTitle: String) -> String {

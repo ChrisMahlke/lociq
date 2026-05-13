@@ -51,7 +51,9 @@ enum NeighborhoodDiscoveryCandidateFactory {
 
     nonisolated private static func demographics(from profile: ResolvedPlaceProfile, scale: BoundaryOverlayScale) -> Demographics {
         if scale == .tract {
-            return profile.scaleDemographics.tract ?? profile.scaleDemographics.zip
+            return profile.scaleDemographics.blockGroup
+                ?? profile.scaleDemographics.tract
+                ?? profile.scaleDemographics.zip
         }
 
         return profile.scaleDemographics.zip

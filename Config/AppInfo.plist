@@ -20,16 +20,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CensusAPIKey</key>
 	<string>$(CENSUS_API_KEY)</string>
-	<key>GeminiAPIKey</key>
-	<string>$(GEMINI_API_KEY)</string>
-	<key>GeminiModel</key>
-	<string>$(GEMINI_MODEL)</string>
 	<key>GoogleMapsAPIKey</key>
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Lociq uses your location to center the map and help you explore nearby neighborhoods more quickly.</string>
+	<string>Lociq uses your location to show a local demographic snapshot.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

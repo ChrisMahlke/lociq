@@ -14,6 +14,7 @@ protocol CensusNeighborhoodServing: Sendable {
         latitude: Double,
         longitude: Double,
         tractGeoid: String?,
+        place: PlaceInfo?,
         zipBoundary: GeoJSONFeatureCollection
     ) async -> NeighborhoodBoundarySet
     func fetchDemographics(
@@ -94,6 +95,7 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
         latitude: Double,
         longitude: Double,
         tractGeoid: String?,
+        place: PlaceInfo? = nil,
         zipBoundary: GeoJSONFeatureCollection
     ) async -> NeighborhoodBoundarySet {
         let cacheKey = Self.coordinateCacheKey(latitude: latitude, longitude: longitude)
@@ -105,6 +107,7 @@ public final class CensusZipDemographicsService: @unchecked Sendable, CensusNeig
             latitude: latitude,
             longitude: longitude,
             tractGeoid: tractGeoid,
+            place: place,
             zipBoundary: zipBoundary
         )
     }

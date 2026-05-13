@@ -10,7 +10,6 @@ enum NeighborhoodDiscoveryKind: String, CaseIterable, Identifiable, Codable, Sen
 }
 
 enum DiscoveryGenerationSource: String, Codable, Sendable {
-    case gemini
     case heuristic
 }
 
