@@ -187,7 +187,8 @@ private extension LocationProfileViewModelTests {
             cacheStore: cacheStore,
             locationManager: manager,
             profileLoader: loader,
-            now: now
+            now: now,
+            profileResolvedHaptic: {}
         )
     }
 

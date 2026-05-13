@@ -21,14 +21,9 @@ struct MinimalLayout {
     let boundarySize: CGSize
     let boundaryTop: CGFloat
     let boundaryLeading: CGFloat
-    let cityFontSize: CGFloat
-    let metricTitleSize: CGFloat
-    let metricValueSize: CGFloat
-    let metricDetailSize: CGFloat
-    let brandFontSize: CGFloat
-    let detailValueSize: CGFloat
-    let detailLabelWordSize: CGFloat
-    let detailLabelNumberSize: CGFloat
+    let detailLabelColumnWidth: CGFloat
+    let detailRowSpacing: CGFloat
+    let detailSectionSpacing: CGFloat
 
     /// Computes stable responsive measurements for the current iPhone viewport.
     init(geometry: GeometryProxy) {
@@ -50,13 +45,8 @@ struct MinimalLayout {
         )
         boundaryTop = topInset + (isShortHeight ? 78 : 96)
         boundaryLeading = isCompactWidth ? 24 : 30
-        cityFontSize = isCompactWidth ? 24 : 28
-        metricTitleSize = isCompactWidth ? 13 : 14
-        metricValueSize = isCompactWidth ? 17 : 18
-        metricDetailSize = isCompactWidth ? 11.5 : 12
-        brandFontSize = isCompactWidth ? 22 : 24
-        detailValueSize = isCompactWidth ? 16 : 17
-        detailLabelWordSize = isCompactWidth ? 9 : 9.5
-        detailLabelNumberSize = isCompactWidth ? 12 : 12.5
+        detailLabelColumnWidth = isCompactWidth ? 94 : 104
+        detailRowSpacing = isCompactWidth ? 10 : 12
+        detailSectionSpacing = isShortHeight ? 16 : 20
     }
 }

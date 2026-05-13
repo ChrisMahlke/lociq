@@ -36,11 +36,13 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     private let debugCoordinate: CLLocationCoordinate2D?
     private let cacheStore: CityProfileCacheStore
     private let now: @Sendable () -> Date
+    private let playProfileResolvedHaptic: @MainActor () -> Void
     private let cacheMaxAge: TimeInterval
     private let moveThresholdMeters: CLLocationDistance
     private var lastLoadedCoordinateKey: String?
     private var activeLoadID: UUID?
     private var loadTask: Task<Void, Never>?
+    private var hasPlayedProfileResolvedHaptic = false
 
     /// Creates the location profile state machine and wires together location, cache, and Census profile dependencies.
     init(
@@ -49,6 +51,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         locationManager: LocationManaging = CLLocationManager(),
         profileLoader: (any CityProfileLoading)? = nil,
         now: @escaping @Sendable () -> Date = { Date() },
+        profileResolvedHaptic: @escaping @MainActor () -> Void = { Haptics.profileResolved() },
         cacheMaxAge: TimeInterval = 86_400,
         moveThresholdMeters: CLLocationDistance = 1_000
     ) {
@@ -68,6 +71,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         self.debugCoordinate = debugCoordinate
         self.cacheStore = cacheStore ?? CityProfileCacheStore()
         self.now = now
+        self.playProfileResolvedHaptic = profileResolvedHaptic
         self.cacheMaxAge = cacheMaxAge
         self.moveThresholdMeters = moveThresholdMeters
         super.init()
@@ -311,6 +315,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
             let timestampedProfile = profile.withCachedAt(now())
             cacheStore.save(timestampedProfile)
             state = .loaded(timestampedProfile, isStale: false)
+            playProfileResolvedHapticIfNeeded()
             traceToken += 1
             LociqDiagnostics.cityProfileLoadCompleted(duration: now().timeIntervalSince(startedAt))
         case .unavailable(let snapshot, let boundary, let coordinate, let horizontalAccuracy, let failure):
@@ -330,6 +335,13 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
                 longitude: coordinate.longitude
             )
         }
+    }
+
+    /// Emits the first successful profile haptic once per app session.
+    private func playProfileResolvedHapticIfNeeded() {
+        guard !hasPlayedProfileResolvedHaptic else { return }
+        hasPlayedProfileResolvedHaptic = true
+        playProfileResolvedHaptic()
     }
 
     private var currentLoadedProfile: CachedCityProfile? {

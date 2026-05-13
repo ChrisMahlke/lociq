@@ -14,6 +14,9 @@ struct ContentView: View {
     @StateObject private var locationProfile: LocationProfileViewModel
     @State private var isShowingDetails = false
     @State private var isLoadingContent = false
+    @State private var hasRevealedBoundary = false
+    @State private var hasRevealedContent = false
+    @State private var revealTask: Task<Void, Never>?
 
     /// Creates the root view with an optional launch-argument debug coordinate.
     init() {
@@ -32,6 +35,14 @@ struct ContentView: View {
 
     private var isWaitingForInitialData: Bool {
         locationProfile.isWaitingForInitialData
+    }
+
+    private var shouldShowBoundary: Bool {
+        !isWaitingForInitialData && hasRevealedBoundary
+    }
+
+    private var shouldShowLoadedContent: Bool {
+        !isWaitingForInitialData && hasRevealedContent
     }
 
     var body: some View {
@@ -53,16 +64,20 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
         .onAppear {
             locationProfile.activate()
+            handleInitialDataWaitingChange(isWaitingForInitialData)
         }
         .onChange(of: scenePhase) { phase in
             guard phase == .active else { return }
             locationProfile.activate()
         }
+        .onChange(of: isWaitingForInitialData) { waiting in
+            handleInitialDataWaitingChange(waiting)
+        }
     }
 
     @ViewBuilder
     private func boundaryLayer(layout: MinimalLayout) -> some View {
-        if locationProfile.canShowBoundary, let boundary = locationProfile.boundary {
+        if shouldShowBoundary, locationProfile.canShowBoundary, let boundary = locationProfile.boundary {
             CityBoundaryPreview(
                 boundary: boundary,
                 coordinate: activeCoordinate,
@@ -80,21 +95,23 @@ struct ContentView: View {
 
     @ViewBuilder
     private func contentLayer(layout: MinimalLayout) -> some View {
-        if !isWaitingForInitialData {
+        if shouldShowLoadedContent {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .trailing, spacing: 34) {
                     HeaderBlock(snapshot: displaySnapshot, layout: layout)
 
-                    FadingContentPanel(
-                        snapshot: displaySnapshot,
-                        isShowingDetails: isShowingDetails,
-                        layout: layout,
-                        reduceMotion: reduceMotion
-                    )
-                    .frame(
-                        maxWidth: isShowingDetails ? layout.detailContentWidth : .infinity,
-                        alignment: .trailing
-                    )
+                    if displaySnapshot.hasDemographicData {
+                        FadingContentPanel(
+                            snapshot: displaySnapshot,
+                            isShowingDetails: isShowingDetails,
+                            layout: layout,
+                            reduceMotion: reduceMotion
+                        )
+                        .frame(
+                            maxWidth: isShowingDetails ? layout.detailContentWidth : .infinity,
+                            alignment: .trailing
+                        )
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
@@ -116,7 +133,7 @@ struct ContentView: View {
             isWaitingForInitialData: isWaitingForInitialData,
             canRetry: locationProfile.canRetry,
             needsLocationPermission: locationProfile.needsLocationPermissionPrompt,
-            brandFontSize: layout.brandFontSize,
+            layout: layout,
             reduceMotion: reduceMotion
         ) {
             handleBottomAction()
@@ -124,6 +141,40 @@ struct ContentView: View {
         .padding(.horizontal, layout.horizontalInset)
         .padding(.bottom, layout.bottomInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+    }
+
+    /// Sequences the first loaded frame so geography appears before the demographic text.
+    private func handleInitialDataWaitingChange(_ waiting: Bool) {
+        revealTask?.cancel()
+
+        if waiting {
+            hasRevealedBoundary = false
+            hasRevealedContent = false
+            return
+        }
+
+        revealTask = Task { @MainActor in
+            let delay = LociqMotion.firstDataRevealDelay(reduceMotion: reduceMotion)
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            withAnimation(LociqMotion.firstDataReveal(reduceMotion: reduceMotion)) {
+                hasRevealedBoundary = true
+            }
+
+            guard locationProfile.canShowBoundary else {
+                withAnimation(LociqMotion.firstDataReveal(reduceMotion: reduceMotion)) {
+                    hasRevealedContent = true
+                }
+                return
+            }
+
+            let contentDelay = LociqMotion.contentRevealAfterBoundaryDelay(reduceMotion: reduceMotion)
+            try? await Task.sleep(nanoseconds: UInt64(contentDelay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            withAnimation(LociqMotion.firstDataReveal(reduceMotion: reduceMotion)) {
+                hasRevealedContent = true
+            }
+        }
     }
 
     private func boundaryConnector(anchors: BoundaryCityConnectionAnchors) -> some View {
@@ -138,7 +189,7 @@ struct ContentView: View {
                         x: boundaryRect.minX + boundaryPathCenter.x,
                         y: boundaryRect.minY + boundaryPathCenter.y
                     ),
-                    end: CGPoint(x: cityRect.minX - 9, y: cityRect.midY),
+                    end: cityConnectorEnd(for: cityRect),
                     traceToken: locationProfile.traceToken,
                     reduceMotion: reduceMotion
                 )
@@ -146,6 +197,14 @@ struct ContentView: View {
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    /// Places the connector near the city label baseline without touching the text.
+    private func cityConnectorEnd(for cityRect: CGRect) -> CGPoint {
+        CGPoint(
+            x: cityRect.minX - 11,
+            y: cityRect.maxY - max(5, cityRect.height * 0.22)
+        )
     }
 
     /// Runs the minimal fade transition between summary metrics and the detail view.

@@ -21,4 +21,11 @@ enum Haptics {
         generator.prepare()
         generator.impactOccurred(intensity: 0.8)
     }
+
+    /// Plays a very soft confirmation when the first city profile resolves.
+    static func profileResolved() {
+        let generator = UIImpactFeedbackGenerator(style: .soft)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.35)
+    }
 }

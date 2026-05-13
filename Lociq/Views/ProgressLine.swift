@@ -24,7 +24,7 @@ struct ProgressLine: View {
                     Rectangle()
                         .fill(Color.white.opacity(0.82))
                         .frame(
-                            width: reduceMotion ? geometry.size.width : max(44, geometry.size.width * 0.24),
+                            width: reduceMotion ? geometry.size.width : max(56, geometry.size.width * 0.30),
                             height: 1
                         )
                         .offset(x: reduceMotion ? 0 : geometry.size.width * loadingOffset)
@@ -49,10 +49,10 @@ struct ProgressLine: View {
 
             while !Task.isCancelled {
                 loadingOffset = -0.28
-                try? await Task.sleep(nanoseconds: 35_000_000)
+                try? await Task.sleep(nanoseconds: 80_000_000)
                 guard let animation = LociqMotion.loadingSweep(reduceMotion: reduceMotion) else { return }
                 withAnimation(animation) {
-                    loadingOffset = 1.04
+                    loadingOffset = 1.02
                 }
                 try? await Task.sleep(nanoseconds: LociqMotion.loadingSweepPauseNanoseconds)
             }

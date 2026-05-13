@@ -7,6 +7,14 @@
 
 import SwiftUI
 
+private enum DemographicContentConstants {
+    static let detailPanelOpacity = 0.88
+    static let detailSectionTitleOpacity = 0.38
+    static let detailLabelOpacity = 0.52
+    static let detailValueOpacity = 0.88
+    static let detailProgressOpacity = 0.48
+}
+
 struct HeaderBlock: View {
     let snapshot: DemographicSnapshot
     let layout: MinimalLayout
@@ -14,7 +22,7 @@ struct HeaderBlock: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 6) {
             Text(snapshot.market)
-                .font(.system(size: layout.cityFontSize, weight: .light, design: .rounded))
+                .font(LociqTypeScale.city(layout))
                 .foregroundStyle(.white)
                 .monospacedDigit()
                 .lineLimit(2)
@@ -26,7 +34,7 @@ struct HeaderBlock: View {
 
             if !snapshot.dateLabel.isEmpty {
                 Text(snapshot.dateLabel)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(LociqTypeScale.statusLabel(layout))
                     .foregroundStyle(.white.opacity(0.68))
             }
         }
@@ -46,8 +54,7 @@ struct FadingContentPanel: View {
         ZStack(alignment: .topTrailing) {
             if isShowingDetails {
                 DetailContent(snapshot: snapshot, layout: layout)
-                    .opacity(0.9)
-                    .offset(y: reduceMotion ? 0 : (layout.isShortHeight ? -2 : 2))
+                    .opacity(DemographicContentConstants.detailPanelOpacity)
                     .transition(contentTransition)
             } else {
                 MetricContent(metrics: snapshot.metrics, layout: layout)
@@ -61,7 +68,7 @@ struct FadingContentPanel: View {
     private var contentTransition: AnyTransition {
         guard !reduceMotion else { return .opacity }
         return .asymmetric(
-            insertion: .opacity.combined(with: .move(edge: .trailing)),
+            insertion: .opacity.combined(with: .scale(scale: 0.985, anchor: .topTrailing)),
             removal: .opacity
         )
     }
@@ -88,11 +95,11 @@ private struct MetricBlock: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 5) {
             Text(metric.title)
-                .font(.system(size: layout.metricTitleSize, weight: .medium, design: .rounded))
+                .font(LociqTypeScale.metricLabel(layout))
                 .foregroundStyle(.white.opacity(0.78))
 
             Text(metric.primaryValue)
-                .font(.system(size: layout.metricValueSize, weight: .light, design: .rounded))
+                .font(LociqTypeScale.metricValue(layout))
                 .foregroundStyle(.white)
                 .monospacedDigit()
                 .lineLimit(1)
@@ -100,7 +107,7 @@ private struct MetricBlock: View {
                 .allowsTightening(true)
 
             Text(metric.detail)
-                .font(.system(size: layout.metricDetailSize, weight: .regular, design: .rounded))
+                .font(LociqTypeScale.metricDetail(layout))
                 .foregroundStyle(.white.opacity(0.54))
                 .lineLimit(2)
                 .minimumScaleFactor(0.82)
@@ -115,7 +122,7 @@ private struct DetailContent: View {
     let layout: MinimalLayout
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: layout.isShortHeight ? 14 : 18) {
+        VStack(alignment: .trailing, spacing: layout.detailSectionSpacing) {
             ForEach(snapshot.detailSections) { section in
                 DetailSectionView(section: section, layout: layout)
             }
@@ -129,27 +136,27 @@ private struct DetailSectionView: View {
     let layout: MinimalLayout
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 10) {
+        VStack(alignment: .trailing, spacing: 8) {
             Text(section.title)
-                .font(.system(size: 13, weight: .ultraLight, design: .rounded))
-                .foregroundStyle(.white.opacity(0.54))
+                .font(LociqTypeScale.detailSectionLabel(layout))
+                .foregroundStyle(.white.opacity(DemographicContentConstants.detailSectionTitleOpacity))
 
-            VStack(alignment: .trailing, spacing: 7) {
+            VStack(alignment: .trailing, spacing: layout.detailRowSpacing) {
                 ForEach(section.rows) { row in
-                    VStack(alignment: .trailing, spacing: 6) {
+                    VStack(alignment: .trailing, spacing: 5) {
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
                             DetailRowLabel(label: row.label, layout: layout)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.72)
                                 .allowsTightening(true)
-                                .padding(.leading, 2)
+                                .frame(width: layout.detailLabelColumnWidth, alignment: .leading)
                                 .layoutPriority(1)
 
-                            Spacer(minLength: 10)
+                            Spacer(minLength: 8)
 
                             Text(row.value)
-                                .font(.system(size: layout.detailValueSize, weight: .light, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.9))
+                                .font(LociqTypeScale.detailValue(layout))
+                                .foregroundStyle(.white.opacity(DemographicContentConstants.detailValueOpacity))
                                 .multilineTextAlignment(.trailing)
                                 .lineLimit(2)
                                 .minimumScaleFactor(0.82)
@@ -162,11 +169,10 @@ private struct DetailSectionView: View {
 
                         if let progress = row.progress {
                             ProgressLine(progress: progress)
-                                .opacity(0.78)
-                                .frame(maxWidth: 220)
+                                .opacity(DemographicContentConstants.detailProgressOpacity)
+                                .frame(maxWidth: max(64, layout.detailContentWidth - layout.detailLabelColumnWidth - 20))
                         }
                     }
-                    .padding(.vertical, 3)
                 }
             }
         }
@@ -180,7 +186,7 @@ private struct DetailRowLabel: View {
 
     var body: some View {
         labelText
-            .foregroundStyle(.white.opacity(0.46))
+            .foregroundStyle(.white.opacity(DemographicContentConstants.detailLabelOpacity))
     }
 
     private var labelText: Text {
@@ -195,24 +201,24 @@ private struct DetailRowLabel: View {
             return number("65") + space + word("PLUS")
         default:
             return Text(label)
-                .font(.system(size: layout.detailLabelNumberSize - 0.5, weight: .regular, design: .rounded))
+                .font(LociqTypeScale.detailLabel(layout))
         }
     }
 
     private var space: Text {
         Text(" ")
-            .font(.system(size: layout.detailLabelNumberSize - 0.5, weight: .regular, design: .rounded))
+            .font(LociqTypeScale.detailLabel(layout))
     }
 
     /// Formats the word portion of compound age labels.
     private func word(_ text: String) -> Text {
         Text(text)
-            .font(.system(size: layout.detailLabelWordSize, weight: .regular, design: .rounded))
+            .font(LociqTypeScale.detailLabelWord(layout))
     }
 
     /// Formats the numeric portion of compound age labels.
     private func number(_ text: String) -> Text {
         Text(text)
-            .font(.system(size: layout.detailLabelNumberSize, weight: .regular, design: .rounded))
+            .font(LociqTypeScale.detailLabelNumber(layout))
     }
 }

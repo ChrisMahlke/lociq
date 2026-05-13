@@ -17,7 +17,12 @@ enum LociqMotion {
     static let connectorDelay = 2.55
     static let pulseDuration = 1.75
     static let loadingSweepDuration = 0.82
-    static let loadingSweepPauseNanoseconds: UInt64 = 860_000_000
+    static let loadingSweepPauseNanoseconds: UInt64 = 520_000_000
+    static let firstDataRevealDelay = 0.28
+    static let firstDataRevealDuration = 0.44
+    static let contentRevealAfterBoundaryDelay = 1.45
+    static let locationDotRevealDelay = 1.9
+    static let locationDotRevealDuration = 0.38
     static let phaseDelay = 0.22
     static let contentCycleDuration = 1.05
 
@@ -71,13 +76,38 @@ enum LociqMotion {
         reduceMotion ? nil : loadingSweep
     }
 
+    /// Returns the total content-cycle duration adjusted for reduced-motion users.
+    static func contentCycleDuration(reduceMotion: Bool) -> Double {
+        reduceMotion ? 0.18 : contentCycleDuration
+    }
+
     /// Returns the first phase delay adjusted for reduced-motion users.
     static func phaseDelay(reduceMotion: Bool) -> Double {
         reduceMotion ? 0.05 : phaseDelay
     }
 
-    /// Returns the total content-cycle duration adjusted for reduced-motion users.
-    static func contentCycleDuration(reduceMotion: Bool) -> Double {
-        reduceMotion ? 0.18 : contentCycleDuration
+    /// Returns the first-data reveal delay adjusted for reduced-motion users.
+    static func firstDataRevealDelay(reduceMotion: Bool) -> Double {
+        reduceMotion ? 0.04 : firstDataRevealDelay
+    }
+
+    /// Returns the first-data reveal animation adjusted for reduced-motion users.
+    static func firstDataReveal(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .linear(duration: 0.01) : .easeOut(duration: firstDataRevealDuration)
+    }
+
+    /// Returns the delay between boundary reveal and content reveal.
+    static func contentRevealAfterBoundaryDelay(reduceMotion: Bool) -> Double {
+        reduceMotion ? 0.04 : contentRevealAfterBoundaryDelay
+    }
+
+    /// Returns the approximate-location reveal delay adjusted for reduced-motion users.
+    static func locationDotRevealDelay(reduceMotion: Bool) -> Double {
+        reduceMotion ? 0.04 : locationDotRevealDelay
+    }
+
+    /// Returns the approximate-location reveal animation adjusted for reduced-motion users.
+    static func locationDotReveal(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .linear(duration: 0.01) : .easeOut(duration: locationDotRevealDuration)
     }
 }

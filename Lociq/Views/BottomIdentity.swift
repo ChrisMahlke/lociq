@@ -30,7 +30,7 @@ struct BottomIdentity: View {
     let isWaitingForInitialData: Bool
     let canRetry: Bool
     let needsLocationPermission: Bool
-    var brandFontSize: CGFloat = 24
+    let layout: MinimalLayout
     var reduceMotion = false
     let onShowDetails: () -> Void
 
@@ -56,7 +56,7 @@ struct BottomIdentity: View {
                         Text(Constants.brandLeading)
                         Text(Constants.brandTrailing)
                     }
-                    .font(.system(size: brandFontSize, weight: .ultraLight, design: .rounded))
+                    .font(LociqTypeScale.brand(layout))
                     .foregroundStyle(.white.opacity(0.74))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -72,10 +72,15 @@ struct BottomIdentity: View {
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundStyle(.white.opacity(0.68))
                                 .frame(width: 44, height: 44)
+                                .opacity(isLoading ? 0.42 : 1)
+                                .id(iconName)
+                                .transition(.opacity.combined(with: .scale(scale: 0.92)))
                         }
                         .buttonStyle(.plain)
                         .disabled(isLoading)
                         .accessibilityLabel(actionLabel)
+                        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: iconName)
+                        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: isLoading)
                     }
                 }
 
