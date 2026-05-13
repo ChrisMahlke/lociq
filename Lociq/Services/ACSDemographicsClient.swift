@@ -1,7 +1,7 @@
 import Foundation
 
 final class ACSDemographicsClient: @unchecked Sendable {
-    private typealias ServiceError = CensusZipDemographicsService.ServiceError
+    private typealias ServiceError = CensusCityProfileService.ServiceError
 
     private let censusApiKey: String
     private let acsYear: Int
@@ -11,14 +11,6 @@ final class ACSDemographicsClient: @unchecked Sendable {
         self.censusApiKey = censusApiKey
         self.acsYear = acsYear
         self.httpClient = httpClient
-    }
-
-    func fetchDemographics(zcta: String) async throws -> Demographics {
-        try await fetchACSDemographics(
-            forQuery: "zip code tabulation area:\(zcta)",
-            inQuery: nil,
-            fallbackName: "ZIP \(zcta)"
-        )
     }
 
     func fetchDemographics(place: PlaceInfo) async throws -> Demographics {

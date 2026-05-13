@@ -97,10 +97,12 @@ struct ContentView: View {
                     isShowingDetails: isShowingDetails,
                     isLoading: isLoadingContent || locationProfile.isLoading,
                     isWaitingForInitialData: isWaitingForInitialData,
+                    canRetry: locationProfile.canRetry,
+                    needsLocationPermission: locationProfile.needsLocationPermissionPrompt,
                     brandFontSize: layout.brandFontSize,
                     reduceMotion: reduceMotion
                 ) {
-                    cycleContent()
+                    handleBottomAction()
                 }
                     .padding(.horizontal, layout.horizontalInset)
                     .padding(.bottom, layout.bottomInset)
@@ -162,6 +164,17 @@ struct ContentView: View {
             withAnimation(LociqMotion.settle(reduceMotion: reduceMotion)) {
                 isLoadingContent = false
             }
+        }
+    }
+
+    private func handleBottomAction() {
+        if displaySnapshot.hasDemographicData {
+            cycleContent()
+        } else if locationProfile.needsLocationPermissionPrompt {
+            locationProfile.requestLocationAccess()
+        } else if locationProfile.canRetry {
+            Haptics.selectionChanged()
+            locationProfile.retry()
         }
     }
 }
@@ -391,16 +404,24 @@ private struct BottomIdentity: View {
     let isShowingDetails: Bool
     let isLoading: Bool
     let isWaitingForInitialData: Bool
+    let canRetry: Bool
+    let needsLocationPermission: Bool
     var brandFontSize: CGFloat = 24
     var reduceMotion = false
     let onShowDetails: () -> Void
 
     private var iconName: String {
-        isShowingDetails ? "house" : "list.bullet.rectangle"
+        if !snapshot.hasDemographicData {
+            return needsLocationPermission ? "location" : "arrow.clockwise"
+        }
+        return isShowingDetails ? "house" : "list.bullet.rectangle"
     }
 
     private var actionLabel: String {
-        isShowingDetails ? "Show home view" : "Show data view"
+        if !snapshot.hasDemographicData {
+            return needsLocationPermission ? "Enable location access" : "Retry loading data"
+        }
+        return isShowingDetails ? "Show home view" : "Show data view"
     }
 
     var body: some View {
@@ -421,7 +442,7 @@ private struct BottomIdentity: View {
 
                     Spacer(minLength: 28)
 
-                    if !isWaitingForInitialData && snapshot.hasDemographicData {
+                    if !isWaitingForInitialData && (snapshot.hasDemographicData || canRetry) {
                         Button(action: onShowDetails) {
                             Image(systemName: iconName)
                                 .font(.system(size: 17, weight: .medium))
@@ -435,6 +456,12 @@ private struct BottomIdentity: View {
                 }
 
                 ProgressLine(progress: snapshot.confidence, isLoading: isLoading, reduceMotion: reduceMotion)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if canRetry {
+                            onShowDetails()
+                        }
+                    }
             }
             .frame(maxWidth: 520)
         }

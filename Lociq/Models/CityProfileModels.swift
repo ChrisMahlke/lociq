@@ -1,5 +1,5 @@
 //
-//  CensusNeighborhoodModels.swift
+//  CityProfileModels.swift
 //  Lociq
 //
 //  Shared Census, ACS, and GeoJSON models for the minimal city profile.
@@ -7,26 +7,23 @@
 
 import Foundation
 
-struct ZipLookupResult: Sendable {
-    let zcta: String
+struct CityGeographyProfile: Sendable {
     let county: CountyInfo?
     let place: PlaceInfo?
-    let demographics: Demographics
 }
 
-struct NeighborhoodBoundarySet: Sendable {
+struct CityBoundarySet: Sendable {
     let city: GeoJSONFeatureCollection?
 }
 
-struct ScaleDemographicsBundle: Sendable {
+struct CityDemographicsBundle: Sendable {
     let place: Demographics?
-    let zip: Demographics
 }
 
-struct ResolvedPlaceProfile: Sendable {
-    let zipBundle: ZipLookupResult
-    let boundaries: NeighborhoodBoundarySet
-    let scaleDemographics: ScaleDemographicsBundle
+struct ResolvedCityProfile: Sendable {
+    let geography: CityGeographyProfile
+    let boundarySet: CityBoundarySet
+    let demographics: CityDemographicsBundle
 }
 
 public struct CountyInfo: Sendable {
@@ -40,22 +37,6 @@ public struct CountyInfo: Sendable {
         self.stateFIPS = stateFIPS
         self.countyFIPS = countyFIPS
         self.geoid = geoid
-    }
-}
-
-public struct TractInfo: Sendable {
-    public let name: String?
-    public let geoid: String?
-    public let stateFIPS: String?
-    public let countyFIPS: String?
-    public let tractCode: String?
-
-    public init(name: String?, geoid: String?, stateFIPS: String?, countyFIPS: String?, tractCode: String?) {
-        self.name = name
-        self.geoid = geoid
-        self.stateFIPS = stateFIPS
-        self.countyFIPS = countyFIPS
-        self.tractCode = tractCode
     }
 }
 

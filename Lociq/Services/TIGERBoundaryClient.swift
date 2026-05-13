@@ -1,7 +1,7 @@
 import Foundation
 
 final class TIGERBoundaryClient: @unchecked Sendable {
-    private typealias ServiceError = CensusZipDemographicsService.ServiceError
+    private typealias ServiceError = CensusCityProfileService.ServiceError
 
     private let httpClient: CensusHTTPClient
     private let incorporatedPlacesLayerId = "28"

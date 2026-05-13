@@ -2,53 +2,81 @@ import Combine
 import CoreLocation
 import Foundation
 
+protocol LocationManaging: AnyObject {
+    var delegate: CLLocationManagerDelegate? { get set }
+    var desiredAccuracy: CLLocationAccuracy { get set }
+    var authorizationStatus: CLAuthorizationStatus { get }
+    func requestWhenInUseAuthorization()
+    func requestLocation()
+}
+
+extension CLLocationManager: LocationManaging {}
+
 @MainActor
 final class LocationProfileViewModel: NSObject, ObservableObject {
     enum State {
         case idle
+        case needsLocationPermission
         case requestingLocation
         case loading
-        case refreshing(CachedCityProfile)
-        case loaded(CachedCityProfile)
+        case refreshing(CachedCityProfile, isStale: Bool)
+        case loaded(CachedCityProfile, isStale: Bool)
         case locationUnavailable
         case profileUnavailable(
             snapshot: DemographicSnapshot,
             boundary: GeoJSONFeatureCollection?,
             coordinate: CLLocationCoordinate2D?,
-            horizontalAccuracy: CLLocationAccuracy?
+            horizontalAccuracy: CLLocationAccuracy?,
+            failure: CityProfileLoadFailure
         )
     }
 
     @Published private(set) var state: State = .idle
     @Published private(set) var traceToken = 0
 
-    private let manager = CLLocationManager()
-    private let censusService: CensusZipDemographicsService
-    private let geocoderClient: CensusGeocoderClient
-    private let boundaryClient: TIGERBoundaryClient
-    private let hasCensusAPIKey: Bool
+    private let manager: LocationManaging
+    private let profileLoader: any CityProfileLoading
     private let debugCoordinate: CLLocationCoordinate2D?
     private let cacheStore: CityProfileCacheStore
+    private let now: @Sendable () -> Date
+    private let cacheMaxAge: TimeInterval
+    private let moveThresholdMeters: CLLocationDistance
     private var lastLoadedCoordinateKey: String?
+    private var loadTask: Task<Void, Never>?
 
     init(
         debugCoordinate: CLLocationCoordinate2D? = nil,
-        cacheStore: CityProfileCacheStore? = nil
+        cacheStore: CityProfileCacheStore? = nil,
+        locationManager: LocationManaging = CLLocationManager(),
+        profileLoader: (any CityProfileLoading)? = nil,
+        now: @escaping @Sendable () -> Date = { Date() },
+        cacheMaxAge: TimeInterval = 86_400,
+        moveThresholdMeters: CLLocationDistance = 1_000
     ) {
         let httpClient = CensusHTTPClient(session: .shared)
         let censusAPIKey = AppConfig.censusAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.censusService = CensusZipDemographicsService(censusApiKey: censusAPIKey)
-        self.geocoderClient = CensusGeocoderClient(httpClient: httpClient)
-        self.boundaryClient = TIGERBoundaryClient(httpClient: httpClient)
-        self.hasCensusAPIKey = !censusAPIKey.isEmpty
+        let profileService = CensusCityProfileService(censusApiKey: censusAPIKey)
+        let geocoderClient = CensusGeocoderClient(httpClient: httpClient)
+        let boundaryClient = TIGERBoundaryClient(httpClient: httpClient)
+
+        self.manager = locationManager
+        self.profileLoader = profileLoader ?? CensusCityProfileLoader(
+            profileService: profileService,
+            geocoderClient: geocoderClient,
+            boundaryClient: boundaryClient,
+            hasCensusAPIKey: !censusAPIKey.isEmpty
+        )
         self.debugCoordinate = debugCoordinate
         self.cacheStore = cacheStore ?? CityProfileCacheStore()
+        self.now = now
+        self.cacheMaxAge = cacheMaxAge
+        self.moveThresholdMeters = moveThresholdMeters
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
 
         if let cached = self.cacheStore.load() {
-            state = .loaded(cached)
+            state = .loaded(cached, isStale: cached.isExpired(at: now(), maxAge: cacheMaxAge))
             traceToken += 1
         }
     }
@@ -57,44 +85,44 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         switch state {
         case .idle, .requestingLocation, .loading:
             return .loading
-        case .refreshing(let profile), .loaded(let profile):
-            return profile.snapshot
-        case .locationUnavailable:
+        case .needsLocationPermission, .locationUnavailable:
             return .placeholder
-        case .profileUnavailable(let snapshot, _, _, _):
+        case .refreshing(let profile, let isStale), .loaded(let profile, let isStale):
+            return isStale ? profile.snapshot.replacingDateLabel("CACHED") : profile.snapshot
+        case .profileUnavailable(let snapshot, _, _, _, _):
             return snapshot
         }
     }
 
     var boundary: GeoJSONFeatureCollection? {
         switch state {
-        case .refreshing(let profile), .loaded(let profile):
+        case .refreshing(let profile, _), .loaded(let profile, _):
             return profile.boundary
-        case .profileUnavailable(_, let boundary, _, _):
+        case .profileUnavailable(_, let boundary, _, _, _):
             return boundary
-        case .idle, .requestingLocation, .loading, .locationUnavailable:
+        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable:
             return nil
         }
     }
 
     var coordinate: CLLocationCoordinate2D? {
         switch state {
-        case .refreshing(let profile), .loaded(let profile):
+        case .refreshing(let profile, _), .loaded(let profile, _):
             return profile.coordinate
-        case .profileUnavailable(_, _, let coordinate, _):
+        case .profileUnavailable(_, _, let coordinate, _, _):
             return coordinate
-        case .idle, .requestingLocation, .loading, .locationUnavailable:
+        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable:
             return debugCoordinate
         }
     }
 
     var horizontalAccuracy: CLLocationAccuracy? {
         switch state {
-        case .refreshing(let profile), .loaded(let profile):
+        case .refreshing(let profile, _), .loaded(let profile, _):
             return profile.horizontalAccuracy
-        case .profileUnavailable(_, _, _, let horizontalAccuracy):
+        case .profileUnavailable(_, _, _, let horizontalAccuracy, _):
             return horizontalAccuracy
-        case .idle, .requestingLocation, .loading, .locationUnavailable:
+        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable:
             return nil
         }
     }
@@ -103,7 +131,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         switch state {
         case .idle, .requestingLocation, .loading, .refreshing:
             return true
-        case .loaded, .locationUnavailable, .profileUnavailable:
+        case .needsLocationPermission, .loaded, .locationUnavailable, .profileUnavailable:
             return false
         }
     }
@@ -112,7 +140,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         switch state {
         case .idle, .requestingLocation, .loading:
             return true
-        case .refreshing, .loaded, .locationUnavailable, .profileUnavailable:
+        case .needsLocationPermission, .refreshing, .loaded, .locationUnavailable, .profileUnavailable:
             return false
         }
     }
@@ -121,193 +149,220 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         boundary != nil && !isWaitingForInitialData && snapshot.hasDemographicData
     }
 
+    var canRetry: Bool {
+        switch state {
+        case .needsLocationPermission, .locationUnavailable, .profileUnavailable:
+            return true
+        case .idle, .requestingLocation, .loading, .refreshing, .loaded:
+            return false
+        }
+    }
+
+    var needsLocationPermissionPrompt: Bool {
+        if case .needsLocationPermission = state {
+            return true
+        }
+        return false
+    }
+
     func activate() {
         if let debugCoordinate {
             load(for: debugCoordinate)
             return
         }
 
-        let authorizationStatus = manager.authorizationStatus
-        switch authorizationStatus {
+        switch manager.authorizationStatus {
         case .notDetermined:
-            if cacheStore.load() == nil {
-                state = .requestingLocation
+            if currentLoadedProfile == nil {
+                state = .needsLocationPermission
             }
-            manager.requestWhenInUseAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
-            if cacheStore.load() == nil {
+            if currentLoadedProfile == nil {
                 state = .requestingLocation
             }
             manager.requestLocation()
         case .denied, .restricted:
-            state = .locationUnavailable
+            if currentLoadedProfile == nil {
+                state = .locationUnavailable
+            }
         @unknown default:
-            state = .locationUnavailable
+            if currentLoadedProfile == nil {
+                state = .locationUnavailable
+            }
         }
     }
 
-    private func load(for location: CLLocation) {
+    func requestLocationAccess() {
+        if manager.authorizationStatus == .notDetermined {
+            state = .requestingLocation
+            manager.requestWhenInUseAuthorization()
+        } else {
+            retry()
+        }
+    }
+
+    func retry() {
+        lastLoadedCoordinateKey = nil
+
+        switch state {
+        case .needsLocationPermission:
+            requestLocationAccess()
+        case .profileUnavailable(_, _, let coordinate, let horizontalAccuracy, _):
+            if let coordinate {
+                load(for: coordinate, horizontalAccuracy: horizontalAccuracy, force: true)
+            } else {
+                activate()
+            }
+        case .locationUnavailable:
+            activate()
+        case .idle, .requestingLocation, .loading, .refreshing, .loaded:
+            activate()
+        }
+    }
+
+    func waitForPendingLoad() async {
+        await loadTask?.value
+    }
+
+    func handleAuthorizationChange(_ authorizationStatus: CLAuthorizationStatus) {
+        switch authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            state = currentLoadedProfile == nil ? .requestingLocation : state
+            manager.requestLocation()
+        case .denied, .restricted:
+            if currentLoadedProfile == nil {
+                state = .locationUnavailable
+            }
+        case .notDetermined:
+            if currentLoadedProfile == nil {
+                state = .needsLocationPermission
+            }
+        @unknown default:
+            if currentLoadedProfile == nil {
+                state = .locationUnavailable
+            }
+        }
+    }
+
+    func handleLocationUpdate(_ location: CLLocation) {
         load(for: location.coordinate, horizontalAccuracy: location.horizontalAccuracy)
     }
 
-    private func load(for coordinate: CLLocationCoordinate2D, horizontalAccuracy: CLLocationAccuracy? = nil) {
+    func handleLocationFailure(authorizationStatus: CLAuthorizationStatus) {
+        guard currentLoadedProfile == nil else { return }
+        state = authorizationStatus == .denied || authorizationStatus == .restricted
+            ? .locationUnavailable
+            : .requestingLocation
+    }
+
+    private func load(
+        for coordinate: CLLocationCoordinate2D,
+        horizontalAccuracy: CLLocationAccuracy? = nil,
+        force: Bool = false
+    ) {
         let coordinateKey = Self.coordinateKey(for: coordinate)
-        guard coordinateKey != lastLoadedCoordinateKey else { return }
+        guard force || coordinateKey != lastLoadedCoordinateKey else { return }
 
         let previousProfile = currentLoadedProfile
+        let previousStale = currentLoadedProfileIsStale
         lastLoadedCoordinateKey = coordinateKey
 
-        if let previousProfile, Self.coordinateKey(for: previousProfile.coordinate) == coordinateKey {
-            state = .refreshing(previousProfile)
+        if let previousProfile,
+           !Self.isMeaningfullyDifferent(
+            previousProfile.coordinate,
+            from: coordinate,
+            thresholdMeters: moveThresholdMeters
+           ) {
+            state = .refreshing(
+                previousProfile,
+                isStale: previousStale || previousProfile.isExpired(at: now(), maxAge: cacheMaxAge)
+            )
         } else {
             state = .loading
         }
 
-        Task { [weak self] in
-            await self?.loadProfile(for: coordinate, horizontalAccuracy: horizontalAccuracy)
+        loadTask?.cancel()
+        loadTask = Task { [weak self, profileLoader] in
+            let outcome = await profileLoader.loadProfile(
+                for: coordinate,
+                horizontalAccuracy: horizontalAccuracy
+            )
+            self?.apply(outcome)
         }
     }
 
-    private func loadProfile(for coordinate: CLLocationCoordinate2D, horizontalAccuracy: CLLocationAccuracy?) async {
-        guard hasCensusAPIKey else {
-            await loadLocationShell(for: coordinate, horizontalAccuracy: horizontalAccuracy, status: .censusKeyMissing)
-            return
-        }
-
-        do {
-            let profile = try await censusService.fetchPlaceProfile(
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-            guard let cityDemographics = profile.scaleDemographics.place else {
-                var fallbackBoundary = profile.boundaries.city
-                if fallbackBoundary == nil {
-                    fallbackBoundary = await boundaryClient.fetchPlaceBoundary(place: profile.zipBundle.place)
-                }
-                state = .profileUnavailable(
-                    snapshot: DemographicSnapshot.status(
-                        for: .acsUnavailable,
-                        market: DemographicValueFormatter.title(from: profile).uppercased()
-                    ),
-                    boundary: fallbackBoundary,
-                    coordinate: coordinate,
-                    horizontalAccuracy: horizontalAccuracy
-                )
-                if fallbackBoundary != nil {
-                    traceToken += 1
-                }
-                return
-            }
-
-            var cityBoundary = profile.boundaries.city
-            if cityBoundary == nil {
-                cityBoundary = await boundaryClient.fetchPlaceBoundary(place: profile.zipBundle.place)
-            }
-            guard let cityBoundary else {
-                state = .profileUnavailable(
-                    snapshot: DemographicSnapshot.status(
-                        for: .acsUnavailable,
-                        market: DemographicValueFormatter.title(from: profile).uppercased()
-                    ),
-                    boundary: nil,
-                    coordinate: coordinate,
-                    horizontalAccuracy: horizontalAccuracy
-                )
-                return
-            }
-
-            let cityProfile = CachedCityProfile(
-                snapshot: DemographicSnapshot(profile: profile, demographics: cityDemographics),
-                boundary: cityBoundary,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude,
-                horizontalAccuracy: horizontalAccuracy
-            )
-            cacheStore.save(cityProfile)
-            state = .loaded(cityProfile)
+    private func apply(_ outcome: CityProfileLoadOutcome) {
+        switch outcome {
+        case .loaded(let profile):
+            cacheStore.save(profile)
+            state = .loaded(profile, isStale: false)
             traceToken += 1
-        } catch {
-            await loadLocationShell(for: coordinate, horizontalAccuracy: horizontalAccuracy, status: .acsUnavailable)
-        }
-    }
-
-    private func loadLocationShell(
-        for coordinate: CLLocationCoordinate2D,
-        horizontalAccuracy: CLLocationAccuracy?,
-        status: DemographicSnapshot.LocationStatus
-    ) async {
-        do {
-            let geography = try await geocoderClient.fetchGeographiesFromCoordinate(
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-            let areaTitle = DemographicValueFormatter.cityTitle(from: geography) ?? "CITY UNAVAILABLE"
-            let resolvedBoundary = await boundaryClient.fetchPlaceBoundary(place: geography.place)
+        case .unavailable(let snapshot, let boundary, let coordinate, let horizontalAccuracy, let failure):
             state = .profileUnavailable(
-                snapshot: DemographicSnapshot.status(for: status, market: areaTitle.uppercased()),
-                boundary: resolvedBoundary,
+                snapshot: snapshot,
+                boundary: boundary,
                 coordinate: coordinate,
-                horizontalAccuracy: horizontalAccuracy
+                horizontalAccuracy: horizontalAccuracy,
+                failure: failure
             )
-            if resolvedBoundary != nil {
+            if boundary != nil {
                 traceToken += 1
             }
-        } catch {
-            state = .profileUnavailable(
-                snapshot: DemographicSnapshot.status(for: status, market: status.fallbackMarket),
-                boundary: nil,
-                coordinate: coordinate,
-                horizontalAccuracy: horizontalAccuracy
-            )
         }
     }
 
     private var currentLoadedProfile: CachedCityProfile? {
         switch state {
-        case .refreshing(let profile), .loaded(let profile):
+        case .refreshing(let profile, _), .loaded(let profile, _):
             return profile
-        case .idle, .requestingLocation, .loading, .locationUnavailable, .profileUnavailable:
+        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable, .profileUnavailable:
             return nil
+        }
+    }
+
+    private var currentLoadedProfileIsStale: Bool {
+        switch state {
+        case .refreshing(_, let isStale), .loaded(_, let isStale):
+            return isStale
+        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable, .profileUnavailable:
+            return false
         }
     }
 
     private static func coordinateKey(for coordinate: CLLocationCoordinate2D) -> String {
         String(format: "%.4f,%.4f", coordinate.latitude, coordinate.longitude)
     }
+
+    private static func isMeaningfullyDifferent(
+        _ lhs: CLLocationCoordinate2D,
+        from rhs: CLLocationCoordinate2D,
+        thresholdMeters: CLLocationDistance
+    ) -> Bool {
+        let start = CLLocation(latitude: lhs.latitude, longitude: lhs.longitude)
+        let end = CLLocation(latitude: rhs.latitude, longitude: rhs.longitude)
+        return start.distance(from: end) > thresholdMeters
+    }
 }
 
 extension LocationProfileViewModel: CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let authorizationStatus = manager.authorizationStatus
         Task { @MainActor [weak self] in
-            guard let self else { return }
-            switch manager.authorizationStatus {
-            case .authorizedAlways, .authorizedWhenInUse:
-                manager.requestLocation()
-            case .denied, .restricted:
-                state = .locationUnavailable
-            case .notDetermined:
-                state = .requestingLocation
-            @unknown default:
-                state = .locationUnavailable
-            }
+            self?.handleAuthorizationChange(authorizationStatus)
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         Task { @MainActor [weak self] in
-            self?.load(for: location)
+            self?.handleLocationUpdate(location)
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        let authorizationStatus = manager.authorizationStatus
         Task { @MainActor [weak self] in
-            guard let self else { return }
-            if currentLoadedProfile == nil {
-                state = manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted
-                    ? .locationUnavailable
-                    : .requestingLocation
-            }
+            self?.handleLocationFailure(authorizationStatus: authorizationStatus)
         }
     }
 }
@@ -318,9 +373,31 @@ struct CachedCityProfile: Codable, Sendable {
     let latitude: Double
     let longitude: Double
     let horizontalAccuracy: Double?
+    let cachedAt: Date?
+
+    init(
+        snapshot: DemographicSnapshot,
+        boundary: GeoJSONFeatureCollection,
+        latitude: Double,
+        longitude: Double,
+        horizontalAccuracy: Double?,
+        cachedAt: Date? = nil
+    ) {
+        self.snapshot = snapshot
+        self.boundary = boundary
+        self.latitude = latitude
+        self.longitude = longitude
+        self.horizontalAccuracy = horizontalAccuracy
+        self.cachedAt = cachedAt
+    }
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    func isExpired(at date: Date, maxAge: TimeInterval) -> Bool {
+        guard let cachedAt else { return true }
+        return date.timeIntervalSince(cachedAt) > maxAge
     }
 }
 
@@ -340,5 +417,9 @@ struct CityProfileCacheStore {
     func save(_ profile: CachedCityProfile) {
         guard let data = try? JSONEncoder().encode(profile) else { return }
         defaults.set(data, forKey: key)
+    }
+
+    func clear() {
+        defaults.removeObject(forKey: key)
     }
 }

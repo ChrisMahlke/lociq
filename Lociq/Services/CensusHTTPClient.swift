@@ -1,7 +1,7 @@
 import Foundation
 
 final class CensusHTTPClient: @unchecked Sendable {
-    private typealias ServiceError = CensusZipDemographicsService.ServiceError
+    private typealias ServiceError = CensusCityProfileService.ServiceError
 
     private let session: URLSession
 

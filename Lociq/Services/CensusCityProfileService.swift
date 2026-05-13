@@ -1,5 +1,5 @@
 //
-//  CensusZipDemographicsService.swift
+//  CensusCityProfileService.swift
 //  Lociq
 //
 //  Coordinator for Census-backed city lookup and normalization.
@@ -7,12 +7,11 @@
 
 import Foundation
 
-public final class CensusZipDemographicsService: @unchecked Sendable {
+public final class CensusCityProfileService: @unchecked Sendable {
     public enum ServiceError: Error, LocalizedError {
         case invalidURL
         case requestFailed(status: Int, bodySnippet: String)
         case decodeFailed(String)
-        case noZCTAFound
         case noBoundaryFound
         case noDemographicsFound
 
@@ -21,14 +20,13 @@ public final class CensusZipDemographicsService: @unchecked Sendable {
             case .invalidURL: return "Invalid URL"
             case .requestFailed(let status, let body): return "HTTP \(status): \(body)"
             case .decodeFailed(let message): return "Decode failed: \(message)"
-            case .noZCTAFound: return "No ZCTA found for coordinate"
             case .noBoundaryFound: return "No boundary found"
             case .noDemographicsFound: return "No demographics returned"
             }
         }
     }
 
-    private let directClient: DirectCensusZipDemographicsClient
+    private let directClient: DirectCensusCityProfileClient
     private let lookupCache = CityLookupCache()
 
     public nonisolated init(
@@ -36,14 +34,14 @@ public final class CensusZipDemographicsService: @unchecked Sendable {
         acsYear: Int = 2024,
         session: URLSession = .shared
     ) {
-        directClient = DirectCensusZipDemographicsClient(
+        directClient = DirectCensusCityProfileClient(
             censusApiKey: censusApiKey,
             acsYear: acsYear,
             session: session
         )
     }
 
-    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile {
+    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedCityProfile {
         let cacheKey = Self.coordinateCacheKey(latitude: latitude, longitude: longitude)
 
         if let cached = await lookupCache.placeProfile(for: cacheKey) {
@@ -61,13 +59,13 @@ public final class CensusZipDemographicsService: @unchecked Sendable {
 }
 
 private actor CityLookupCache {
-    private var placeProfiles: [String: ResolvedPlaceProfile] = [:]
+    private var placeProfiles: [String: ResolvedCityProfile] = [:]
 
-    func placeProfile(for key: String) -> ResolvedPlaceProfile? {
+    func placeProfile(for key: String) -> ResolvedCityProfile? {
         placeProfiles[key]
     }
 
-    func store(placeProfile: ResolvedPlaceProfile, for key: String) {
+    func store(placeProfile: ResolvedCityProfile, for key: String) {
         placeProfiles[key] = placeProfile
     }
 }

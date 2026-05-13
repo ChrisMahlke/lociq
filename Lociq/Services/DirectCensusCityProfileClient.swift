@@ -1,5 +1,5 @@
 //
-//  DirectCensusZipDemographicsClient.swift
+//  DirectCensusCityProfileClient.swift
 //  Lociq
 //
 //  Coordinates Census geocoding, ACS demographics, and TIGER city boundaries.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class DirectCensusZipDemographicsClient: @unchecked Sendable {
+final class DirectCensusCityProfileClient: @unchecked Sendable {
     private let geocoderClient: CensusGeocoderClient
     private let boundaryClient: TIGERBoundaryClient
     private let demographicsClient: ACSDemographicsClient
@@ -27,35 +27,31 @@ final class DirectCensusZipDemographicsClient: @unchecked Sendable {
         )
     }
 
-    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedPlaceProfile {
-        let geography = try await geocoderClient.fetchGeographiesFromCoordinate(
+    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedCityProfile {
+        let geographies = try await geocoderClient.fetchGeographiesFromCoordinate(
             latitude: latitude,
             longitude: longitude
         )
-        let zipDemographics = try await demographicsClient.fetchDemographics(zcta: geography.zcta)
-        let zipBundle = ZipLookupResult(
-            zcta: geography.zcta,
-            county: geography.county,
-            place: geography.place,
-            demographics: zipDemographics
+        let geography = CityGeographyProfile(
+            county: geographies.county,
+            place: geographies.place
         )
 
         async let cityBoundaryTask = boundaryClient.fetchPlaceBoundary(place: geography.place)
         async let placeDemographicsTask = fetchPlaceDemographics(place: geography.place)
 
-        return await ResolvedPlaceProfile(
-            zipBundle: zipBundle,
-            boundaries: NeighborhoodBoundarySet(city: cityBoundaryTask),
-            scaleDemographics: ScaleDemographicsBundle(
-                place: try? placeDemographicsTask,
-                zip: zipDemographics
+        return await ResolvedCityProfile(
+            geography: geography,
+            boundarySet: CityBoundarySet(city: cityBoundaryTask),
+            demographics: CityDemographicsBundle(
+                place: try? placeDemographicsTask
             )
         )
     }
 
     private func fetchPlaceDemographics(place: PlaceInfo?) async throws -> Demographics {
         guard let place else {
-            throw CensusZipDemographicsService.ServiceError.noDemographicsFound
+            throw CensusCityProfileService.ServiceError.noDemographicsFound
         }
 
         return try await demographicsClient.fetchDemographics(place: place)

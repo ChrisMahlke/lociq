@@ -3,13 +3,22 @@ import Foundation
 struct DemographicSnapshot: Codable, Sendable {
     enum LocationStatus {
         case censusKeyMissing
-        case acsUnavailable
+        case cityUnavailable
+        case demographicsUnavailable
+        case boundaryUnavailable
+        case serviceUnavailable
 
         var fallbackMarket: String {
             switch self {
             case .censusKeyMissing:
                 return "CENSUS KEY"
-            case .acsUnavailable:
+            case .cityUnavailable:
+                return "CITY"
+            case .demographicsUnavailable:
+                return "DEMOGRAPHICS"
+            case .boundaryUnavailable:
+                return "BOUNDARY"
+            case .serviceUnavailable:
                 return "ACS"
             }
         }
@@ -57,7 +66,28 @@ struct DemographicSnapshot: Codable, Sendable {
                 cadence: "ADD API KEY",
                 mode: "NO KEY"
             )
-        case .acsUnavailable:
+        case .cityUnavailable:
+            return DemographicSnapshot.status(
+                market: market,
+                dateLabel: "CITY",
+                cadence: "NOT FOUND",
+                mode: "NO CITY"
+            )
+        case .demographicsUnavailable:
+            return DemographicSnapshot.status(
+                market: market,
+                dateLabel: "ACS",
+                cadence: "NO DATA",
+                mode: "NO DATA"
+            )
+        case .boundaryUnavailable:
+            return DemographicSnapshot.status(
+                market: market,
+                dateLabel: "BOUNDARY",
+                cadence: "NO OUTLINE",
+                mode: "NO BOUNDARY"
+            )
+        case .serviceUnavailable:
             return DemographicSnapshot.status(
                 market: market,
                 dateLabel: "ACS",
@@ -86,10 +116,23 @@ struct DemographicSnapshot: Codable, Sendable {
             detailSections: []
         )
     }
+
+    func replacingDateLabel(_ dateLabel: String) -> DemographicSnapshot {
+        DemographicSnapshot(
+            market: market,
+            dateLabel: dateLabel,
+            cadence: cadence,
+            mode: mode,
+            confidence: confidence,
+            hasDemographicData: hasDemographicData,
+            metrics: metrics,
+            detailSections: detailSections
+        )
+    }
 }
 
 extension DemographicSnapshot {
-    init(profile: ResolvedPlaceProfile, demographics: Demographics) {
+    init(profile: ResolvedCityProfile, demographics: Demographics) {
         let households = DemographicValueFormatter.households(from: demographics)
         let ownerPct = DemographicValueFormatter.percent(demographics.ownerOccupiedPct)
 
@@ -173,12 +216,8 @@ enum DemographicValueFormatter {
         return formatter
     }()
 
-    static func title(from profile: ResolvedPlaceProfile) -> String {
-        if let placeName = profile.zipBundle.place?.name, !placeName.isEmpty {
-            return cleanGeographyName(placeName)
-        }
-
-        return cleanGeographyName(profile.zipBundle.demographics.name)
+    static func title(from profile: ResolvedCityProfile) -> String {
+        title(from: profile.geography)
     }
 
     static func title(from geography: CensusGeographiesBundle) -> String {
@@ -188,7 +227,17 @@ enum DemographicValueFormatter {
         if let countyName = geography.county?.name, !countyName.isEmpty {
             return cleanGeographyName(countyName)
         }
-        return "ZIP \(geography.zcta)"
+        return "CITY"
+    }
+
+    static func title(from geography: CityGeographyProfile) -> String {
+        if let placeName = geography.place?.name, !placeName.isEmpty {
+            return cleanGeographyName(placeName)
+        }
+        if let countyName = geography.county?.name, !countyName.isEmpty {
+            return cleanGeographyName(countyName)
+        }
+        return "CITY"
     }
 
     static func cityTitle(from geography: CensusGeographiesBundle) -> String? {

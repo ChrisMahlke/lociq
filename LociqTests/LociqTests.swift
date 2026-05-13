@@ -30,9 +30,8 @@ struct LociqTests {
 
     @Test func cityProfileSnapshotUsesPlaceLevelDemographics() async throws {
         let demographics = Self.cambridgeDemographics()
-        let profile = ResolvedPlaceProfile(
-            zipBundle: ZipLookupResult(
-                zcta: "02139",
+        let profile = ResolvedCityProfile(
+            geography: CityGeographyProfile(
                 county: CountyInfo(
                     name: "Middlesex County",
                     stateFIPS: "25",
@@ -44,13 +43,11 @@ struct LociqTests {
                     stateFIPS: "25",
                     placeFIPS: "11000",
                     type: .incorporatedPlace
-                ),
-                demographics: Self.zipDemographics()
+                )
             ),
-            boundaries: NeighborhoodBoundarySet(city: Self.sampleBoundary()),
-            scaleDemographics: ScaleDemographicsBundle(
-                place: demographics,
-                zip: Self.zipDemographics()
+            boundarySet: CityBoundarySet(city: Self.sampleBoundary()),
+            demographics: CityDemographicsBundle(
+                place: demographics
             )
         )
 
@@ -145,33 +142,6 @@ private extension LociqTests {
             blackAlone: 10_000,
             asianAlone: 20_000,
             hispanicOrLatino: 9_000
-        )
-    }
-
-    static func zipDemographics() -> Demographics {
-        Demographics(
-            name: "ZCTA5 02139",
-            population: 39_000,
-            medianHouseholdIncome: 112_000,
-            medianAge: 29.5,
-            housingUnits: 18_000,
-            medianHomeValue: 885_000,
-            medianGrossRent: 2_300,
-            averageHouseholdSize: 2.0,
-            ownerOccupied: 6_000,
-            renterOccupied: 11_000,
-            ownerOccupiedPct: 35.0,
-            renterOccupiedPct: 65.0,
-            workersTotal: 24_000,
-            workersWfh: 6_000,
-            workersWfhPct: 25.0,
-            povertyUniverse: 36_000,
-            povertyBelow: 4_000,
-            povertyRatePct: 11.1,
-            whiteAlone: 23_000,
-            blackAlone: 3_000,
-            asianAlone: 7_000,
-            hispanicOrLatino: 3_000
         )
     }
 
