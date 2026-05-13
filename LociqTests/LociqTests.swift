@@ -5,9 +5,12 @@
 //  Created by Chris Mahlke on 3/2/26.
 //
 
+import CoreLocation
+import Foundation
 import Testing
 @testable import Lociq
 
+@MainActor
 struct LociqTests {
     @Test func formatsNumberAndCurrencyValues() async throws {
         #expect(InsightsFormatting.number(12345) == "12,345")
@@ -24,5 +27,184 @@ struct LociqTests {
         #expect(InsightsFormatting.demographicShare(25, totalPopulation: 100) == 0.25)
         #expect(InsightsFormatting.demographicShare(nil, totalPopulation: 100) == 0)
         #expect(InsightsFormatting.demographicShare(10, totalPopulation: 0) == 0)
+    }
+
+    @Test func cityProfileSnapshotUsesPlaceLevelDemographics() async throws {
+        let demographics = Self.cambridgeDemographics()
+        let profile = ResolvedPlaceProfile(
+            zipBundle: ZipLookupResult(
+                zcta: "02139",
+                county: CountyInfo(
+                    name: "Middlesex County",
+                    stateFIPS: "25",
+                    countyFIPS: "017",
+                    geoid: "25017"
+                ),
+                tract: nil,
+                place: PlaceInfo(
+                    name: "Cambridge city, Massachusetts",
+                    stateFIPS: "25",
+                    placeFIPS: "11000",
+                    type: .incorporatedPlace
+                ),
+                isIncorporatedPlace: true,
+                boundary: Self.sampleBoundary(),
+                boundaryMetrics: nil,
+                demographics: Self.zipDemographics(),
+                insights: []
+            ),
+            boundaries: NeighborhoodBoundarySet(
+                zip: Self.sampleBoundary(),
+                city: Self.sampleBoundary(),
+                tract: nil,
+                block: nil
+            ),
+            scaleDemographics: ScaleDemographicsBundle(
+                place: demographics,
+                zip: Self.zipDemographics(),
+                tract: nil
+            )
+        )
+
+        let snapshot = DemographicSnapshot(profile: profile, demographics: demographics)
+
+        #expect(snapshot.market == "CAMBRIDGE, MASSACHUSETTS")
+        #expect(snapshot.metrics.first?.title == "POPULATION")
+        #expect(snapshot.metrics.first?.primaryValue == "118,214")
+        #expect(snapshot.metrics.first?.detail == "MEDIAN AGE 30.8")
+        #expect(snapshot.detailSections.map(\.title) == ["AGE", "HOUSING", "MOBILITY"])
+    }
+
+    @Test func cachedCityProfileDecodesCacheWithoutHorizontalAccuracy() async throws {
+        let legacyCacheJSON = """
+        {
+          "snapshot": {
+            "market": "CAMBRIDGE, MASSACHUSETTS",
+            "dateLabel": "",
+            "cadence": "",
+            "mode": "DEMOGRAPHICS",
+            "confidence": 0.84,
+            "hasDemographicData": true,
+            "metrics": [
+              {
+                "title": "POPULATION",
+                "primaryValue": "118,214",
+                "detail": "MEDIAN AGE 30.8"
+              }
+            ],
+            "detailSections": []
+          },
+          "boundary": {
+            "type": "FeatureCollection",
+            "features": [
+              {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [[[-71.12, 42.36], [-71.08, 42.36], [-71.08, 42.39], [-71.12, 42.39], [-71.12, 42.36]]]
+                }
+              }
+            ]
+          },
+          "latitude": 42.3736,
+          "longitude": -71.1056
+        }
+        """
+
+        let data = try #require(legacyCacheJSON.data(using: .utf8))
+        let profile = try JSONDecoder().decode(CachedCityProfile.self, from: data)
+
+        #expect(profile.snapshot.market == "CAMBRIDGE, MASSACHUSETTS")
+        #expect(profile.horizontalAccuracy == nil)
+        #expect(profile.coordinate.latitude == 42.3736)
+        #expect(profile.coordinate.longitude == -71.1056)
+    }
+}
+
+private extension LociqTests {
+    static func cambridgeDemographics() -> Demographics {
+        Demographics(
+            name: "Cambridge city, Massachusetts",
+            population: 118_214,
+            medianHouseholdIncome: 121_539,
+            medianAge: 30.8,
+            housingUnits: 54_000,
+            medianHomeValue: 940_000,
+            medianGrossRent: 2_475,
+            averageHouseholdSize: 2.1,
+            ownerOccupied: 18_000,
+            renterOccupied: 33_000,
+            ownerOccupiedPct: 35.3,
+            renterOccupiedPct: 64.7,
+            workersTotal: 72_000,
+            workersWfh: 19_000,
+            workersWfhPct: 26.4,
+            transitCommuters: 18_500,
+            transitCommutersPct: 25.7,
+            averageCommuteMinutes: 27.2,
+            vacantHousingUnits: 3_000,
+            vacancyRatePct: 5.6,
+            under18Pct: 12.0,
+            age18To34Pct: 43.0,
+            age35To64Pct: 32.0,
+            age65PlusPct: 13.0,
+            bachelorsOrHigherPct: 81.0,
+            povertyUniverse: 112_000,
+            povertyBelow: 13_500,
+            povertyRatePct: 12.1,
+            whiteAlone: 74_000,
+            blackAlone: 10_000,
+            asianAlone: 20_000,
+            hispanicOrLatino: 9_000
+        )
+    }
+
+    static func zipDemographics() -> Demographics {
+        Demographics(
+            name: "ZCTA5 02139",
+            population: 39_000,
+            medianHouseholdIncome: 112_000,
+            medianAge: 29.5,
+            housingUnits: 18_000,
+            medianHomeValue: 885_000,
+            medianGrossRent: 2_300,
+            averageHouseholdSize: 2.0,
+            ownerOccupied: 6_000,
+            renterOccupied: 11_000,
+            ownerOccupiedPct: 35.0,
+            renterOccupiedPct: 65.0,
+            workersTotal: 24_000,
+            workersWfh: 6_000,
+            workersWfhPct: 25.0,
+            povertyUniverse: 36_000,
+            povertyBelow: 4_000,
+            povertyRatePct: 11.1,
+            whiteAlone: 23_000,
+            blackAlone: 3_000,
+            asianAlone: 7_000,
+            hispanicOrLatino: 3_000
+        )
+    }
+
+    static func sampleBoundary() -> GeoJSONFeatureCollection {
+        GeoJSONFeatureCollection(
+            type: "FeatureCollection",
+            features: [
+                GeoJSONFeature(
+                    type: "Feature",
+                    properties: [:],
+                    geometry: .polygon([
+                        [
+                            [-71.12, 42.36],
+                            [-71.08, 42.36],
+                            [-71.08, 42.39],
+                            [-71.12, 42.39],
+                            [-71.12, 42.36]
+                        ]
+                    ])
+                )
+            ]
+        )
     }
 }

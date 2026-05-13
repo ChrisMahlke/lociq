@@ -10,6 +10,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var locationProfile: LocationProfileViewModel
     @State private var isShowingDetails = false
     @State private var isLoadingContent = false
@@ -38,9 +39,7 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let topInset = max(54, geometry.safeAreaInsets.top + 34)
-            let bottomReserve: CGFloat = geometry.size.height < 520 ? 168 : 190
-            let detailHeight = max(120, geometry.size.height - topInset - bottomReserve)
+            let layout = MinimalLayout(geometry: geometry)
 
             ZStack(alignment: .topTrailing) {
                 MinimalBackground()
@@ -49,17 +48,19 @@ struct ContentView: View {
                     ZipBoundaryPreview(
                         boundary: boundary,
                         coordinate: activeCoordinate,
-                        traceToken: locationProfile.traceToken
+                        horizontalAccuracy: locationProfile.horizontalAccuracy,
+                        traceToken: locationProfile.traceToken,
+                        reduceMotion: reduceMotion
                     )
                         .frame(
-                            width: min(max(geometry.size.width * 0.28, 96), 142),
-                            height: min(max(geometry.size.height * 0.19, 112), 158)
+                            width: layout.boundarySize.width,
+                            height: layout.boundarySize.height
                         )
                         .anchorPreference(key: BoundaryCityConnectionPreferenceKey.self, value: .bounds) {
                             BoundaryCityConnectionAnchors(boundary: $0)
                         }
-                        .padding(.top, topInset + 96)
-                        .padding(.leading, 30)
+                        .padding(.top, layout.boundaryTop)
+                        .padding(.leading, layout.boundaryLeading)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .accessibilityLabel("City boundary")
                 }
@@ -67,38 +68,42 @@ struct ContentView: View {
                 if !isWaitingForInitialData {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(alignment: .trailing, spacing: 34) {
-                            HeaderBlock(snapshot: displaySnapshot)
+                            HeaderBlock(snapshot: displaySnapshot, layout: layout)
 
                             FadingContentPanel(
                                 snapshot: displaySnapshot,
-                                isShowingDetails: isShowingDetails
+                                isShowingDetails: isShowingDetails,
+                                layout: layout,
+                                reduceMotion: reduceMotion
                             )
                             .frame(
-                                maxWidth: isShowingDetails ? min(geometry.size.width * 0.50, 246) : .infinity,
+                                maxWidth: isShowingDetails ? layout.detailContentWidth : .infinity,
                                 alignment: .trailing
                             )
                         }
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                     .frame(
-                        maxWidth: min(geometry.size.width * 0.64, 340),
-                        maxHeight: detailHeight,
+                        maxWidth: layout.contentWidth,
+                        maxHeight: layout.detailHeight,
                         alignment: .topTrailing
                     )
-                    .padding(.top, topInset)
-                    .padding(.trailing, 28)
+                    .padding(.top, layout.topInset)
+                    .padding(.trailing, layout.trailingInset)
                 }
 
                 BottomIdentity(
                     snapshot: displaySnapshot,
                     isShowingDetails: isShowingDetails,
                     isLoading: isLoadingContent || locationProfile.isLoading,
-                    isWaitingForInitialData: isWaitingForInitialData
+                    isWaitingForInitialData: isWaitingForInitialData,
+                    brandFontSize: layout.brandFontSize,
+                    reduceMotion: reduceMotion
                 ) {
                     cycleContent()
                 }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, max(30, geometry.safeAreaInsets.bottom + 20))
+                    .padding(.horizontal, layout.horizontalInset)
+                    .padding(.bottom, layout.bottomInset)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
@@ -117,7 +122,8 @@ struct ContentView: View {
                                 y: boundaryRect.minY + boundaryPathCenter.y
                             ),
                             end: CGPoint(x: cityRect.minX - 9, y: cityRect.midY),
-                            traceToken: locationProfile.traceToken
+                            traceToken: locationProfile.traceToken,
+                            reduceMotion: reduceMotion
                         )
                     }
                 }
@@ -140,21 +146,135 @@ struct ContentView: View {
         guard !isLoadingContent else { return }
         guard displaySnapshot.hasDemographicData else { return }
 
-        withAnimation(.easeInOut(duration: 0.18)) {
+        Haptics.selectionChanged()
+
+        withAnimation(LociqMotion.quick(reduceMotion: reduceMotion)) {
             isLoadingContent = true
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            withAnimation(.easeInOut(duration: 0.62)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + LociqMotion.phaseDelay(reduceMotion: reduceMotion)) {
+            withAnimation(LociqMotion.content(reduceMotion: reduceMotion)) {
                 isShowingDetails.toggle()
             }
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.05) {
-            withAnimation(.easeInOut(duration: 0.32)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + LociqMotion.contentCycleDuration(reduceMotion: reduceMotion)) {
+            withAnimation(LociqMotion.settle(reduceMotion: reduceMotion)) {
                 isLoadingContent = false
             }
         }
+    }
+}
+
+private struct MinimalLayout {
+    let isCompactWidth: Bool
+    let isShortHeight: Bool
+    let topInset: CGFloat
+    let bottomInset: CGFloat
+    let bottomReserve: CGFloat
+    let detailHeight: CGFloat
+    let contentWidth: CGFloat
+    let detailContentWidth: CGFloat
+    let trailingInset: CGFloat
+    let horizontalInset: CGFloat
+    let boundarySize: CGSize
+    let boundaryTop: CGFloat
+    let boundaryLeading: CGFloat
+    let cityFontSize: CGFloat
+    let metricTitleSize: CGFloat
+    let metricValueSize: CGFloat
+    let metricDetailSize: CGFloat
+    let brandFontSize: CGFloat
+    let detailValueSize: CGFloat
+    let detailLabelWordSize: CGFloat
+    let detailLabelNumberSize: CGFloat
+
+    init(geometry: GeometryProxy) {
+        let width = geometry.size.width
+        let height = geometry.size.height
+        isCompactWidth = width < 380
+        isShortHeight = height < 700
+        topInset = max(isShortHeight ? 44 : 54, geometry.safeAreaInsets.top + (isShortHeight ? 24 : 34))
+        bottomInset = max(isShortHeight ? 22 : 30, geometry.safeAreaInsets.bottom + (isShortHeight ? 14 : 20))
+        bottomReserve = height < 520 ? 168 : (isShortHeight ? 174 : 190)
+        detailHeight = max(112, height - topInset - bottomReserve)
+        trailingInset = isCompactWidth ? 22 : 28
+        horizontalInset = isCompactWidth ? 20 : 24
+        contentWidth = min(width * (isCompactWidth ? 0.68 : 0.64), isCompactWidth ? 292 : 340)
+        detailContentWidth = min(width * (isCompactWidth ? 0.55 : 0.50), isCompactWidth ? 214 : 246)
+        boundarySize = CGSize(
+            width: min(max(width * (isCompactWidth ? 0.25 : 0.28), isCompactWidth ? 82 : 96), isCompactWidth ? 118 : 142),
+            height: min(max(height * (isShortHeight ? 0.16 : 0.19), isShortHeight ? 92 : 112), isShortHeight ? 132 : 158)
+        )
+        boundaryTop = topInset + (isShortHeight ? 78 : 96)
+        boundaryLeading = isCompactWidth ? 24 : 30
+        cityFontSize = isCompactWidth ? 24 : 28
+        metricTitleSize = isCompactWidth ? 13 : 14
+        metricValueSize = isCompactWidth ? 17 : 18
+        metricDetailSize = isCompactWidth ? 11.5 : 12
+        brandFontSize = isCompactWidth ? 22 : 24
+        detailValueSize = isCompactWidth ? 16 : 17
+        detailLabelWordSize = isCompactWidth ? 9 : 9.5
+        detailLabelNumberSize = isCompactWidth ? 12 : 12.5
+    }
+}
+
+private enum LociqMotion {
+    static let quickDuration = 0.18
+    static let contentDuration = 0.58
+    static let settleDuration = 0.32
+    static let boundaryTraceDuration = 2.2
+    static let boundaryTraceDelay = 0.18
+    static let connectorDuration = 1.05
+    static let connectorDelay = 2.55
+    static let pulseDuration = 1.75
+    static let loadingSweepDuration = 0.82
+    static let loadingSweepPauseNanoseconds: UInt64 = 860_000_000
+    static let phaseDelay = 0.22
+    static let contentCycleDuration = 1.05
+
+    static var quick: Animation { .easeInOut(duration: quickDuration) }
+    static var content: Animation { .easeInOut(duration: contentDuration) }
+    static var settle: Animation { .easeInOut(duration: settleDuration) }
+    static var boundaryTrace: Animation { .easeInOut(duration: boundaryTraceDuration).delay(boundaryTraceDelay) }
+    static var connector: Animation { .easeOut(duration: connectorDuration).delay(connectorDelay) }
+    static var pulse: Animation { .easeOut(duration: pulseDuration).repeatForever(autoreverses: false) }
+    static var loadingSweep: Animation { .linear(duration: loadingSweepDuration) }
+
+    static func quick(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .linear(duration: 0.01) : quick
+    }
+
+    static func content(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeInOut(duration: 0.12) : content
+    }
+
+    static func settle(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .linear(duration: 0.01) : settle
+    }
+
+    static func boundaryTrace(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : boundaryTrace
+    }
+
+    static func connector(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : connector
+    }
+
+    static func pulse(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : pulse
+    }
+
+    static func loadingSweep(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : loadingSweep
+    }
+
+    static func phaseDelay(reduceMotion: Bool) -> Double {
+        reduceMotion ? 0.05 : phaseDelay
+    }
+
+    static func contentCycleDuration(reduceMotion: Bool) -> Double {
+        reduceMotion ? 0.18 : contentCycleDuration
     }
 }
 
@@ -210,13 +330,17 @@ private struct MinimalBackground: View {
 
 private struct HeaderBlock: View {
     let snapshot: DemographicSnapshot
+    let layout: MinimalLayout
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 6) {
             Text(snapshot.market)
-                .font(.system(size: 28, weight: .light, design: .rounded))
+                .font(.system(size: layout.cityFontSize, weight: .light, design: .rounded))
                 .foregroundStyle(.white)
                 .monospacedDigit()
+                .lineLimit(2)
+                .minimumScaleFactor(0.74)
+                .allowsTightening(true)
                 .anchorPreference(key: BoundaryCityConnectionPreferenceKey.self, value: .bounds) {
                     BoundaryCityConnectionAnchors(city: $0)
                 }
@@ -235,22 +359,27 @@ private struct HeaderBlock: View {
 
 private struct MetricBlock: View {
     let metric: DemographicMetric
+    let layout: MinimalLayout
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 5) {
             Text(metric.title)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .font(.system(size: layout.metricTitleSize, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.78))
 
             Text(metric.primaryValue)
-                .font(.system(size: 18, weight: .light, design: .rounded))
+                .font(.system(size: layout.metricValueSize, weight: .light, design: .rounded))
                 .foregroundStyle(.white)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+                .allowsTightening(true)
 
             Text(metric.detail)
-                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .font(.system(size: layout.metricDetailSize, weight: .regular, design: .rounded))
                 .foregroundStyle(.white.opacity(0.54))
                 .lineLimit(2)
+                .minimumScaleFactor(0.82)
                 .multilineTextAlignment(.trailing)
         }
         .accessibilityElement(children: .combine)
@@ -262,6 +391,8 @@ private struct BottomIdentity: View {
     let isShowingDetails: Bool
     let isLoading: Bool
     let isWaitingForInitialData: Bool
+    var brandFontSize: CGFloat = 24
+    var reduceMotion = false
     let onShowDetails: () -> Void
 
     private var iconName: String {
@@ -280,7 +411,7 @@ private struct BottomIdentity: View {
                         Text("LOC")
                         Text("IQ")
                     }
-                    .font(.system(size: 24, weight: .ultraLight, design: .rounded))
+                    .font(.system(size: brandFontSize, weight: .ultraLight, design: .rounded))
                     .foregroundStyle(.white.opacity(0.74))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -303,7 +434,7 @@ private struct BottomIdentity: View {
                     }
                 }
 
-                ProgressLine(progress: snapshot.confidence, isLoading: isLoading)
+                ProgressLine(progress: snapshot.confidence, isLoading: isLoading, reduceMotion: reduceMotion)
             }
             .frame(maxWidth: 520)
         }
@@ -315,29 +446,42 @@ private struct BottomIdentity: View {
 private struct FadingContentPanel: View {
     let snapshot: DemographicSnapshot
     let isShowingDetails: Bool
+    let layout: MinimalLayout
+    let reduceMotion: Bool
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
             if isShowingDetails {
-                DetailContent(snapshot: snapshot)
-                    .transition(.opacity)
+                DetailContent(snapshot: snapshot, layout: layout)
+                    .opacity(0.9)
+                    .offset(y: reduceMotion ? 0 : (layout.isShortHeight ? -2 : 2))
+                    .transition(contentTransition)
             } else {
-                MetricContent(metrics: snapshot.metrics)
-                    .transition(.opacity)
+                MetricContent(metrics: snapshot.metrics, layout: layout)
+                    .transition(contentTransition)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topTrailing)
-        .animation(.easeInOut(duration: 0.58), value: isShowingDetails)
+        .animation(LociqMotion.content(reduceMotion: reduceMotion), value: isShowingDetails)
+    }
+
+    private var contentTransition: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .opacity.combined(with: .move(edge: .trailing)),
+            removal: .opacity
+        )
     }
 }
 
 private struct MetricContent: View {
     let metrics: [DemographicMetric]
+    let layout: MinimalLayout
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 22) {
+        VStack(alignment: .trailing, spacing: layout.isShortHeight ? 18 : 22) {
             ForEach(metrics) { metric in
-                MetricBlock(metric: metric)
+                MetricBlock(metric: metric, layout: layout)
             }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -346,11 +490,12 @@ private struct MetricContent: View {
 
 private struct DetailContent: View {
     let snapshot: DemographicSnapshot
+    let layout: MinimalLayout
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 18) {
+        VStack(alignment: .trailing, spacing: layout.isShortHeight ? 14 : 18) {
             ForEach(snapshot.detailSections) { section in
-                DetailSectionView(section: section)
+                DetailSectionView(section: section, layout: layout)
             }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -360,7 +505,9 @@ private struct DetailContent: View {
 private struct ZipBoundaryPreview: View {
     let boundary: GeoJSONFeatureCollection
     let coordinate: CLLocationCoordinate2D?
+    let horizontalAccuracy: CLLocationAccuracy?
     let traceToken: Int
+    let reduceMotion: Bool
     @State private var traceProgress: CGFloat = 0
 
     var body: some View {
@@ -379,8 +526,11 @@ private struct ZipBoundaryPreview: View {
                     in: CGRect(origin: .zero, size: proxy.size),
                     fittingTo: boundary
                    ) {
-                    PulsingLocationDot()
-                        .position(locationPoint)
+                    let dotStyle = LocationDotStyle(accuracy: horizontalAccuracy)
+                    if dotStyle.isVisible {
+                        PulsingLocationDot(style: dotStyle, reduceMotion: reduceMotion)
+                            .position(locationPoint)
+                    }
                 }
             }
             .background(Color.clear)
@@ -396,33 +546,89 @@ private struct ZipBoundaryPreview: View {
 
     private func traceBoundary() {
         withAnimation(.none) {
-            traceProgress = 0
+            traceProgress = reduceMotion ? 1 : 0
         }
-        withAnimation(.easeInOut(duration: 2.2).delay(0.18)) {
+
+        guard let animation = LociqMotion.boundaryTrace(reduceMotion: reduceMotion) else { return }
+        withAnimation(animation) {
             traceProgress = 1
         }
     }
 }
 
+private struct LocationDotStyle {
+    let tintOpacity: Double
+    let ringOpacity: Double
+    let coreDiameter: CGFloat
+    let ringDiameter: CGFloat
+    let pulseScale: CGFloat
+    let isVisible: Bool
+
+    init(accuracy: CLLocationAccuracy?) {
+        guard let accuracy, accuracy >= 0 else {
+            tintOpacity = 0.86
+            ringOpacity = 0.38
+            coreDiameter = 3.2
+            ringDiameter = 12
+            pulseScale = 2.1
+            isVisible = true
+            return
+        }
+
+        if accuracy <= 100 {
+            tintOpacity = 0.95
+            ringOpacity = 0.52
+            coreDiameter = 3.8
+            ringDiameter = 10
+            pulseScale = 1.85
+            isVisible = true
+        } else if accuracy <= 1_000 {
+            tintOpacity = 0.82
+            ringOpacity = 0.34
+            coreDiameter = 3.2
+            ringDiameter = 13
+            pulseScale = 2.35
+            isVisible = true
+        } else if accuracy <= 5_000 {
+            tintOpacity = 0.64
+            ringOpacity = 0.22
+            coreDiameter = 2.8
+            ringDiameter = 15
+            pulseScale = 2.75
+            isVisible = true
+        } else {
+            tintOpacity = 0.64
+            ringOpacity = 0.22
+            coreDiameter = 2.8
+            ringDiameter = 15
+            pulseScale = 2.75
+            isVisible = false
+        }
+    }
+}
+
 private struct PulsingLocationDot: View {
+    let style: LocationDotStyle
+    let reduceMotion: Bool
     @State private var isPulsing = false
     private let locationTint = Color(red: 1.0, green: 0.82, blue: 0.22)
 
     var body: some View {
         ZStack {
             Circle()
-                .stroke(locationTint.opacity(isPulsing ? 0.0 : 0.46), lineWidth: 0.8)
-                .frame(width: 12, height: 12)
-                .scaleEffect(isPulsing ? 2.25 : 0.55)
+                .stroke(locationTint.opacity(isPulsing ? 0.0 : style.ringOpacity), lineWidth: 0.8)
+                .frame(width: style.ringDiameter, height: style.ringDiameter)
+                .scaleEffect(isPulsing ? style.pulseScale : 0.55)
 
             Circle()
-                .fill(locationTint.opacity(0.9))
-                .frame(width: 3.4, height: 3.4)
+                .fill(locationTint.opacity(style.tintOpacity))
+                .frame(width: style.coreDiameter, height: style.coreDiameter)
         }
         .frame(width: 30, height: 30)
         .onAppear {
-            withAnimation(.easeOut(duration: 1.75).repeatForever(autoreverses: false)) {
-                isPulsing = true
+            guard let animation = LociqMotion.pulse(reduceMotion: reduceMotion) else { return }
+            withAnimation(animation) {
+                isPulsing.toggle()
             }
         }
     }
@@ -432,6 +638,7 @@ private struct BoundaryCityConnectorLine: View {
     let start: CGPoint
     let end: CGPoint
     let traceToken: Int
+    let reduceMotion: Bool
     @State private var progress: CGFloat = 0
 
     var body: some View {
@@ -451,9 +658,11 @@ private struct BoundaryCityConnectorLine: View {
 
     private func traceConnector() {
         withAnimation(.none) {
-            progress = 0
+            progress = reduceMotion ? 1 : 0
         }
-        withAnimation(.easeOut(duration: 1.05).delay(2.55)) {
+
+        guard let animation = LociqMotion.connector(reduceMotion: reduceMotion) else { return }
+        withAnimation(animation) {
             progress = 1
         }
     }
@@ -507,6 +716,7 @@ private struct BoundaryPreviewShape: Shape {
 
 private struct DetailSectionView: View {
     let section: DemographicDetailSection
+    let layout: MinimalLayout
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 10) {
@@ -518,7 +728,7 @@ private struct DetailSectionView: View {
                 ForEach(section.rows) { row in
                     VStack(alignment: .trailing, spacing: 6) {
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            DetailRowLabel(label: row.label)
+                            DetailRowLabel(label: row.label, layout: layout)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.72)
                                 .allowsTightening(true)
@@ -528,7 +738,7 @@ private struct DetailSectionView: View {
                             Spacer(minLength: 10)
 
                             Text(row.value)
-                                .font(.system(size: 17, weight: .light, design: .rounded))
+                                .font(.system(size: layout.detailValueSize, weight: .light, design: .rounded))
                                 .foregroundStyle(.white.opacity(0.9))
                                 .multilineTextAlignment(.trailing)
                                 .lineLimit(2)
@@ -556,6 +766,7 @@ private struct DetailSectionView: View {
 
 private struct DetailRowLabel: View {
     let label: String
+    let layout: MinimalLayout
 
     var body: some View {
         labelText
@@ -574,29 +785,30 @@ private struct DetailRowLabel: View {
             return number("65") + space + word("PLUS")
         default:
             return Text(label)
-                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .font(.system(size: layout.detailLabelNumberSize - 0.5, weight: .regular, design: .rounded))
         }
     }
 
     private var space: Text {
         Text(" ")
-            .font(.system(size: 12, weight: .regular, design: .rounded))
+            .font(.system(size: layout.detailLabelNumberSize - 0.5, weight: .regular, design: .rounded))
     }
 
     private func word(_ text: String) -> Text {
         Text(text)
-            .font(.system(size: 9.5, weight: .regular, design: .rounded))
+            .font(.system(size: layout.detailLabelWordSize, weight: .regular, design: .rounded))
     }
 
     private func number(_ text: String) -> Text {
         Text(text)
-            .font(.system(size: 12.5, weight: .regular, design: .rounded))
+            .font(.system(size: layout.detailLabelNumberSize, weight: .regular, design: .rounded))
     }
 }
 
 private struct ProgressLine: View {
     let progress: Double
     var isLoading = false
+    var reduceMotion = false
     @State private var loadingOffset: CGFloat = -0.28
 
     var body: some View {
@@ -609,8 +821,11 @@ private struct ProgressLine: View {
                 if isLoading {
                     Rectangle()
                         .fill(Color.white.opacity(0.82))
-                        .frame(width: max(44, geometry.size.width * 0.24), height: 1)
-                        .offset(x: geometry.size.width * loadingOffset)
+                        .frame(
+                            width: reduceMotion ? geometry.size.width : max(44, geometry.size.width * 0.24),
+                            height: 1
+                        )
+                        .offset(x: reduceMotion ? 0 : geometry.size.width * loadingOffset)
                 } else {
                     Rectangle()
                         .fill(Color.white.opacity(0.72))
@@ -625,14 +840,19 @@ private struct ProgressLine: View {
                 loadingOffset = -0.28
                 return
             }
+            guard !reduceMotion else {
+                loadingOffset = 0
+                return
+            }
 
             while !Task.isCancelled {
                 loadingOffset = -0.28
                 try? await Task.sleep(nanoseconds: 35_000_000)
-                withAnimation(.linear(duration: 0.82)) {
+                guard let animation = LociqMotion.loadingSweep(reduceMotion: reduceMotion) else { return }
+                withAnimation(animation) {
                     loadingOffset = 1.04
                 }
-                try? await Task.sleep(nanoseconds: 860_000_000)
+                try? await Task.sleep(nanoseconds: LociqMotion.loadingSweepPauseNanoseconds)
             }
         }
         .accessibilityHidden(true)

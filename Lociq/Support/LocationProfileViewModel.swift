@@ -11,7 +11,12 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         case refreshing(CachedCityProfile)
         case loaded(CachedCityProfile)
         case locationUnavailable
-        case profileUnavailable(snapshot: DemographicSnapshot, boundary: GeoJSONFeatureCollection?, coordinate: CLLocationCoordinate2D?)
+        case profileUnavailable(
+            snapshot: DemographicSnapshot,
+            boundary: GeoJSONFeatureCollection?,
+            coordinate: CLLocationCoordinate2D?,
+            horizontalAccuracy: CLLocationAccuracy?
+        )
     }
 
     @Published private(set) var state: State = .idle
@@ -56,7 +61,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
             return profile.snapshot
         case .locationUnavailable:
             return .placeholder
-        case .profileUnavailable(let snapshot, _, _):
+        case .profileUnavailable(let snapshot, _, _, _):
             return snapshot
         }
     }
@@ -65,7 +70,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         switch state {
         case .refreshing(let profile), .loaded(let profile):
             return profile.boundary
-        case .profileUnavailable(_, let boundary, _):
+        case .profileUnavailable(_, let boundary, _, _):
             return boundary
         case .idle, .requestingLocation, .loading, .locationUnavailable:
             return nil
@@ -76,10 +81,21 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         switch state {
         case .refreshing(let profile), .loaded(let profile):
             return profile.coordinate
-        case .profileUnavailable(_, _, let coordinate):
+        case .profileUnavailable(_, _, let coordinate, _):
             return coordinate
         case .idle, .requestingLocation, .loading, .locationUnavailable:
             return debugCoordinate
+        }
+    }
+
+    var horizontalAccuracy: CLLocationAccuracy? {
+        switch state {
+        case .refreshing(let profile), .loaded(let profile):
+            return profile.horizontalAccuracy
+        case .profileUnavailable(_, _, _, let horizontalAccuracy):
+            return horizontalAccuracy
+        case .idle, .requestingLocation, .loading, .locationUnavailable:
+            return nil
         }
     }
 
@@ -130,7 +146,11 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         }
     }
 
-    private func load(for coordinate: CLLocationCoordinate2D) {
+    private func load(for location: CLLocation) {
+        load(for: location.coordinate, horizontalAccuracy: location.horizontalAccuracy)
+    }
+
+    private func load(for coordinate: CLLocationCoordinate2D, horizontalAccuracy: CLLocationAccuracy? = nil) {
         let coordinateKey = Self.coordinateKey(for: coordinate)
         guard coordinateKey != lastLoadedCoordinateKey else { return }
 
@@ -144,13 +164,13 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         }
 
         Task { [weak self] in
-            await self?.loadProfile(for: coordinate)
+            await self?.loadProfile(for: coordinate, horizontalAccuracy: horizontalAccuracy)
         }
     }
 
-    private func loadProfile(for coordinate: CLLocationCoordinate2D) async {
+    private func loadProfile(for coordinate: CLLocationCoordinate2D, horizontalAccuracy: CLLocationAccuracy?) async {
         guard hasCensusAPIKey else {
-            await loadLocationShell(for: coordinate, status: .censusKeyMissing)
+            await loadLocationShell(for: coordinate, horizontalAccuracy: horizontalAccuracy, status: .censusKeyMissing)
             return
         }
 
@@ -170,7 +190,8 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
                         market: DemographicValueFormatter.title(from: profile).uppercased()
                     ),
                     boundary: fallbackBoundary,
-                    coordinate: coordinate
+                    coordinate: coordinate,
+                    horizontalAccuracy: horizontalAccuracy
                 )
                 if fallbackBoundary != nil {
                     traceToken += 1
@@ -189,7 +210,8 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
                         market: DemographicValueFormatter.title(from: profile).uppercased()
                     ),
                     boundary: nil,
-                    coordinate: coordinate
+                    coordinate: coordinate,
+                    horizontalAccuracy: horizontalAccuracy
                 )
                 return
             }
@@ -198,17 +220,22 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
                 snapshot: DemographicSnapshot(profile: profile, demographics: cityDemographics),
                 boundary: cityBoundary,
                 latitude: coordinate.latitude,
-                longitude: coordinate.longitude
+                longitude: coordinate.longitude,
+                horizontalAccuracy: horizontalAccuracy
             )
             cacheStore.save(cityProfile)
             state = .loaded(cityProfile)
             traceToken += 1
         } catch {
-            await loadLocationShell(for: coordinate, status: .acsUnavailable)
+            await loadLocationShell(for: coordinate, horizontalAccuracy: horizontalAccuracy, status: .acsUnavailable)
         }
     }
 
-    private func loadLocationShell(for coordinate: CLLocationCoordinate2D, status: DemographicSnapshot.LocationStatus) async {
+    private func loadLocationShell(
+        for coordinate: CLLocationCoordinate2D,
+        horizontalAccuracy: CLLocationAccuracy?,
+        status: DemographicSnapshot.LocationStatus
+    ) async {
         do {
             let geography = try await geocoderClient.fetchGeographiesFromCoordinate(
                 latitude: coordinate.latitude,
@@ -219,7 +246,8 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
             state = .profileUnavailable(
                 snapshot: DemographicSnapshot.status(for: status, market: areaTitle.uppercased()),
                 boundary: resolvedBoundary,
-                coordinate: coordinate
+                coordinate: coordinate,
+                horizontalAccuracy: horizontalAccuracy
             )
             if resolvedBoundary != nil {
                 traceToken += 1
@@ -228,7 +256,8 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
             state = .profileUnavailable(
                 snapshot: DemographicSnapshot.status(for: status, market: status.fallbackMarket),
                 boundary: nil,
-                coordinate: coordinate
+                coordinate: coordinate,
+                horizontalAccuracy: horizontalAccuracy
             )
         }
     }
@@ -265,9 +294,9 @@ extension LocationProfileViewModel: CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let coordinate = locations.last?.coordinate else { return }
+        guard let location = locations.last else { return }
         Task { @MainActor [weak self] in
-            self?.load(for: coordinate)
+            self?.load(for: location)
         }
     }
 
@@ -288,6 +317,7 @@ struct CachedCityProfile: Codable, Sendable {
     let boundary: GeoJSONFeatureCollection
     let latitude: Double
     let longitude: Double
+    let horizontalAccuracy: Double?
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
