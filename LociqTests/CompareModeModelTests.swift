@@ -95,6 +95,7 @@ private actor StubCompareNeighborhoodService: CensusNeighborhoodServing {
         latitude: Double,
         longitude: Double,
         tractGeoid: String?,
+        place: PlaceInfo?,
         zipBoundary: GeoJSONFeatureCollection
     ) async -> NeighborhoodBoundarySet {
         NeighborhoodBoundarySet(zip: zipBoundary, tract: nil, block: nil)

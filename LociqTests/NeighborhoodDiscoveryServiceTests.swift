@@ -3,11 +3,8 @@ import Testing
 @testable import Lociq
 
 struct NeighborhoodDiscoveryServiceTests {
-    @Test func fallsBackToHeuristicRecommendationsWithoutGemini() async throws {
-        let service = NeighborhoodDiscoveryService(
-            censusService: StubDiscoveryCensusService(),
-            geminiClient: nil
-        )
+    @Test func buildsHeuristicRecommendations() async throws {
+        let service = NeighborhoodDiscoveryService(censusService: StubDiscoveryCensusService())
 
         let seedSnapshot = NeighborhoodLookupSnapshot(
             id: "seed",
@@ -41,9 +38,9 @@ struct NeighborhoodDiscoveryServiceTests {
             recentPlaces: []
         )
 
-        #expect(result.source == .heuristic)
+        #expect(result.source == DiscoveryGenerationSource.heuristic)
         #expect(result.recommendations.count == 3)
-        #expect(Set(result.recommendations.map(\.destination.id)).count == 3)
+        #expect(Set(result.recommendations.map { $0.destination.id }).count == 3)
         #expect(!result.summary.isEmpty)
     }
 }
@@ -88,6 +85,7 @@ private final class StubDiscoveryCensusService: @unchecked Sendable, CensusNeigh
         latitude: Double,
         longitude: Double,
         tractGeoid: String?,
+        place: PlaceInfo?,
         zipBoundary: GeoJSONFeatureCollection
     ) async -> NeighborhoodBoundarySet {
         NeighborhoodBoundarySet(zip: zipBoundary, tract: nil, block: nil)
