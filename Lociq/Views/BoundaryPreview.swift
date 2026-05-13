@@ -18,28 +18,32 @@ struct CityBoundaryPreview: View {
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack {
-                BoundaryPreviewShape(boundary: boundary)
-                    .trim(from: 0, to: traceProgress)
-                    .stroke(
-                        Color.white.opacity(0.18),
-                        style: StrokeStyle(lineWidth: 0.75, lineCap: .round, lineJoin: .round)
-                    )
+            let rect = CGRect(origin: .zero, size: proxy.size)
 
-                if let coordinate,
-                   let locationPoint = GeoJSONBoundaryPathBuilder.point(
-                    for: coordinate,
-                    in: CGRect(origin: .zero, size: proxy.size),
-                    fittingTo: boundary
-                   ) {
-                    let dotStyle = LocationDotStyle(accuracy: horizontalAccuracy)
-                    if dotStyle.isVisible {
-                        PulsingLocationDot(style: dotStyle, reduceMotion: reduceMotion)
-                            .position(locationPoint)
+            if let projection = GeoJSONBoundaryPathBuilder.projection(for: boundary, in: rect) {
+                ZStack {
+                    BoundaryPreviewShape(projection: projection)
+                        .trim(from: 0, to: traceProgress)
+                        .stroke(
+                            Color.white.opacity(0.18),
+                            style: StrokeStyle(lineWidth: 0.75, lineCap: .round, lineJoin: .round)
+                        )
+
+                    if let coordinate, let locationPoint = projection.point(for: coordinate) {
+                        let dotStyle = LocationDotStyle(accuracy: horizontalAccuracy)
+                        if dotStyle.isVisible {
+                            PulsingLocationDot(style: dotStyle, reduceMotion: reduceMotion)
+                                .position(locationPoint)
+                        }
                     }
                 }
+                .anchorPreference(key: BoundaryCityConnectionPreferenceKey.self, value: .bounds) {
+                    BoundaryCityConnectionAnchors(boundary: $0, boundaryCenter: projection.center)
+                }
+                .background(Color.clear)
+            } else {
+                Color.clear
             }
-            .background(Color.clear)
         }
         .onAppear {
             traceBoundary()
@@ -100,6 +104,7 @@ struct BoundaryCityConnectorLine: View {
 
 struct BoundaryCityConnectionAnchors: Equatable {
     var boundary: Anchor<CGRect>?
+    var boundaryCenter: CGPoint?
     var city: Anchor<CGRect>?
 }
 
@@ -110,6 +115,7 @@ struct BoundaryCityConnectionPreferenceKey: PreferenceKey {
     static func reduce(value: inout BoundaryCityConnectionAnchors, nextValue: () -> BoundaryCityConnectionAnchors) {
         let next = nextValue()
         value.boundary = next.boundary ?? value.boundary
+        value.boundaryCenter = next.boundaryCenter ?? value.boundaryCenter
         value.city = next.city ?? value.city
     }
 }
@@ -128,22 +134,11 @@ private struct BoundaryCityConnectorShape: Shape {
 }
 
 private struct BoundaryPreviewShape: Shape {
-    let boundary: GeoJSONFeatureCollection
-    var fittingBoundary: GeoJSONFeatureCollection?
+    let projection: GeoJSONBoundaryProjection
 
     /// Draws the projected GeoJSON boundary inside the provided rect.
     func path(in rect: CGRect) -> Path {
-        guard
-            let boundaryPath = GeoJSONBoundaryPathBuilder.path(
-                for: boundary,
-                in: rect,
-                fittingTo: fittingBoundary
-            )
-        else {
-            return Path()
-        }
-
-        return boundaryPath
+        projection.path
     }
 }
 

@@ -58,24 +58,32 @@ final class ACSDemographicsClient: @unchecked Sendable {
 
     /// Fetches all requested ACS variables in API-sized chunks and merges the result rows.
     private func fetchACSValues(forQuery: String, inQuery: String?) async throws -> [String: String] {
-        var mergedValues: [String: String] = [:]
-
-        for variables in ACSDemographicsVariableCatalog.extendedVariables.chunked(
+        let chunks = ACSDemographicsVariableCatalog.extendedVariables.chunked(
             into: ACSDemographicsVariableCatalog.maxVariablesPerRequest
-        ) {
-            let values = try await fetchACSValues(
-                variables: variables,
-                forQuery: forQuery,
-                inQuery: inQuery
-            )
-            mergedValues.merge(values) { existing, _ in existing }
-        }
+        )
 
-        guard !mergedValues.isEmpty else {
-            throw ServiceError.noDemographicsFound
-        }
+        return try await withThrowingTaskGroup(of: [String: String].self) { group in
+            for variables in chunks {
+                group.addTask { [self] in
+                    try await fetchACSValues(
+                        variables: variables,
+                        forQuery: forQuery,
+                        inQuery: inQuery
+                    )
+                }
+            }
 
-        return mergedValues
+            var mergedValues: [String: String] = [:]
+            for try await values in group {
+                mergedValues.merge(values) { existing, _ in existing }
+            }
+
+            guard !mergedValues.isEmpty else {
+                throw ServiceError.noDemographicsFound
+            }
+
+            return mergedValues
+        }
     }
 
     /// Fetches one chunk of ACS variables and returns values keyed by variable code.

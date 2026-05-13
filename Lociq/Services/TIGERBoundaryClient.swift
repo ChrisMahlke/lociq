@@ -14,6 +14,7 @@ final class TIGERBoundaryClient: @unchecked Sendable {
     private let incorporatedPlacesLayerId = "28"
     private let cdpLayerId = "30"
     private let tigerwebMapServerBaseURL = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer"
+    private let boundaryCache = TIGERBoundaryCache()
 
     /// Creates a TIGERweb boundary client with an injectable HTTP transport.
     nonisolated init(httpClient: CensusHTTPClient) {
@@ -32,12 +33,21 @@ final class TIGERBoundaryClient: @unchecked Sendable {
             return nil
         }
 
+        let cacheKey = TIGERBoundaryCacheKey(stateFIPS: state, placeFIPS: placeFIPS, type: place.type)
+        if let cachedBoundary = await boundaryCache.boundary(for: cacheKey) {
+            return cachedBoundary
+        }
+
         let layerId = place.type == .censusDesignatedPlace ? cdpLayerId : incorporatedPlacesLayerId
-        return try? await fetchBoundaryGeoJSON(
+        let boundary = try? await fetchBoundaryGeoJSON(
             layerId: layerId,
             whereClause: "STATE='\(state)' AND PLACE='\(placeFIPS)'",
             outFields: "STATE,PLACE,GEOID,NAME"
         )
+        if let boundary {
+            await boundaryCache.store(boundary, for: cacheKey)
+        }
+        return boundary
     }
 
     /// Executes a TIGERweb query and decodes the returned GeoJSON feature collection.
@@ -66,5 +76,25 @@ final class TIGERBoundaryClient: @unchecked Sendable {
     /// Validates a TIGERweb query component against a strict regular expression.
     private func isValid(value: String, regex: String) -> Bool {
         value.range(of: regex, options: .regularExpression) != nil
+    }
+}
+
+nonisolated private struct TIGERBoundaryCacheKey: Hashable, Sendable {
+    let stateFIPS: String
+    let placeFIPS: String
+    let type: PlaceInfo.PlaceType
+}
+
+private actor TIGERBoundaryCache {
+    private var boundaries: [TIGERBoundaryCacheKey: GeoJSONFeatureCollection] = [:]
+
+    /// Returns a cached boundary for a stable Census place key.
+    func boundary(for key: TIGERBoundaryCacheKey) -> GeoJSONFeatureCollection? {
+        boundaries[key]
+    }
+
+    /// Stores a TIGERweb boundary for reuse across nearby coordinates in the same city.
+    func store(_ boundary: GeoJSONFeatureCollection, for key: TIGERBoundaryCacheKey) {
+        boundaries[key] = boundary
     }
 }

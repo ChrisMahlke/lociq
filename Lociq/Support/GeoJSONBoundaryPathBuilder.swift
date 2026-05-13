@@ -8,39 +8,147 @@
 import CoreLocation
 import SwiftUI
 
+nonisolated struct GeoJSONBoundaryProjection {
+    let path: Path
+    let center: CGPoint
+    private let rect: CGRect
+    private let minProjectedX: CGFloat
+    private let minProjectedY: CGFloat
+    private let xOffset: CGFloat
+    private let yOffset: CGFloat
+    private let scale: CGFloat
+
+    /// Creates a reusable projected boundary value for one boundary and drawing rectangle.
+    init(
+        path: Path,
+        bounds: CGRect,
+        rect: CGRect,
+        minProjectedX: CGFloat,
+        minProjectedY: CGFloat,
+        xOffset: CGFloat,
+        yOffset: CGFloat,
+        scale: CGFloat
+    ) {
+        self.path = path
+        self.center = CGPoint(x: bounds.midX, y: bounds.midY)
+        self.rect = rect
+        self.minProjectedX = minProjectedX
+        self.minProjectedY = minProjectedY
+        self.xOffset = xOffset
+        self.yOffset = yOffset
+        self.scale = scale
+    }
+
+    /// Projects a geographic coordinate into this projection's drawing space.
+    func point(for coordinate: CLLocationCoordinate2D) -> CGPoint? {
+        guard
+            let projectedPoint = GeoJSONBoundaryPathBuilder.worldPoint(
+                longitude: coordinate.longitude,
+                latitude: coordinate.latitude
+            )
+        else {
+            return nil
+        }
+
+        let point = CGPoint(
+            x: xOffset + (projectedPoint.x - minProjectedX) * scale,
+            y: yOffset + (projectedPoint.y - minProjectedY) * scale
+        )
+        return rect.insetBy(dx: -2, dy: -2).contains(point) ? point : nil
+    }
+}
+
 enum GeoJSONBoundaryPathBuilder {
+    nonisolated private static let drawingScale: CGFloat = 0.92
+
+    /// Builds a reusable projection for the supplied boundary and drawing rectangle.
+    nonisolated static func projection(
+        for boundary: GeoJSONFeatureCollection,
+        in rect: CGRect,
+        fittingTo fittingBoundary: GeoJSONFeatureCollection? = nil
+    ) -> GeoJSONBoundaryProjection? {
+        let rings = exteriorRings(from: boundary)
+        guard !rings.isEmpty else { return nil }
+
+        let fittingRings = fittingBoundary.map(exteriorRings(from:))
+        let boundsRings = fittingRings?.isEmpty == false ? fittingRings ?? rings : rings
+
+        guard let projectedBounds = projectedBounds(for: boundsRings) else { return nil }
+        let projectedWidth = projectedBounds.width
+        let projectedHeight = projectedBounds.height
+        guard projectedWidth > 0, projectedHeight > 0 else { return nil }
+
+        let scale = min(rect.width / projectedWidth, rect.height / projectedHeight) * drawingScale
+        let drawingWidth = projectedWidth * scale
+        let drawingHeight = projectedHeight * scale
+        let xOffset = rect.midX - drawingWidth / 2
+        let yOffset = rect.midY - drawingHeight / 2
+
+        var path = Path()
+        var minX = CGFloat.infinity
+        var maxX = -CGFloat.infinity
+        var minY = CGFloat.infinity
+        var maxY = -CGFloat.infinity
+        var didProjectAnyRing = false
+
+        for ring in rings {
+            var projectedRing: [CGPoint] = []
+            projectedRing.reserveCapacity(ring.count)
+
+            for coordinate in ring where coordinate.count >= 2 {
+                guard let projectedPoint = worldPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
+                    continue
+                }
+
+                let point = CGPoint(
+                    x: xOffset + (projectedPoint.x - projectedBounds.minX) * scale,
+                    y: yOffset + (projectedPoint.y - projectedBounds.minY) * scale
+                )
+                minX = min(minX, point.x)
+                maxX = max(maxX, point.x)
+                minY = min(minY, point.y)
+                maxY = max(maxY, point.y)
+                projectedRing.append(point)
+            }
+
+            if projectedRing.count > 2 {
+                path.move(to: projectedRing[0])
+                for point in projectedRing.dropFirst() {
+                    path.addLine(to: point)
+                }
+                path.closeSubpath()
+                didProjectAnyRing = true
+            }
+        }
+
+        guard didProjectAnyRing else { return nil }
+
+        return GeoJSONBoundaryProjection(
+            path: path,
+            bounds: CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY),
+            rect: rect,
+            minProjectedX: projectedBounds.minX,
+            minProjectedY: projectedBounds.minY,
+            xOffset: xOffset,
+            yOffset: yOffset,
+            scale: scale
+        )
+    }
+
     /// Builds a SwiftUI path for the supplied GeoJSON boundary using Web Mercator orientation.
     nonisolated static func path(
         for boundary: GeoJSONFeatureCollection,
         in rect: CGRect,
         fittingTo fittingBoundary: GeoJSONFeatureCollection? = nil
     ) -> Path? {
-        guard let projectedBoundary = projectedBoundary(for: boundary, in: rect, fittingTo: fittingBoundary) else {
-            return nil
-        }
-
-        var path = Path()
-        for ring in projectedBoundary.rings {
-            var didMove = false
-            for point in ring {
-                if didMove {
-                    path.addLine(to: point)
-                } else {
-                    path.move(to: point)
-                    didMove = true
-                }
-            }
-            path.closeSubpath()
-        }
-
-        return path
+        projection(for: boundary, in: rect, fittingTo: fittingBoundary)?.path
     }
 
     /// Returns the projected center of a boundary path, falling back to the provided rectangle center.
     nonisolated static func center(for boundary: GeoJSONFeatureCollection?, fallbackRect: CGRect) -> CGPoint {
         guard
             let boundary,
-            let projectedBoundary = projectedBoundary(
+            let projection = projection(
                 for: boundary,
                 in: CGRect(origin: .zero, size: fallbackRect.size)
             )
@@ -48,7 +156,7 @@ enum GeoJSONBoundaryPathBuilder {
             return CGPoint(x: fallbackRect.width / 2, y: fallbackRect.height / 2)
         }
 
-        return CGPoint(x: projectedBoundary.bounds.midX, y: projectedBoundary.bounds.midY)
+        return projection.center
     }
 
     /// Projects a geographic coordinate into the same drawing space as the fitted boundary.
@@ -58,123 +166,41 @@ enum GeoJSONBoundaryPathBuilder {
         fittingTo boundary: GeoJSONFeatureCollection
     ) -> CGPoint? {
         guard
-            let projectedBoundary = projectedBoundary(for: boundary, in: rect),
-            let projectedPoint = googleMapsWorldPoint(
-                longitude: coordinate.longitude,
-                latitude: coordinate.latitude
-            )
+            let projection = projection(for: boundary, in: rect)
         else {
             return nil
         }
 
-        let x = projectedBoundary.xOffset + (projectedPoint.x - projectedBoundary.minProjectedX) * projectedBoundary.scale
-        let y = projectedBoundary.yOffset + (projectedPoint.y - projectedBoundary.minProjectedY) * projectedBoundary.scale
-        let point = CGPoint(x: x, y: y)
-        return rect.insetBy(dx: -2, dy: -2).contains(point) ? point : nil
+        return projection.point(for: coordinate)
     }
 
-    /// Projects GeoJSON rings into a rectangle while preserving the north-up Web Mercator shape.
-    nonisolated private static func projectedBoundary(
-        for boundary: GeoJSONFeatureCollection,
-        in rect: CGRect,
-        fittingTo fittingBoundary: GeoJSONFeatureCollection? = nil
-    ) -> ProjectedBoundary? {
-        let rings = boundary.features
-            .compactMap(\.geometry)
-            .flatMap(exteriorRings(from:))
-            .filter { $0.count > 2 }
+    /// Finds the normalized Web Mercator bounds for a collection of exterior rings.
+    nonisolated private static func projectedBounds(for rings: [[[Double]]]) -> CGRect? {
+        var minX = CGFloat.infinity
+        var maxX = -CGFloat.infinity
+        var minY = CGFloat.infinity
+        var maxY = -CGFloat.infinity
+        var didProjectAnyPoint = false
 
-        guard !rings.isEmpty else { return nil }
-
-        let fittingRings = fittingBoundary?.features
-            .compactMap(\.geometry)
-            .flatMap(exteriorRings(from:))
-            .filter { $0.count > 2 }
-        let boundsRings = fittingRings?.isEmpty == false ? fittingRings ?? rings : rings
-
-        let points = rings.flatMap { ring in
-            ring.compactMap { coordinate -> CGPoint? in
-                guard coordinate.count >= 2 else { return nil }
-                return googleMapsWorldPoint(longitude: coordinate[0], latitude: coordinate[1])
-            }
-        }
-        let boundsPoints = boundsRings.flatMap { ring in
-            ring.compactMap { coordinate -> CGPoint? in
-                guard coordinate.count >= 2 else { return nil }
-                return googleMapsWorldPoint(longitude: coordinate[0], latitude: coordinate[1])
-            }
-        }
-
-        guard
-            !points.isEmpty,
-            let minProjectedX = boundsPoints.map(\.x).min(),
-            let maxProjectedX = boundsPoints.map(\.x).max(),
-            let minProjectedY = boundsPoints.map(\.y).min(),
-            let maxProjectedY = boundsPoints.map(\.y).max(),
-            maxProjectedX > minProjectedX,
-            maxProjectedY > minProjectedY
-        else {
-            return nil
-        }
-
-        let projectedWidth = maxProjectedX - minProjectedX
-        let projectedHeight = maxProjectedY - minProjectedY
-        let scale = min(rect.width / projectedWidth, rect.height / projectedHeight) * 0.92
-        let drawingWidth = projectedWidth * scale
-        let drawingHeight = projectedHeight * scale
-        let xOffset = rect.midX - drawingWidth / 2
-        let yOffset = rect.midY - drawingHeight / 2
-
-        var projectedRings: [[CGPoint]] = []
         for ring in rings {
-            var projectedRing: [CGPoint] = []
             for coordinate in ring where coordinate.count >= 2 {
-                guard let projectedPoint = googleMapsWorldPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
+                guard let projectedPoint = worldPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
                     continue
                 }
-                let x = xOffset + (projectedPoint.x - minProjectedX) * scale
-                let y = yOffset + (projectedPoint.y - minProjectedY) * scale
-                projectedRing.append(CGPoint(x: x, y: y))
-            }
-            if projectedRing.count > 2 {
-                projectedRings.append(projectedRing)
+                minX = min(minX, projectedPoint.x)
+                maxX = max(maxX, projectedPoint.x)
+                minY = min(minY, projectedPoint.y)
+                maxY = max(maxY, projectedPoint.y)
+                didProjectAnyPoint = true
             }
         }
 
-        guard !projectedRings.isEmpty else { return nil }
-        let allProjectedPoints = projectedRings.flatMap { $0 }
-        guard
-            let minX = allProjectedPoints.map(\.x).min(),
-            let maxX = allProjectedPoints.map(\.x).max(),
-            let minY = allProjectedPoints.map(\.y).min(),
-            let maxY = allProjectedPoints.map(\.y).max()
-        else {
-            return nil
-        }
-
-        return ProjectedBoundary(
-            rings: projectedRings,
-            bounds: CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY),
-            minProjectedX: minProjectedX,
-            minProjectedY: minProjectedY,
-            xOffset: xOffset,
-            yOffset: yOffset,
-            scale: scale
-        )
-    }
-
-    private struct ProjectedBoundary {
-        let rings: [[CGPoint]]
-        let bounds: CGRect
-        let minProjectedX: CGFloat
-        let minProjectedY: CGFloat
-        let xOffset: CGFloat
-        let yOffset: CGFloat
-        let scale: CGFloat
+        guard didProjectAnyPoint else { return nil }
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 
     /// Converts a coordinate into normalized Web Mercator world coordinates.
-    nonisolated private static func googleMapsWorldPoint(longitude: Double, latitude: Double) -> CGPoint? {
+    nonisolated static func worldPoint(longitude: Double, latitude: Double) -> CGPoint? {
         guard longitude.isFinite, latitude.isFinite else { return nil }
         let clampedLatitude = min(max(latitude, -85.05112878), 85.05112878)
         let latitudeRadians = clampedLatitude * .pi / 180
@@ -186,6 +212,14 @@ enum GeoJSONBoundaryPathBuilder {
     }
 
     /// Extracts exterior polygon rings from supported GeoJSON geometry types.
+    nonisolated private static func exteriorRings(from boundary: GeoJSONFeatureCollection) -> [[[Double]]] {
+        boundary.features
+            .compactMap(\.geometry)
+            .flatMap(exteriorRings(from:))
+            .filter { $0.count > 2 }
+    }
+
+    /// Extracts exterior polygon rings from one supported GeoJSON geometry.
     nonisolated private static func exteriorRings(from geometry: GeoJSONGeometry) -> [[[Double]]] {
         switch geometry {
         case .polygon(let rings):

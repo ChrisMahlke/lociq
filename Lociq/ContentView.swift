@@ -71,9 +71,6 @@ struct ContentView: View {
                 reduceMotion: reduceMotion
             )
             .frame(width: layout.boundarySize.width, height: layout.boundarySize.height)
-            .anchorPreference(key: BoundaryCityConnectionPreferenceKey.self, value: .bounds) {
-                BoundaryCityConnectionAnchors(boundary: $0)
-            }
             .padding(.top, layout.boundaryTop)
             .padding(.leading, layout.boundaryLeading)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -134,10 +131,8 @@ struct ContentView: View {
             if let boundaryAnchor = anchors.boundary, let cityAnchor = anchors.city {
                 let boundaryRect = proxy[boundaryAnchor]
                 let cityRect = proxy[cityAnchor]
-                let boundaryPathCenter = GeoJSONBoundaryPathBuilder.center(
-                    for: locationProfile.boundary,
-                    fallbackRect: boundaryRect
-                )
+                let boundaryPathCenter = anchors.boundaryCenter
+                    ?? CGPoint(x: boundaryRect.width / 2, y: boundaryRect.height / 2)
                 BoundaryCityConnectorLine(
                     start: CGPoint(
                         x: boundaryRect.minX + boundaryPathCenter.x,
