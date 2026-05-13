@@ -15,8 +15,14 @@ struct ContentView: View {
     @State private var isShowingDetails = false
     @State private var isLoadingContent = false
 
+    private let debugLocationOverride = DebugLocationOverride.current
+
+    private var canDisplayLocationProfile: Bool {
+        locationAccess.canUseLocation || debugLocationOverride != nil
+    }
+
     private var displaySnapshot: DemographicSnapshot {
-        guard locationAccess.canUseLocation else { return .placeholder }
+        guard canDisplayLocationProfile else { return .placeholder }
         return locationProfile.snapshot ?? .loading
     }
 
@@ -31,7 +37,7 @@ struct ContentView: View {
 
                 ZipBoundaryPreview(
                     boundary: locationProfile.boundary,
-                    traceToken: locationProfile.traceToken + (locationAccess.canUseLocation ? 1 : 0)
+                    traceToken: locationProfile.traceToken + (canDisplayLocationProfile ? 1 : 0)
                 )
                     .frame(
                         width: min(max(geometry.size.width * 0.28, 96), 142),
@@ -91,7 +97,7 @@ struct ContentView: View {
                                 y: boundaryRect.minY + boundaryPathCenter.y
                             ),
                             end: CGPoint(x: cityRect.minX - 9, y: cityRect.midY),
-                            traceToken: locationProfile.traceToken + (locationAccess.canUseLocation ? 1 : 0)
+                            traceToken: locationProfile.traceToken + (canDisplayLocationProfile ? 1 : 0)
                         )
                     }
                 }
@@ -102,7 +108,11 @@ struct ContentView: View {
         .background(Color.lociqInk)
         .preferredColorScheme(.dark)
         .onAppear {
-            locationAccess.requestAccessIfNeeded()
+            if let debugLocationOverride {
+                locationProfile.load(for: debugLocationOverride.coordinate)
+            } else {
+                locationAccess.requestAccessIfNeeded()
+            }
         }
         .onReceive(locationAccess.$coordinate.compactMap { $0 }) { coordinate in
             locationProfile.load(for: coordinate)
@@ -175,6 +185,24 @@ private final class LocationAccessModel: NSObject, ObservableObject, CLLocationM
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         coordinate = nil
+    }
+}
+
+private struct DebugLocationOverride {
+    let coordinate: CLLocationCoordinate2D
+
+    static var current: DebugLocationOverride? {
+        let arguments = ProcessInfo.processInfo.arguments
+        let environment = ProcessInfo.processInfo.environment
+
+        if arguments.contains("--lociq-debug-cambridge")
+            || environment["LOCIQ_DEBUG_CITY"]?.lowercased() == "cambridge" {
+            return DebugLocationOverride(
+                coordinate: CLLocationCoordinate2D(latitude: 42.3736, longitude: -71.1056)
+            )
+        }
+
+        return nil
     }
 }
 
