@@ -16,10 +16,12 @@ final class CensusGeocoderClient: @unchecked Sendable {
     private let cdpLayerId = "30"
     private let geocoderCoordinatesURL = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
 
+    /// Creates a Census geocoder client with an injectable HTTP transport.
     nonisolated init(httpClient: CensusHTTPClient) {
         self.httpClient = httpClient
     }
 
+    /// Resolves county and place geographies for a latitude/longitude coordinate.
     func fetchGeographiesFromCoordinate(latitude: Double, longitude: Double) async throws -> CensusGeographiesBundle {
         var components = URLComponents(string: geocoderCoordinatesURL)
         components?.queryItems = [
@@ -49,6 +51,7 @@ final class CensusGeocoderClient: @unchecked Sendable {
         )
     }
 
+    /// Extracts the best county match from a Census geocoder response.
     private func extractCountyInfo(from decoded: CensusGeocoderResponse) -> CountyInfo? {
         guard let geographies = decoded.result?.geographies else { return nil }
 
@@ -75,6 +78,7 @@ final class CensusGeocoderClient: @unchecked Sendable {
         return nil
     }
 
+    /// Extracts the best incorporated-place or CDP match from a Census geocoder response.
     private func extractPlaceInfo(from decoded: CensusGeocoderResponse) -> PlaceInfo? {
         guard let geographies = decoded.result?.geographies else { return nil }
 

@@ -12,22 +12,26 @@ import Testing
 
 @MainActor
 struct LociqTests {
+    /// Verifies compact numeric and currency formatting.
     @Test func formatsNumberAndCurrencyValues() async throws {
         #expect(DemographicValueFormatter.number(12345) == "12,345")
         #expect(DemographicValueFormatter.currency(987654) == "$987,654")
     }
 
+    /// Verifies unavailable numeric values render as the minimal unavailable marker.
     @Test func formatsUnavailableValuesMinimally() async throws {
         #expect(DemographicValueFormatter.number(nil) == "--")
         #expect(DemographicValueFormatter.currency(nil) == "--")
         #expect(DemographicValueFormatter.percent(nil) == "--")
     }
 
+    /// Verifies percent and duration formatting.
     @Test func formatsPercentAndMinutes() async throws {
         #expect(DemographicValueFormatter.percent(64.7) == "65%")
         #expect(DemographicValueFormatter.minutes(27.2) == "27 MIN")
     }
 
+    /// Verifies snapshots use city/place-level demographics and no longer expose ZIP or tract labels.
     @Test func cityProfileSnapshotUsesPlaceLevelDemographics() async throws {
         let demographics = Self.cambridgeDemographics()
         let profile = ResolvedCityProfile(
@@ -60,6 +64,7 @@ struct LociqTests {
         #expect(snapshot.detailSections.map { $0.title } == ["AGE", "HOUSING", "MOBILITY"])
     }
 
+    /// Verifies legacy cached profiles without newer optional fields still decode.
     @Test func cachedCityProfileDecodesCacheWithoutHorizontalAccuracy() async throws {
         let legacyCacheJSON = """
         {
@@ -108,6 +113,7 @@ struct LociqTests {
 }
 
 private extension LociqTests {
+    /// Creates a Cambridge demographic fixture.
     static func cambridgeDemographics() -> Demographics {
         Demographics(
             name: "Cambridge city, Massachusetts",
@@ -145,6 +151,7 @@ private extension LociqTests {
         )
     }
 
+    /// Creates a simple GeoJSON boundary fixture.
     static func sampleBoundary() -> GeoJSONFeatureCollection {
         GeoJSONFeatureCollection(
             type: "FeatureCollection",

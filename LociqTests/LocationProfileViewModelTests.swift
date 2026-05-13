@@ -5,6 +5,7 @@ import Testing
 
 @MainActor
 struct LocationProfileViewModelTests {
+    /// Verifies the app waits for an explicit user action before requesting first-run location access.
     @Test func activateWithUndeterminedPermissionWaitsForUserAction() async throws {
         let manager = FakeLocationManager(authorizationStatus: .notDetermined)
         let viewModel = Self.makeViewModel(
@@ -30,6 +31,7 @@ struct LocationProfileViewModelTests {
         #expect(manager.didRequestAuthorization)
     }
 
+    /// Verifies denied location permission produces the minimal unavailable state when no cache exists.
     @Test func deniedPermissionShowsLocationUnavailableWithoutCache() async throws {
         let viewModel = Self.makeViewModel(
             cacheStore: Self.makeCacheStore(),
@@ -45,6 +47,7 @@ struct LocationProfileViewModelTests {
         }
     }
 
+    /// Verifies stale cached profiles are shown as cached while avoiding blank launch states.
     @Test func staleCachedProfileIsDisplayedAsCached() async throws {
         let now = Date(timeIntervalSinceReferenceDate: 200_000)
         let store = Self.makeCacheStore()
@@ -65,6 +68,7 @@ struct LocationProfileViewModelTests {
         #expect(viewModel.snapshot.dateLabel == "CACHED")
     }
 
+    /// Verifies successful location loads save a fresh cache entry using the injected clock.
     @Test func successfulLocationLoadStoresFreshProfile() async throws {
         let now = Date(timeIntervalSinceReferenceDate: 300_000)
         let store = Self.makeCacheStore()
@@ -90,6 +94,7 @@ struct LocationProfileViewModelTests {
         #expect(await loader.requestCount() == 1)
     }
 
+    /// Verifies recoverable service failures preserve retry context.
     @Test func unavailableProfileStatePreservesFailureForRetry() async throws {
         let coordinate = CLLocationCoordinate2D(latitude: 42.3736, longitude: -71.1056)
         let unavailable = CityProfileLoadOutcome.unavailable(
@@ -129,9 +134,42 @@ struct LocationProfileViewModelTests {
         #expect(isStale == false)
         #expect(await loader.requestCount() == 2)
     }
+
+    /// Verifies stale asynchronous profile responses cannot overwrite a newer coordinate load.
+    @Test func olderProfileLoadCannotOverwriteNewerLocation() async throws {
+        let firstCoordinate = CLLocationCoordinate2D(latitude: 42.3736, longitude: -71.1056)
+        let secondCoordinate = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
+        let firstProfile = Self.cachedProfile(
+            market: "CAMBRIDGE, MASSACHUSETTS",
+            latitude: firstCoordinate.latitude,
+            longitude: firstCoordinate.longitude
+        )
+        let secondProfile = Self.cachedProfile(
+            market: "SAN FRANCISCO, CALIFORNIA",
+            latitude: secondCoordinate.latitude,
+            longitude: secondCoordinate.longitude
+        )
+        let loader = StubCityProfileLoader(
+            outcomes: [.loaded(firstProfile), .loaded(secondProfile)],
+            delays: [80_000_000, 0]
+        )
+        let viewModel = Self.makeViewModel(
+            cacheStore: Self.makeCacheStore(),
+            manager: FakeLocationManager(authorizationStatus: .authorizedWhenInUse),
+            loader: loader
+        )
+
+        viewModel.handleLocationUpdate(CLLocation(latitude: firstCoordinate.latitude, longitude: firstCoordinate.longitude))
+        viewModel.handleLocationUpdate(CLLocation(latitude: secondCoordinate.latitude, longitude: secondCoordinate.longitude))
+        await viewModel.waitForPendingLoad()
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(viewModel.snapshot.market == "SAN FRANCISCO, CALIFORNIA")
+    }
 }
 
 private extension LocationProfileViewModelTests {
+    /// Creates a ViewModel with fake dependencies for deterministic tests.
     static func makeViewModel(
         cacheStore: CityProfileCacheStore,
         manager: FakeLocationManager,
@@ -146,6 +184,7 @@ private extension LocationProfileViewModelTests {
         )
     }
 
+    /// Creates an isolated cache store for one test.
     static func makeCacheStore() -> CityProfileCacheStore {
         let suiteName = "lociq.tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -153,6 +192,7 @@ private extension LocationProfileViewModelTests {
         return CityProfileCacheStore(defaults: defaults)
     }
 
+    /// Returns the default Cambridge fixture location.
     static func location() -> CLLocation {
         CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 42.3736, longitude: -71.1056),
@@ -163,10 +203,16 @@ private extension LocationProfileViewModelTests {
         )
     }
 
-    static func cachedProfile(cachedAt: Date = Date(timeIntervalSinceReferenceDate: 100_000)) -> CachedCityProfile {
+    /// Creates a cacheable profile fixture.
+    static func cachedProfile(
+        market: String = "CAMBRIDGE, MASSACHUSETTS",
+        latitude: Double = 42.3736,
+        longitude: Double = -71.1056,
+        cachedAt: Date = Date(timeIntervalSinceReferenceDate: 100_000)
+    ) -> CachedCityProfile {
         CachedCityProfile(
             snapshot: DemographicSnapshot(
-                market: "CAMBRIDGE, MASSACHUSETTS",
+                market: market,
                 dateLabel: "",
                 cadence: "",
                 mode: "DEMOGRAPHICS",
@@ -182,13 +228,14 @@ private extension LocationProfileViewModelTests {
                 detailSections: []
             ),
             boundary: sampleBoundary(),
-            latitude: 42.3736,
-            longitude: -71.1056,
+            latitude: latitude,
+            longitude: longitude,
             horizontalAccuracy: 80,
             cachedAt: cachedAt
         )
     }
 
+    /// Returns a rectangular GeoJSON fixture around Cambridge.
     static func sampleBoundary() -> GeoJSONFeatureCollection {
         GeoJSONFeatureCollection(
             type: "FeatureCollection",
@@ -218,14 +265,17 @@ private final class FakeLocationManager: LocationManaging {
     private(set) var didRequestAuthorization = false
     private(set) var didRequestLocation = false
 
+    /// Creates a fake location manager with the supplied authorization state.
     init(authorizationStatus: CLAuthorizationStatus) {
         self.authorizationStatus = authorizationStatus
     }
 
+    /// Records that authorization was requested.
     func requestWhenInUseAuthorization() {
         didRequestAuthorization = true
     }
 
+    /// Records that a location update was requested.
     func requestLocation() {
         didRequestLocation = true
     }
@@ -233,23 +283,32 @@ private final class FakeLocationManager: LocationManaging {
 
 private actor StubCityProfileLoader: CityProfileLoading {
     private var outcomes: [CityProfileLoadOutcome]
+    private var delays: [UInt64]
     private var requests: [CLLocationCoordinate2D] = []
 
-    init(outcomes: [CityProfileLoadOutcome]) {
+    /// Creates a profile loader that returns queued outcomes with optional delays.
+    init(outcomes: [CityProfileLoadOutcome], delays: [UInt64] = []) {
         self.outcomes = outcomes
+        self.delays = delays
     }
 
+    /// Returns the next queued profile-load outcome.
     func loadProfile(
         for coordinate: CLLocationCoordinate2D,
         horizontalAccuracy: CLLocationAccuracy?
     ) async -> CityProfileLoadOutcome {
         requests.append(coordinate)
-        if outcomes.count > 1 {
-            return outcomes.removeFirst()
+        let outcome = outcomes.count > 1 ? outcomes.removeFirst() : outcomes[0]
+        if !delays.isEmpty {
+            let delay = delays.removeFirst()
+            if delay > 0 {
+                try? await Task.sleep(nanoseconds: delay)
+            }
         }
-        return outcomes[0]
+        return outcome
     }
 
+    /// Returns the number of load requests received by the stub.
     func requestCount() -> Int {
         requests.count
     }

@@ -5,10 +5,12 @@ final class CensusHTTPClient: @unchecked Sendable {
 
     private let session: URLSession
 
+    /// Creates a Census HTTP client backed by an injectable URL session.
     nonisolated init(session: URLSession) {
         self.session = session
     }
 
+    /// Performs an HTTP GET and throws when the Census service returns a non-success status.
     func get(_ url: URL) async throws -> Data {
         let (data, response) = try await session.data(from: url)
 
@@ -24,6 +26,7 @@ final class CensusHTTPClient: @unchecked Sendable {
         return data
     }
 
+    /// Decodes JSON data using the shared decoder behavior for Census service responses.
     func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         do {
             return try JSONDecoder().decode(T.self, from: data)

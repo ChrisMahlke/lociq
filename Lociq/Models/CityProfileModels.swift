@@ -32,6 +32,7 @@ public struct CountyInfo: Sendable {
     public let countyFIPS: String?
     public let geoid: String?
 
+    /// Creates county metadata returned by the Census geocoder.
     public init(name: String, stateFIPS: String?, countyFIPS: String?, geoid: String?) {
         self.name = name
         self.stateFIPS = stateFIPS
@@ -52,6 +53,7 @@ public struct PlaceInfo: Sendable {
     public let placeFIPS: String?
     public let type: PlaceType
 
+    /// Creates place metadata for an incorporated place or census-designated place.
     public init(name: String, stateFIPS: String?, placeFIPS: String?, type: PlaceType) {
         self.name = name
         self.stateFIPS = stateFIPS
@@ -94,6 +96,7 @@ public struct Demographics: Sendable {
     public let asianAlone: Int?
     public let hispanicOrLatino: Int?
 
+    /// Creates a normalized ACS demographic record used by the UI snapshot layer.
     public init(
         name: String,
         population: Int?,
@@ -181,6 +184,7 @@ public enum GeoJSONGeometry: Codable, Sendable {
 
     private enum CodingKeys: String, CodingKey { case type, coordinates }
 
+    /// Decodes supported GeoJSON geometry while preserving unsupported geometry types by name.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .type)
@@ -195,6 +199,7 @@ public enum GeoJSONGeometry: Codable, Sendable {
         }
     }
 
+    /// Encodes supported GeoJSON geometry back into standard GeoJSON shape.
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 

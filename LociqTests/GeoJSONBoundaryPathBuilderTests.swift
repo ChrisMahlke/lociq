@@ -4,6 +4,7 @@ import Testing
 @testable import Lociq
 
 struct GeoJSONBoundaryPathBuilderTests {
+    /// Verifies projected coordinates preserve north-up Web Mercator orientation.
     @Test func projectedPointsUseNorthUpWebMercatorOrientation() {
         let boundary = squareBoundary()
         let rect = CGRect(x: 0, y: 0, width: 100, height: 100)
@@ -24,6 +25,7 @@ struct GeoJSONBoundaryPathBuilderTests {
         #expect(northPoint!.y < southPoint!.y)
     }
 
+    /// Verifies the center coordinate projects near the center of the fitted boundary.
     @Test func projectedPointStaysCenteredForMiddleCoordinate() {
         let boundary = squareBoundary()
         let rect = CGRect(x: 0, y: 0, width: 120, height: 120)
@@ -39,6 +41,7 @@ struct GeoJSONBoundaryPathBuilderTests {
         #expect(abs(point!.y - rect.midY) < 1)
     }
 
+    /// Creates a square GeoJSON boundary fixture.
     private func squareBoundary() -> GeoJSONFeatureCollection {
         GeoJSONFeatureCollection(
             type: "FeatureCollection",

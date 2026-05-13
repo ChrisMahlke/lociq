@@ -57,6 +57,7 @@ struct DemographicSnapshot: Codable, Sendable {
         mode: "LOADING"
     )
 
+    /// Builds the minimal snapshot shown when a profile cannot be fully loaded.
     static func status(for status: LocationStatus, market: String) -> DemographicSnapshot {
         switch status {
         case .censusKeyMissing:
@@ -97,6 +98,7 @@ struct DemographicSnapshot: Codable, Sendable {
         }
     }
 
+    /// Builds a status snapshot with one compact metric row.
     private static func status(
         market: String,
         dateLabel: String,
@@ -117,6 +119,7 @@ struct DemographicSnapshot: Codable, Sendable {
         )
     }
 
+    /// Returns a copy of the snapshot with a different date/status label.
     func replacingDateLabel(_ dateLabel: String) -> DemographicSnapshot {
         DemographicSnapshot(
             market: market,
@@ -132,6 +135,7 @@ struct DemographicSnapshot: Codable, Sendable {
 }
 
 extension DemographicSnapshot {
+    /// Creates the visible home and details content from a resolved city profile.
     init(profile: ResolvedCityProfile, demographics: Demographics) {
         let households = DemographicValueFormatter.households(from: demographics)
         let ownerPct = DemographicValueFormatter.percent(demographics.ownerOccupiedPct)
@@ -198,120 +202,5 @@ extension DemographicSnapshot {
                 )
             ]
         )
-    }
-}
-
-enum DemographicValueFormatter {
-    private static let integerFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.maximumFractionDigits = 0
-        return formatter
-    }()
-
-    private static let currencyFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.maximumFractionDigits = 0
-        return formatter
-    }()
-
-    static func title(from profile: ResolvedCityProfile) -> String {
-        title(from: profile.geography)
-    }
-
-    static func title(from geography: CensusGeographiesBundle) -> String {
-        if let placeName = geography.place?.name, !placeName.isEmpty {
-            return cleanGeographyName(placeName)
-        }
-        if let countyName = geography.county?.name, !countyName.isEmpty {
-            return cleanGeographyName(countyName)
-        }
-        return "CITY"
-    }
-
-    static func title(from geography: CityGeographyProfile) -> String {
-        if let placeName = geography.place?.name, !placeName.isEmpty {
-            return cleanGeographyName(placeName)
-        }
-        if let countyName = geography.county?.name, !countyName.isEmpty {
-            return cleanGeographyName(countyName)
-        }
-        return "CITY"
-    }
-
-    static func cityTitle(from geography: CensusGeographiesBundle) -> String? {
-        guard let placeName = geography.place?.name, !placeName.isEmpty else {
-            return nil
-        }
-
-        return cleanGeographyName(placeName)
-    }
-
-    static func households(from demographics: Demographics) -> Int? {
-        if let owner = demographics.ownerOccupied, let renter = demographics.renterOccupied {
-            return owner + renter
-        }
-        return demographics.housingUnits
-    }
-
-    static func number(_ value: Int?) -> String {
-        guard let value else { return "--" }
-        return integerFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
-
-    static func currency(_ value: Int?) -> String {
-        guard let value, value >= 0 else { return "--" }
-        return currencyFormatter.string(from: NSNumber(value: value)) ?? "$\(value)"
-    }
-
-    static func decimal(_ value: Double?) -> String {
-        guard let value, value >= 0 else { return "--" }
-        return String(format: "%.1f", value)
-    }
-
-    static func percent(_ value: Double?) -> String {
-        guard let value, value >= 0 else { return "--" }
-        return "\(Int(value.rounded()))%"
-    }
-
-    static func minutes(_ value: Double?) -> String {
-        guard let value, value >= 0 else { return "--" }
-        return "\(Int(value.rounded())) MIN"
-    }
-
-    private static func cleanGeographyName(_ name: String) -> String {
-        name
-            .replacingOccurrences(of: " city", with: "")
-            .replacingOccurrences(of: " town", with: "")
-            .replacingOccurrences(of: " CDP", with: "")
-            .replacingOccurrences(of: "ZCTA5 ", with: "ZIP ")
-            .replacingOccurrences(of: ", United States", with: "")
-    }
-}
-
-struct DemographicMetric: Identifiable, Codable, Sendable {
-    var id: String { title }
-    let title: String
-    let primaryValue: String
-    let detail: String
-}
-
-struct DemographicDetailSection: Identifiable, Codable, Sendable {
-    var id: String { title }
-    let title: String
-    let rows: [DemographicDetailRow]
-}
-
-struct DemographicDetailRow: Identifiable, Codable, Sendable {
-    var id: String { label }
-    let label: String
-    let value: String
-    let progress: Double?
-
-    init(label: String, value: String, progress: Double? = nil) {
-        self.label = label
-        self.value = value
-        self.progress = progress
     }
 }

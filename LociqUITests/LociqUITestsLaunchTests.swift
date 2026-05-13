@@ -12,10 +12,12 @@ private enum UITestStrings {
 }
 
 final class LociqUITestsLaunchTests: XCTestCase {
+    /// Configures each launch test to fail immediately on the first assertion failure.
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
+    /// Launches the app and preserves a screenshot artifact for visual review.
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()

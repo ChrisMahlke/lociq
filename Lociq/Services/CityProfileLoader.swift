@@ -21,6 +21,7 @@ enum CityProfileLoadOutcome: Sendable {
 }
 
 protocol CityProfileLoading: Sendable {
+    /// Loads a city profile for a coordinate and returns either displayable data or a displayable unavailable state.
     func loadProfile(
         for coordinate: CLLocationCoordinate2D,
         horizontalAccuracy: CLLocationAccuracy?
@@ -33,6 +34,7 @@ final class CensusCityProfileLoader: @unchecked Sendable, CityProfileLoading {
     private let boundaryClient: TIGERBoundaryClient
     private let hasCensusAPIKey: Bool
 
+    /// Creates a loader that maps Census service outcomes into cacheable profiles or minimal fallback states.
     init(
         profileService: CensusCityProfileService,
         geocoderClient: CensusGeocoderClient,
@@ -45,6 +47,7 @@ final class CensusCityProfileLoader: @unchecked Sendable, CityProfileLoading {
         self.hasCensusAPIKey = hasCensusAPIKey
     }
 
+    /// Loads demographics and boundary data, preserving partial location context when one service fails.
     func loadProfile(
         for coordinate: CLLocationCoordinate2D,
         horizontalAccuracy: CLLocationAccuracy?
@@ -104,7 +107,7 @@ final class CensusCityProfileLoader: @unchecked Sendable, CityProfileLoading {
                     latitude: coordinate.latitude,
                     longitude: coordinate.longitude,
                     horizontalAccuracy: horizontalAccuracy,
-                    cachedAt: Date()
+                    cachedAt: nil
                 )
             )
         } catch {
@@ -116,6 +119,7 @@ final class CensusCityProfileLoader: @unchecked Sendable, CityProfileLoading {
         }
     }
 
+    /// Resolves city name and optional boundary when full demographic loading is unavailable.
     private func loadLocationShell(
         for coordinate: CLLocationCoordinate2D,
         horizontalAccuracy: CLLocationAccuracy?,
@@ -172,6 +176,7 @@ private extension CityProfileLoadFailure {
 }
 
 private extension DemographicSnapshot.LocationStatus {
+    /// Converts a loader failure into the corresponding minimal snapshot status.
     init(failure: CityProfileLoadFailure) {
         switch failure {
         case .censusKeyMissing:

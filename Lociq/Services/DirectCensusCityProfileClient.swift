@@ -12,6 +12,7 @@ final class DirectCensusCityProfileClient: @unchecked Sendable {
     private let boundaryClient: TIGERBoundaryClient
     private let demographicsClient: ACSDemographicsClient
 
+    /// Creates the direct Census client by composing geocoder, ACS, and TIGERweb dependencies over one session.
     nonisolated init(
         censusApiKey: String,
         acsYear: Int = 2024,
@@ -27,6 +28,7 @@ final class DirectCensusCityProfileClient: @unchecked Sendable {
         )
     }
 
+    /// Resolves a coordinate into one city-level profile with place demographics and boundary geometry.
     func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedCityProfile {
         let geographies = try await geocoderClient.fetchGeographiesFromCoordinate(
             latitude: latitude,
@@ -49,6 +51,7 @@ final class DirectCensusCityProfileClient: @unchecked Sendable {
         )
     }
 
+    /// Fetches demographics for a resolved place or throws when no place is available.
     private func fetchPlaceDemographics(place: PlaceInfo?) async throws -> Demographics {
         guard let place else {
             throw CensusCityProfileService.ServiceError.noDemographicsFound

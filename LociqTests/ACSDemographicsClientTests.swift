@@ -4,6 +4,7 @@ import Testing
 
 @MainActor
 struct ACSDemographicsClientTests {
+    /// Verifies that place-level ACS requests use city/place geography and normalize unavailable estimates.
     @Test func cambridgePlaceRequestUsesCityLevelACSGeography() async throws {
         CambridgeACSURLProtocol.reset()
 
@@ -34,20 +35,25 @@ struct ACSDemographicsClientTests {
         #expect(demographics.name == "Cambridge city, Massachusetts")
         #expect(demographics.population == 118_214)
         #expect(demographics.medianHouseholdIncome == 121_539)
+        #expect(demographics.medianHomeValue == nil)
+        #expect(demographics.medianGrossRent == nil)
     }
 }
 
 private final class CambridgeACSURLProtocol: URLProtocol {
     private static let recorder = URLRequestRecorder()
 
+    /// Accepts mocked Census API requests for the test URL session.
     override class func canInit(with request: URLRequest) -> Bool {
         request.url?.host == "api.census.gov"
     }
 
+    /// Returns the request unchanged because the mock does not need canonicalization.
     override class func canonicalRequest(for request: URLRequest) -> URLRequest {
         request
     }
 
+    /// Serves a generated ACS JSON response for the intercepted request.
     override func startLoading() {
         guard let url = request.url else {
             client?.urlProtocol(self, didFailWithError: URLError(.badURL))
@@ -72,16 +78,20 @@ private final class CambridgeACSURLProtocol: URLProtocol {
         }
     }
 
+    /// Stops loading; the mock response is synchronous so no cleanup is needed.
     override func stopLoading() {}
 
+    /// Clears recorded requests before a test starts.
     static func reset() {
         recorder.reset()
     }
 
+    /// Returns the Census API URLs observed by the mock.
     static func requestedURLs() -> [URL] {
         recorder.urls()
     }
 
+    /// Builds the ACS row for the variables requested in the URL.
     private static func responseData(for url: URL) throws -> Data {
         let variables = url.queryValue(named: "get")?
             .split(separator: ",")
@@ -92,12 +102,15 @@ private final class CambridgeACSURLProtocol: URLProtocol {
         return try JSONSerialization.data(withJSONObject: [header, row])
     }
 
+    /// Provides fixture values keyed by ACS variable code.
     private static func cambridgeValuesByVariable() -> [String: String] {
         [
             "NAME": "Cambridge city, Massachusetts",
             "B01003_001E": "118214",
             "B19013_001E": "121539",
             "B01002_001E": "30.8",
+            "B25077_001E": "-666666666",
+            "B25064_001E": "-999999999",
             "B25003_002E": "18000",
             "B25003_003E": "33000",
             "B25002_001E": "54000",
@@ -110,12 +123,14 @@ private final class URLRequestRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private var storedURLs: [URL] = []
 
+    /// Records one requested URL in a thread-safe array.
     func append(_ url: URL) {
         lock.lock()
         storedURLs.append(url)
         lock.unlock()
     }
 
+    /// Returns a snapshot of recorded URLs.
     func urls() -> [URL] {
         lock.lock()
         let urls = storedURLs
@@ -123,6 +138,7 @@ private final class URLRequestRecorder: @unchecked Sendable {
         return urls
     }
 
+    /// Clears all recorded URLs.
     func reset() {
         lock.lock()
         storedURLs = []
@@ -131,6 +147,7 @@ private final class URLRequestRecorder: @unchecked Sendable {
 }
 
 private extension URL {
+    /// Reads a named query value from the URL.
     func queryValue(named name: String) -> String? {
         URLComponents(url: self, resolvingAgainstBaseURL: false)?
             .queryItems?

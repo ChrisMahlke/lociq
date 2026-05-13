@@ -2,16 +2,6 @@ import Combine
 import CoreLocation
 import Foundation
 
-protocol LocationManaging: AnyObject {
-    var delegate: CLLocationManagerDelegate? { get set }
-    var desiredAccuracy: CLLocationAccuracy { get set }
-    var authorizationStatus: CLAuthorizationStatus { get }
-    func requestWhenInUseAuthorization()
-    func requestLocation()
-}
-
-extension CLLocationManager: LocationManaging {}
-
 @MainActor
 final class LocationProfileViewModel: NSObject, ObservableObject {
     enum State {
@@ -42,8 +32,10 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     private let cacheMaxAge: TimeInterval
     private let moveThresholdMeters: CLLocationDistance
     private var lastLoadedCoordinateKey: String?
+    private var activeLoadID: UUID?
     private var loadTask: Task<Void, Never>?
 
+    /// Creates the location profile state machine and wires together location, cache, and Census profile dependencies.
     init(
         debugCoordinate: CLLocationCoordinate2D? = nil,
         cacheStore: CityProfileCacheStore? = nil,
@@ -165,6 +157,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         return false
     }
 
+    /// Starts or resumes the location/profile workflow based on the current authorization state.
     func activate() {
         if let debugCoordinate {
             load(for: debugCoordinate)
@@ -192,6 +185,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// Prompts for location access when possible or falls back to the normal retry path.
     func requestLocationAccess() {
         if manager.authorizationStatus == .notDetermined {
             state = .requestingLocation
@@ -201,6 +195,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// Retries the last recoverable failure without requiring the user to restart the app.
     func retry() {
         lastLoadedCoordinateKey = nil
 
@@ -220,10 +215,12 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// Waits for the active profile load to finish; used by tests to observe async state transitions deterministically.
     func waitForPendingLoad() async {
         await loadTask?.value
     }
 
+    /// Applies a Core Location authorization transition to the state machine.
     func handleAuthorizationChange(_ authorizationStatus: CLAuthorizationStatus) {
         switch authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
@@ -244,10 +241,12 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// Starts a profile refresh for the newest location update.
     func handleLocationUpdate(_ location: CLLocation) {
         load(for: location.coordinate, horizontalAccuracy: location.horizontalAccuracy)
     }
 
+    /// Converts a location failure into the least noisy user-visible state.
     func handleLocationFailure(authorizationStatus: CLAuthorizationStatus) {
         guard currentLoadedProfile == nil else { return }
         state = authorizationStatus == .denied || authorizationStatus == .restricted
@@ -255,6 +254,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
             : .requestingLocation
     }
 
+    /// Starts a guarded city-profile request for a coordinate.
     private func load(
         for coordinate: CLLocationCoordinate2D,
         horizontalAccuracy: CLLocationAccuracy? = nil,
@@ -281,22 +281,31 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
             state = .loading
         }
 
+        let loadID = UUID()
+        activeLoadID = loadID
+
+        let startedAt = now()
         loadTask?.cancel()
         loadTask = Task { [weak self, profileLoader] in
             let outcome = await profileLoader.loadProfile(
                 for: coordinate,
                 horizontalAccuracy: horizontalAccuracy
             )
-            self?.apply(outcome)
+            self?.apply(outcome, loadID: loadID, startedAt: startedAt)
         }
     }
 
-    private func apply(_ outcome: CityProfileLoadOutcome) {
+    /// Applies the result for the currently active request and ignores stale responses.
+    private func apply(_ outcome: CityProfileLoadOutcome, loadID: UUID, startedAt: Date) {
+        guard loadID == activeLoadID else { return }
+
         switch outcome {
         case .loaded(let profile):
-            cacheStore.save(profile)
-            state = .loaded(profile, isStale: false)
+            let timestampedProfile = profile.withCachedAt(now())
+            cacheStore.save(timestampedProfile)
+            state = .loaded(timestampedProfile, isStale: false)
             traceToken += 1
+            LociqDiagnostics.cityProfileLoadCompleted(duration: now().timeIntervalSince(startedAt))
         case .unavailable(let snapshot, let boundary, let coordinate, let horizontalAccuracy, let failure):
             state = .profileUnavailable(
                 snapshot: snapshot,
@@ -308,6 +317,11 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
             if boundary != nil {
                 traceToken += 1
             }
+            LociqDiagnostics.cityProfileLoadFailed(
+                failure,
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude
+            )
         }
     }
 
@@ -329,10 +343,12 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// Rounds a coordinate into a stable key for suppressing duplicate loads.
     private static func coordinateKey(for coordinate: CLLocationCoordinate2D) -> String {
         String(format: "%.4f,%.4f", coordinate.latitude, coordinate.longitude)
     }
 
+    /// Returns true when two coordinates are far enough apart to justify replacing the visible profile immediately.
     private static func isMeaningfullyDifferent(
         _ lhs: CLLocationCoordinate2D,
         from rhs: CLLocationCoordinate2D,
@@ -345,6 +361,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
 }
 
 extension LocationProfileViewModel: CLLocationManagerDelegate {
+    /// Bridges Core Location authorization callbacks back onto the main actor.
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let authorizationStatus = manager.authorizationStatus
         Task { @MainActor [weak self] in
@@ -352,6 +369,7 @@ extension LocationProfileViewModel: CLLocationManagerDelegate {
         }
     }
 
+    /// Bridges Core Location updates back onto the main actor.
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         Task { @MainActor [weak self] in
@@ -359,67 +377,11 @@ extension LocationProfileViewModel: CLLocationManagerDelegate {
         }
     }
 
+    /// Bridges Core Location failures back onto the main actor.
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         let authorizationStatus = manager.authorizationStatus
         Task { @MainActor [weak self] in
             self?.handleLocationFailure(authorizationStatus: authorizationStatus)
         }
-    }
-}
-
-struct CachedCityProfile: Codable, Sendable {
-    let snapshot: DemographicSnapshot
-    let boundary: GeoJSONFeatureCollection
-    let latitude: Double
-    let longitude: Double
-    let horizontalAccuracy: Double?
-    let cachedAt: Date?
-
-    init(
-        snapshot: DemographicSnapshot,
-        boundary: GeoJSONFeatureCollection,
-        latitude: Double,
-        longitude: Double,
-        horizontalAccuracy: Double?,
-        cachedAt: Date? = nil
-    ) {
-        self.snapshot = snapshot
-        self.boundary = boundary
-        self.latitude = latitude
-        self.longitude = longitude
-        self.horizontalAccuracy = horizontalAccuracy
-        self.cachedAt = cachedAt
-    }
-
-    var coordinate: CLLocationCoordinate2D {
-        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-    }
-
-    func isExpired(at date: Date, maxAge: TimeInterval) -> Bool {
-        guard let cachedAt else { return true }
-        return date.timeIntervalSince(cachedAt) > maxAge
-    }
-}
-
-struct CityProfileCacheStore {
-    private let key = "lociq.lastCityProfile.v1"
-    private let defaults: UserDefaults
-
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-    }
-
-    func load() -> CachedCityProfile? {
-        guard let data = defaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(CachedCityProfile.self, from: data)
-    }
-
-    func save(_ profile: CachedCityProfile) {
-        guard let data = try? JSONEncoder().encode(profile) else { return }
-        defaults.set(data, forKey: key)
-    }
-
-    func clear() {
-        defaults.removeObject(forKey: key)
     }
 }

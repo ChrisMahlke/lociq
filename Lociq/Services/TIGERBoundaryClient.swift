@@ -8,10 +8,12 @@ final class TIGERBoundaryClient: @unchecked Sendable {
     private let cdpLayerId = "30"
     private let tigerwebMapServerBaseURL = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer"
 
+    /// Creates a TIGERweb boundary client with an injectable HTTP transport.
     nonisolated init(httpClient: CensusHTTPClient) {
         self.httpClient = httpClient
     }
 
+    /// Fetches a GeoJSON boundary for the supplied incorporated place or CDP.
     func fetchPlaceBoundary(place: PlaceInfo?) async -> GeoJSONFeatureCollection? {
         guard
             let place,
@@ -31,6 +33,7 @@ final class TIGERBoundaryClient: @unchecked Sendable {
         )
     }
 
+    /// Executes a TIGERweb query and decodes the returned GeoJSON feature collection.
     private func fetchBoundaryGeoJSON(layerId: String, whereClause: String, outFields: String) async throws -> GeoJSONFeatureCollection {
         var components = URLComponents(string: "\(tigerwebMapServerBaseURL)/\(layerId)/query")
         components?.queryItems = [
@@ -53,6 +56,7 @@ final class TIGERBoundaryClient: @unchecked Sendable {
         return featureCollection
     }
 
+    /// Validates a TIGERweb query component against a strict regular expression.
     private func isValid(value: String, regex: String) -> Bool {
         value.range(of: regex, options: .regularExpression) != nil
     }

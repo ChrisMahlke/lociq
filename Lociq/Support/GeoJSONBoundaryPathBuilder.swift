@@ -2,6 +2,7 @@ import CoreLocation
 import SwiftUI
 
 enum GeoJSONBoundaryPathBuilder {
+    /// Builds a SwiftUI path for the supplied GeoJSON boundary using Web Mercator orientation.
     nonisolated static func path(
         for boundary: GeoJSONFeatureCollection,
         in rect: CGRect,
@@ -28,6 +29,7 @@ enum GeoJSONBoundaryPathBuilder {
         return path
     }
 
+    /// Returns the projected center of a boundary path, falling back to the provided rectangle center.
     nonisolated static func center(for boundary: GeoJSONFeatureCollection?, fallbackRect: CGRect) -> CGPoint {
         guard
             let boundary,
@@ -42,6 +44,7 @@ enum GeoJSONBoundaryPathBuilder {
         return CGPoint(x: projectedBoundary.bounds.midX, y: projectedBoundary.bounds.midY)
     }
 
+    /// Projects a geographic coordinate into the same drawing space as the fitted boundary.
     nonisolated static func point(
         for coordinate: CLLocationCoordinate2D,
         in rect: CGRect,
@@ -63,6 +66,7 @@ enum GeoJSONBoundaryPathBuilder {
         return rect.insetBy(dx: -2, dy: -2).contains(point) ? point : nil
     }
 
+    /// Projects GeoJSON rings into a rectangle while preserving the north-up Web Mercator shape.
     nonisolated private static func projectedBoundary(
         for boundary: GeoJSONFeatureCollection,
         in rect: CGRect,
@@ -162,6 +166,7 @@ enum GeoJSONBoundaryPathBuilder {
         let scale: CGFloat
     }
 
+    /// Converts a coordinate into normalized Web Mercator world coordinates.
     nonisolated private static func googleMapsWorldPoint(longitude: Double, latitude: Double) -> CGPoint? {
         guard longitude.isFinite, latitude.isFinite else { return nil }
         let clampedLatitude = min(max(latitude, -85.05112878), 85.05112878)
@@ -173,6 +178,7 @@ enum GeoJSONBoundaryPathBuilder {
         )
     }
 
+    /// Extracts exterior polygon rings from supported GeoJSON geometry types.
     nonisolated private static func exteriorRings(from geometry: GeoJSONGeometry) -> [[[Double]]] {
         switch geometry {
         case .polygon(let rings):
