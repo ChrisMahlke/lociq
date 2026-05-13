@@ -10,6 +10,7 @@ import CoreLocation
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var locationAccess = LocationAccessModel()
     @StateObject private var locationProfile = ACSLocationProfileModel()
     @State private var isShowingDetails = false
@@ -21,9 +22,23 @@ struct ContentView: View {
         locationAccess.canUseLocation || debugLocationOverride != nil
     }
 
+    private var activeCoordinate: CLLocationCoordinate2D? {
+        debugLocationOverride?.coordinate ?? locationAccess.coordinate
+    }
+
+    private var shouldShowLocationPlaceholder: Bool {
+        debugLocationOverride == nil && locationAccess.isUnavailable
+    }
+
     private var displaySnapshot: DemographicSnapshot {
-        guard canDisplayLocationProfile else { return .placeholder }
+        guard !shouldShowLocationPlaceholder else { return .placeholder }
         return locationProfile.snapshot ?? .loading
+    }
+
+    private var isWaitingForInitialData: Bool {
+        !shouldShowLocationPlaceholder
+            && locationProfile.boundary == nil
+            && (locationProfile.snapshot == nil || locationProfile.isLoading)
     }
 
     var body: some View {
@@ -35,45 +50,51 @@ struct ContentView: View {
             ZStack(alignment: .topTrailing) {
                 MinimalBackground()
 
-                ZipBoundaryPreview(
-                    boundary: locationProfile.boundary,
-                    traceToken: locationProfile.traceToken + (canDisplayLocationProfile ? 1 : 0)
-                )
-                    .frame(
-                        width: min(max(geometry.size.width * 0.28, 96), 142),
-                        height: min(max(geometry.size.height * 0.19, 112), 158)
+                if !isWaitingForInitialData {
+                    ZipBoundaryPreview(
+                        boundary: locationProfile.boundary,
+                        coordinate: activeCoordinate,
+                        traceToken: locationProfile.traceToken + (canDisplayLocationProfile ? 1 : 0)
                     )
-                    .anchorPreference(key: BoundaryCityConnectionPreferenceKey.self, value: .bounds) {
-                        BoundaryCityConnectionAnchors(boundary: $0)
-                    }
-                    .padding(.top, topInset + 96)
-                    .padding(.leading, 30)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .accessibilityLabel("Sample ZIP code boundary")
-
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .trailing, spacing: 34) {
-                        HeaderBlock(snapshot: displaySnapshot)
-
-                        FadingContentPanel(
-                            snapshot: displaySnapshot,
-                            isShowingDetails: isShowingDetails
+                        .frame(
+                            width: min(max(geometry.size.width * 0.28, 96), 142),
+                            height: min(max(geometry.size.height * 0.19, 112), 158)
                         )
-                    }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                        .anchorPreference(key: BoundaryCityConnectionPreferenceKey.self, value: .bounds) {
+                            BoundaryCityConnectionAnchors(boundary: $0)
+                        }
+                        .padding(.top, topInset + 96)
+                        .padding(.leading, 30)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .accessibilityLabel("Sample ZIP code boundary")
                 }
-                .frame(
-                    maxWidth: min(geometry.size.width * 0.64, 340),
-                    maxHeight: detailHeight,
-                    alignment: .topTrailing
-                )
-                .padding(.top, topInset)
-                .padding(.trailing, 28)
+
+                if !isWaitingForInitialData {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .trailing, spacing: 34) {
+                            HeaderBlock(snapshot: displaySnapshot)
+
+                            FadingContentPanel(
+                                snapshot: displaySnapshot,
+                                isShowingDetails: isShowingDetails
+                            )
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                    .frame(
+                        maxWidth: min(geometry.size.width * 0.64, 340),
+                        maxHeight: detailHeight,
+                        alignment: .topTrailing
+                    )
+                    .padding(.top, topInset)
+                    .padding(.trailing, 28)
+                }
 
                 BottomIdentity(
                     snapshot: displaySnapshot,
                     isShowingDetails: isShowingDetails,
-                    isLoading: isLoadingContent || locationProfile.isLoading
+                    isLoading: isLoadingContent || locationProfile.isLoading || isWaitingForInitialData,
+                    isWaitingForInitialData: isWaitingForInitialData
                 ) {
                     cycleContent()
                 }
@@ -113,6 +134,10 @@ struct ContentView: View {
             } else {
                 locationAccess.requestAccessIfNeeded()
             }
+        }
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active, debugLocationOverride == nil else { return }
+            locationAccess.requestAccessIfNeeded()
         }
         .onReceive(locationAccess.$coordinate.compactMap { $0 }) { coordinate in
             locationProfile.load(for: coordinate)
@@ -157,6 +182,17 @@ private final class LocationAccessModel: NSObject, ObservableObject, CLLocationM
         }
     }
 
+    var isUnavailable: Bool {
+        switch authorizationStatus {
+        case .denied, .restricted:
+            return true
+        case .authorizedAlways, .authorizedWhenInUse, .notDetermined:
+            return false
+        @unknown default:
+            return true
+        }
+    }
+
     override init() {
         authorizationStatus = manager.authorizationStatus
         super.init()
@@ -184,7 +220,7 @@ private final class LocationAccessModel: NSObject, ObservableObject, CLLocationM
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        coordinate = nil
+        authorizationStatus = manager.authorizationStatus
     }
 }
 
@@ -387,6 +423,7 @@ private struct BottomIdentity: View {
     let snapshot: DemographicSnapshot
     let isShowingDetails: Bool
     let isLoading: Bool
+    let isWaitingForInitialData: Bool
     let onShowDetails: () -> Void
 
     private var iconName: String {
@@ -398,31 +435,34 @@ private struct BottomIdentity: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("LOCIQ")
-                .font(.system(size: 52, weight: .ultraLight, design: .rounded))
-                .foregroundStyle(.white.opacity(0.74))
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .accessibilityIdentifier("app.brand")
-
+        VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .center, spacing: 18) {
-                    Text(snapshot.mode)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.68))
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        Text("LOC")
+                        Text("IQ")
+                    }
+                    .font(.system(size: 24, weight: .ultraLight, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.74))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("LOCIQ")
+                    .accessibilityIdentifier("app.brand")
 
                     Spacer(minLength: 28)
 
-                    Button(action: onShowDetails) {
-                        Image(systemName: iconName)
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.68))
-                            .frame(width: 44, height: 44)
+                    if !isWaitingForInitialData {
+                        Button(action: onShowDetails) {
+                            Image(systemName: iconName)
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.68))
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isLoading)
+                        .accessibilityLabel(actionLabel)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(isLoading)
-                    .accessibilityLabel(actionLabel)
                 }
 
                 ProgressLine(progress: snapshot.confidence, isLoading: isLoading)
@@ -474,16 +514,6 @@ private struct DetailContent: View {
             ForEach(snapshot.detailSections) { section in
                 DetailSectionView(section: section)
             }
-
-            VStack(alignment: .trailing, spacing: 8) {
-                Text("SIGNAL")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.48))
-
-                ProgressLine(progress: snapshot.confidence)
-                    .frame(maxWidth: 220)
-            }
-            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
     }
@@ -491,24 +521,40 @@ private struct DetailContent: View {
 
 private struct ZipBoundaryPreview: View {
     let boundary: GeoJSONFeatureCollection?
+    let coordinate: CLLocationCoordinate2D?
     let traceToken: Int
     @State private var traceProgress: CGFloat = 0
 
     var body: some View {
-        BoundaryPreviewShape(boundary: boundary)
-            .trim(from: 0, to: traceProgress)
-            .stroke(
-                Color.white.opacity(0.18),
-                style: StrokeStyle(lineWidth: 0.75, lineCap: .round, lineJoin: .round)
-            )
+        GeometryReader { proxy in
+            ZStack {
+                BoundaryPreviewShape(boundary: boundary)
+                    .trim(from: 0, to: traceProgress)
+                    .stroke(
+                        Color.white.opacity(0.18),
+                        style: StrokeStyle(lineWidth: 0.75, lineCap: .round, lineJoin: .round)
+                    )
+
+                if let coordinate,
+                   let boundary,
+                   let locationPoint = GeoJSONBoundaryPathBuilder.point(
+                    for: coordinate,
+                    in: CGRect(origin: .zero, size: proxy.size),
+                    fittingTo: boundary
+                   ) {
+                    PulsingLocationDot()
+                        .position(locationPoint)
+                }
+            }
             .background(Color.clear)
-            .onAppear {
-                traceBoundary()
-            }
-            .onChange(of: traceToken) { _ in
-                traceBoundary()
-            }
-            .accessibilityHidden(true)
+        }
+        .onAppear {
+            traceBoundary()
+        }
+        .onChange(of: traceToken) { _ in
+            traceBoundary()
+        }
+        .accessibilityHidden(true)
     }
 
     private func traceBoundary() {
@@ -517,6 +563,30 @@ private struct ZipBoundaryPreview: View {
         }
         withAnimation(.easeInOut(duration: 2.2).delay(0.18)) {
             traceProgress = 1
+        }
+    }
+}
+
+private struct PulsingLocationDot: View {
+    @State private var isPulsing = false
+    private let locationTint = Color(red: 1.0, green: 0.82, blue: 0.22)
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(locationTint.opacity(isPulsing ? 0.0 : 0.46), lineWidth: 0.8)
+                .frame(width: 12, height: 12)
+                .scaleEffect(isPulsing ? 2.25 : 0.55)
+
+            Circle()
+                .fill(locationTint.opacity(0.9))
+                .frame(width: 3.4, height: 3.4)
+        }
+        .frame(width: 30, height: 30)
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.75).repeatForever(autoreverses: false)) {
+                isPulsing = true
+            }
         }
     }
 }
@@ -640,6 +710,27 @@ private enum GeoJSONBoundaryPathBuilder {
         return CGPoint(x: projectedBoundary.bounds.midX, y: projectedBoundary.bounds.midY)
     }
 
+    nonisolated static func point(
+        for coordinate: CLLocationCoordinate2D,
+        in rect: CGRect,
+        fittingTo boundary: GeoJSONFeatureCollection
+    ) -> CGPoint? {
+        guard
+            let projectedBoundary = projectedBoundary(for: boundary, in: rect),
+            let projectedPoint = googleMapsWorldPoint(
+                longitude: coordinate.longitude,
+                latitude: coordinate.latitude
+            )
+        else {
+            return nil
+        }
+
+        let x = projectedBoundary.xOffset + (projectedPoint.x - projectedBoundary.minProjectedX) * projectedBoundary.scale
+        let y = projectedBoundary.yOffset + (projectedPoint.y - projectedBoundary.minProjectedY) * projectedBoundary.scale
+        let point = CGPoint(x: x, y: y)
+        return rect.insetBy(dx: -2, dy: -2).contains(point) ? point : nil
+    }
+
     nonisolated private static func projectedBoundary(
         for boundary: GeoJSONFeatureCollection,
         in rect: CGRect,
@@ -661,13 +752,13 @@ private enum GeoJSONBoundaryPathBuilder {
         let points = rings.flatMap { ring in
             ring.compactMap { coordinate -> CGPoint? in
                 guard coordinate.count >= 2 else { return nil }
-                return webMercatorPoint(longitude: coordinate[0], latitude: coordinate[1])
+                return googleMapsWorldPoint(longitude: coordinate[0], latitude: coordinate[1])
             }
         }
         let boundsPoints = boundsRings.flatMap { ring in
             ring.compactMap { coordinate -> CGPoint? in
                 guard coordinate.count >= 2 else { return nil }
-                return webMercatorPoint(longitude: coordinate[0], latitude: coordinate[1])
+                return googleMapsWorldPoint(longitude: coordinate[0], latitude: coordinate[1])
             }
         }
 
@@ -695,11 +786,11 @@ private enum GeoJSONBoundaryPathBuilder {
         for ring in rings {
             var projectedRing: [CGPoint] = []
             for coordinate in ring where coordinate.count >= 2 {
-                guard let projectedPoint = webMercatorPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
+                guard let projectedPoint = googleMapsWorldPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
                     continue
                 }
                 let x = xOffset + (projectedPoint.x - minProjectedX) * scale
-                let y = yOffset + (maxProjectedY - projectedPoint.y) * scale
+                let y = yOffset + (projectedPoint.y - minProjectedY) * scale
                 let point = CGPoint(x: x, y: y)
                 projectedRing.append(point)
             }
@@ -721,23 +812,33 @@ private enum GeoJSONBoundaryPathBuilder {
 
         return ProjectedBoundary(
             rings: projectedRings,
-            bounds: CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+            bounds: CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY),
+            minProjectedX: minProjectedX,
+            minProjectedY: minProjectedY,
+            xOffset: xOffset,
+            yOffset: yOffset,
+            scale: scale
         )
     }
 
     private struct ProjectedBoundary {
         let rings: [[CGPoint]]
         let bounds: CGRect
+        let minProjectedX: CGFloat
+        let minProjectedY: CGFloat
+        let xOffset: CGFloat
+        let yOffset: CGFloat
+        let scale: CGFloat
     }
 
-    nonisolated private static func webMercatorPoint(longitude: Double, latitude: Double) -> CGPoint? {
+    nonisolated private static func googleMapsWorldPoint(longitude: Double, latitude: Double) -> CGPoint? {
         guard longitude.isFinite, latitude.isFinite else { return nil }
         let clampedLatitude = min(max(latitude, -85.05112878), 85.05112878)
-        let longitudeRadians = longitude * .pi / 180
         let latitudeRadians = clampedLatitude * .pi / 180
+        let sinLatitude = sin(latitudeRadians)
         return CGPoint(
-            x: longitudeRadians,
-            y: log(tan(.pi / 4 + latitudeRadians / 2))
+            x: (longitude + 180) / 360,
+            y: 0.5 - log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * .pi)
         )
     }
 
@@ -844,6 +945,7 @@ private struct DetailSectionView: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.78)
                                 .allowsTightening(true)
+                                .padding(.leading, 38)
 
                             Spacer(minLength: 16)
 
