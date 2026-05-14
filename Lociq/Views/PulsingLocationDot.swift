@@ -4,19 +4,41 @@
 //
 //  Renders the approximate in-boundary location marker.
 //
+//  The marker is deliberately tiny. It indicates approximate position within
+//  the city boundary without turning the boundary preview into an interactive
+//  location map.
+//
 
 import CoreLocation
 import SwiftUI
 
+/// Visual style for the approximate-location dot derived from accuracy.
+///
+/// Less accurate locations use a larger, softer ring. Extremely poor accuracy
+/// hides the marker so the app does not overstate precision.
 struct LocationDotStyle {
+    /// Opacity of the center dot.
     let tintOpacity: Double
+
+    /// Initial opacity of the pulsing ring.
     let ringOpacity: Double
+
+    /// Diameter of the center dot.
     let coreDiameter: CGFloat
+
+    /// Starting diameter of the ring.
     let ringDiameter: CGFloat
+
+    /// Maximum pulse scale applied to the ring.
     let pulseScale: CGFloat
+
+    /// Whether the marker should be rendered.
     let isVisible: Bool
 
     /// Derives dot and ring appearance from Core Location horizontal accuracy.
+    ///
+    /// The thresholds keep the marker visible for typical city-level accuracy
+    /// while avoiding false precision for very broad approximate locations.
     init(accuracy: CLLocationAccuracy?) {
         guard let accuracy, accuracy >= 0 else {
             tintOpacity = 0.86
@@ -60,12 +82,21 @@ struct LocationDotStyle {
     }
 }
 
+/// Animated approximate-location marker placed inside the projected boundary.
 struct PulsingLocationDot: View {
+    /// Style derived from Core Location accuracy.
     let style: LocationDotStyle
+
+    /// Accessibility reduced-motion flag.
     let reduceMotion: Bool
+
+    /// Drives the repeating ring scale and fade.
     @State private var isPulsing = false
+
+    /// Yellow location accent used consistently with the app icon.
     private let locationTint = Color(red: 1.0, green: 0.82, blue: 0.22)
 
+    /// Renders the pulsing ring and center dot.
     var body: some View {
         ZStack {
             Circle()

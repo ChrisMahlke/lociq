@@ -4,11 +4,29 @@
 //
 //  Draws the restrained dark background used by the app shell.
 //
+//  The background carries the visual identity without adding content. It is
+//  shared by the app surface, the iPad outer canvas, and launch/loading states.
+//
 
 import SwiftUI
 
+/// Dark minimal background with a subtle diagonal light plane.
 struct MinimalBackground: View {
+    /// Whether the background should extend beyond safe areas.
+    var ignoresSafeArea = true
+
+    /// Renders the background either safe-area-aware or full bleed.
     var body: some View {
+        if ignoresSafeArea {
+            content
+                .ignoresSafeArea()
+        } else {
+            content
+        }
+    }
+
+    /// The actual background drawing used by both safe-area modes.
+    private var content: some View {
         ZStack {
             Color.lociqInk
 
@@ -34,11 +52,11 @@ struct MinimalBackground: View {
                 .padding(.bottom, 142)
             }
         }
-        .ignoresSafeArea()
         .accessibilityHidden(true)
     }
 }
 
 extension Color {
+    /// Primary LOC IQ ink color used across the app and launch screen.
     static let lociqInk = Color(red: 0.075, green: 0.075, blue: 0.072)
 }

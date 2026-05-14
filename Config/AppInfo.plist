@@ -28,8 +28,8 @@
 	<true/>
 	<key>UILaunchScreen</key>
 	<dict>
-		<key>UIImageName</key>
-		<string>launchscreen3.png</string>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
 	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

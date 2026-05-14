@@ -4,10 +4,23 @@
 //
 //  Builds the UI-ready city demographic snapshot from loaded profile data.
 //
+//  The snapshot is the view-facing model. It contains display strings, not raw
+//  ACS values. Keeping formatting here makes SwiftUI views small and keeps
+//  Census data interpretation out of the rendering layer.
+//
 
 import Foundation
 
+/// Complete display payload for the home and details demographic views.
+///
+/// `DemographicSnapshot` is cacheable because it is fully detached from raw
+/// service models. A cached snapshot can render immediately while live Census
+/// data refreshes in the background.
 struct DemographicSnapshot: Codable, Sendable {
+    /// Minimal status categories used when real demographic content cannot be shown.
+    ///
+    /// These statuses intentionally map to short labels because the UI has very
+    /// little text surface for failures.
     enum LocationStatus {
         case censusKeyMissing
         case cityUnavailable
@@ -17,6 +30,7 @@ struct DemographicSnapshot: Codable, Sendable {
         case timedOut
         case serviceUnavailable
 
+        /// Short heading used when no resolved city label exists.
         var fallbackMarket: String {
             switch self {
             case .censusKeyMissing:
@@ -37,15 +51,34 @@ struct DemographicSnapshot: Codable, Sendable {
         }
     }
 
+    /// Main place title shown at the top of the UI.
     let market: String
+
+    /// Secondary status/date label below the place title.
     let dateLabel: String
+
+    /// Small descriptive cadence or state string used by failure snapshots.
     let cadence: String
+
+    /// Internal display mode label used by status snapshots.
     let mode: String
+
+    /// Confidence/progress value used by the bottom line.
     let confidence: Double
+
+    /// Indicates whether metrics represent real ACS demographic values.
     let hasDemographicData: Bool
+
+    /// Summary metrics shown on the primary view.
     let metrics: [DemographicMetric]
+
+    /// Detail sections shown after the bottom action toggles views.
     let detailSections: [DemographicDetailSection]
 
+    /// Placeholder shown when location access is not yet available.
+    ///
+    /// The placeholder intentionally avoids demographic-shaped values so users
+    /// do not mistake it for real data.
     static let placeholder = DemographicSnapshot(
         market: "LOCATION",
         dateLabel: "ENABLE ACCESS",
@@ -63,6 +96,7 @@ struct DemographicSnapshot: Codable, Sendable {
         detailSections: []
     )
 
+    /// Initial loading snapshot used before a displayable state exists.
     static let loading = DemographicSnapshot.status(
         market: "LOCATING",
         dateLabel: "ACS",
@@ -71,6 +105,12 @@ struct DemographicSnapshot: Codable, Sendable {
     )
 
     /// Builds the minimal snapshot shown when a profile cannot be fully loaded.
+    ///
+    /// - Parameters:
+    ///   - status: Normalized location or service state.
+    ///   - market: Short heading to display, usually a city name or fallback label.
+    /// - Returns: A non-demographic snapshot that remains visually consistent
+    ///   with the rest of the app.
     static func status(for status: LocationStatus, market: String) -> DemographicSnapshot {
         switch status {
         case .censusKeyMissing:
@@ -126,6 +166,9 @@ struct DemographicSnapshot: Codable, Sendable {
     }
 
     /// Builds a status snapshot with one compact metric row.
+    ///
+    /// Status snapshots have `hasDemographicData == false`, which prevents the
+    /// detail view and boundary-only UI from implying real metrics exist.
     private static func status(
         market: String,
         dateLabel: String,
@@ -147,6 +190,9 @@ struct DemographicSnapshot: Codable, Sendable {
     }
 
     /// Returns a copy of the snapshot with a different date/status label.
+    ///
+    /// This is used when stale cached data is shown without surfacing a visible
+    /// "cached" label in the minimal UI.
     func replacingDateLabel(_ dateLabel: String) -> DemographicSnapshot {
         DemographicSnapshot(
             market: market,
@@ -160,6 +206,11 @@ struct DemographicSnapshot: Codable, Sendable {
         )
     }
 
+    /// Plain text summary suitable for the share sheet.
+    ///
+    /// Share text is available only for real demographic data. Failure and
+    /// permission states return `nil` so the UI does not expose misleading share
+    /// actions.
     var shareText: String? {
         guard hasDemographicData else { return nil }
         let metricLines = metrics.map { "\($0.title): \($0.primaryValue)" }
@@ -169,6 +220,10 @@ struct DemographicSnapshot: Codable, Sendable {
 
 extension DemographicSnapshot {
     /// Creates the visible home and details content from a resolved city profile.
+    ///
+    /// This initializer is where domain values become display strings. It keeps
+    /// the summary view focused on a small set of metrics and the detail view
+    /// grouped into age, housing, and mobility sections.
     init(profile: ResolvedCityProfile, demographics: Demographics) {
         let households = DemographicValueFormatter.households(from: demographics)
         let ownerPct = DemographicValueFormatter.percent(demographics.housing.ownerOccupiedPct)

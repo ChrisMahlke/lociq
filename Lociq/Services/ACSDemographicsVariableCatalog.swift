@@ -4,12 +4,31 @@
 //
 //  Defines the ACS variable set used to build the city demographic snapshot.
 //
+//  This is the only file that should list raw ACS variable codes for the LOC IQ
+//  city profile. The mapper owns the semantic meaning of each code. Keeping the
+//  catalog isolated makes it easier to audit Census dependencies and add or
+//  remove fields without touching UI code.
+//
 
 import Foundation
 
+/// Catalog of ACS estimate variables requested for a place-level profile.
+///
+/// The list is intentionally larger than the fields displayed on the first
+/// screen because the detail view and future share/export paths need additional
+/// context. Variables are requested in chunks by `ACSDemographicsClient`.
 enum ACSDemographicsVariableCatalog {
+    /// Conservative per-request variable limit used when splitting ACS calls.
+    ///
+    /// The API can support more in some cases, but keeping chunks smaller makes
+    /// URLs easier to inspect and reduces failure blast radius.
     static let maxVariablesPerRequest = 45
 
+    /// ACS variables required to assemble the current city demographic profile.
+    ///
+    /// `NAME` is included alongside estimate variables so ACS can provide the
+    /// authoritative place label when available. All other entries are estimate
+    /// variables ending in `E`.
     static let extendedVariables = [
         "NAME",
         "B01003_001E",

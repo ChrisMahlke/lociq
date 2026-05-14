@@ -4,14 +4,22 @@
 //
 //  Verifies Census HTTP retry and timeout behavior.
 //
+//  The tests use custom URL protocols so the HTTP client can be exercised
+//  without real Census traffic. They cover the runtime behavior most likely to
+//  affect perceived app speed.
+//
 
 import Foundation
 import Testing
 @testable import Lociq
 
 @MainActor
+/// Tests for shared Census HTTP transport behavior.
 struct CensusHTTPClientTests {
     /// Verifies transient Census HTTP failures are retried before data is returned.
+    ///
+    /// The mock returns two `500` responses followed by success. The assertion
+    /// protects both retry count and final data propagation.
     @Test func retriesTransientHTTPFailuresBeforeReturningData() async throws {
         RetryingURLProtocol.reset()
 
@@ -35,6 +43,9 @@ struct CensusHTTPClientTests {
     }
 
     /// Verifies a slow Census response is classified as a timeout.
+    ///
+    /// The mock never calls its client completion methods. The HTTP client must
+    /// still return by racing the request against its timeout task.
     @Test func slowRequestProducesTimeoutFailure() async throws {
         HangingURLProtocol.reset()
 
@@ -61,6 +72,7 @@ struct CensusHTTPClientTests {
     }
 }
 
+/// URL protocol that fails twice and succeeds on the third attempt.
 private final class RetryingURLProtocol: URLProtocol {
     private static let lock = NSLock()
     private static var count = 0
@@ -76,6 +88,8 @@ private final class RetryingURLProtocol: URLProtocol {
     }
 
     /// Serves two retryable failures followed by one successful response.
+    ///
+    /// HTTP `500` is retryable according to `CensusServiceError.isRetryable`.
     override func startLoading() {
         Self.lock.lock()
         Self.count += 1
@@ -114,6 +128,10 @@ private final class RetryingURLProtocol: URLProtocol {
     }
 }
 
+/// URL protocol that intentionally never completes.
+///
+/// This simulates a hung network or service call so timeout behavior can be
+/// tested without sleeping for a real production timeout interval.
 private final class HangingURLProtocol: URLProtocol {
     /// Accepts mocked Census API requests for the test URL session.
     override class func canInit(with request: URLRequest) -> Bool {

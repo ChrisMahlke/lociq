@@ -4,6 +4,9 @@
 //
 //  Verifies snapshot formatting, display values, and cache decoding behavior.
 //
+//  These tests cover small pure transformations that should remain stable even
+//  as service and UI code changes.
+//
 
 import CoreLocation
 import Foundation
@@ -11,14 +14,20 @@ import Testing
 @testable import Lociq
 
 @MainActor
+/// Core formatting, snapshot, and cache compatibility tests.
 struct LociqTests {
     /// Verifies compact numeric and currency formatting.
+    ///
+    /// These values protect the display contract used by summary metrics.
     @Test func formatsNumberAndCurrencyValues() async throws {
         #expect(DemographicValueFormatter.number(12345) == "12,345")
         #expect(DemographicValueFormatter.currency(987654) == "$987,654")
     }
 
     /// Verifies unavailable numeric values render as the minimal unavailable marker.
+    ///
+    /// The marker is intentionally shared across number, currency, and percent
+    /// formatting.
     @Test func formatsUnavailableValuesMinimally() async throws {
         #expect(DemographicValueFormatter.number(nil) == "--")
         #expect(DemographicValueFormatter.currency(nil) == "--")
@@ -26,12 +35,17 @@ struct LociqTests {
     }
 
     /// Verifies percent and duration formatting.
+    ///
+    /// Percent and minute values are rounded to keep the UI compact.
     @Test func formatsPercentAndMinutes() async throws {
         #expect(DemographicValueFormatter.percent(64.7) == "65%")
         #expect(DemographicValueFormatter.minutes(27.2) == "27 MIN")
     }
 
     /// Verifies snapshots use city/place-level demographics and no longer expose ZIP or tract labels.
+    ///
+    /// This protects a product decision: the displayed place name and metrics
+    /// should refer to the city or CDP profile, not tract or block-group data.
     @Test func cityProfileSnapshotUsesPlaceLevelDemographics() async throws {
         let demographics = Self.cambridgeDemographics()
         let profile = ResolvedCityProfile(
@@ -65,6 +79,9 @@ struct LociqTests {
     }
 
     /// Verifies legacy cached profiles without newer optional fields still decode.
+    ///
+    /// The cache schema has evolved. This test ensures older installations can
+    /// still launch with their last saved profile.
     @Test func cachedCityProfileDecodesCacheWithoutHorizontalAccuracy() async throws {
         let legacyCacheJSON = """
         {
@@ -114,6 +131,9 @@ struct LociqTests {
 
 private extension LociqTests {
     /// Creates a Cambridge demographic fixture.
+    ///
+    /// The fixture contains enough fields to populate both summary metrics and
+    /// all detail sections.
     static func cambridgeDemographics() -> Demographics {
         Demographics(
             name: "Cambridge city, Massachusetts",
@@ -162,6 +182,9 @@ private extension LociqTests {
     }
 
     /// Creates a simple GeoJSON boundary fixture.
+    ///
+    /// The fixture is valid but intentionally rectangular so tests focus on
+    /// cache and snapshot behavior rather than boundary geometry complexity.
     static func sampleBoundary() -> GeoJSONFeatureCollection {
         GeoJSONFeatureCollection(
             type: "FeatureCollection",

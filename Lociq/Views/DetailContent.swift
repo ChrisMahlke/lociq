@@ -4,13 +4,22 @@
 //
 //  Renders the secondary demographic detail rows.
 //
+//  The details view keeps the same minimal vocabulary as the home view. It
+//  groups values by section and uses quiet typography instead of adding charts
+//  or explanatory panels.
+//
 
 import SwiftUI
 
+/// Detail panel for the secondary demographic view.
 struct DetailContent: View {
+    /// Snapshot containing display-ready detail sections.
     let snapshot: DemographicSnapshot
+
+    /// Layout metrics for spacing, column width, and typography.
     let layout: MinimalLayout
 
+    /// Renders all available detail sections aligned to the right edge.
     var body: some View {
         VStack(alignment: .trailing, spacing: layout.detailSectionSpacing) {
             ForEach(snapshot.detailSections) { section in
@@ -21,10 +30,15 @@ struct DetailContent: View {
     }
 }
 
+/// One labeled group in the detail panel.
 private struct DetailSectionView: View {
+    /// Section title and rows to render.
     let section: DemographicDetailSection
+
+    /// Layout metrics for row spacing and label/value sizing.
     let layout: MinimalLayout
 
+    /// Renders the section title plus its rows.
     var body: some View {
         VStack(alignment: .trailing, spacing: 8) {
             Text(section.title)
@@ -58,6 +72,9 @@ private struct DetailSectionView: View {
                         .monospacedDigit()
 
                         if let progress = row.progress {
+                            // Progress lines are optional and intentionally
+                            // subtle. They add rhythm without turning the
+                            // detail view into a chart surface.
                             ProgressLine(progress: progress)
                                 .opacity(DemographicContentStyle.detailProgressOpacity)
                                 .frame(maxWidth: max(64, layout.detailContentWidth - layout.detailLabelColumnWidth - 20))
@@ -70,15 +87,24 @@ private struct DetailSectionView: View {
     }
 }
 
+/// Specialized label renderer for detail rows.
+///
+/// Age labels use smaller words and larger numbers so strings such as
+/// `18 TO 34` remain compact but readable in the narrow details column.
 private struct DetailRowLabel: View {
+    /// Raw uppercase label from the display model.
     let label: String
+
+    /// Layout metrics that provide label fonts.
     let layout: MinimalLayout
 
+    /// Renders the composed label text.
     var body: some View {
         labelText
             .foregroundStyle(.white.opacity(DemographicContentStyle.detailLabelOpacity))
     }
 
+    /// Returns a composed text value with special age-label typography.
     private var labelText: Text {
         switch label {
         case "UNDER 18":
@@ -95,6 +121,7 @@ private struct DetailRowLabel: View {
         }
     }
 
+    /// Space using the default label font so composed labels align cleanly.
     private var space: Text {
         Text(" ")
             .font(LociqTypeScale.detailLabel(layout))

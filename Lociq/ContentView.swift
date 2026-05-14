@@ -4,18 +4,43 @@
 //
 //  Composes the root minimal city profile interface and routes its single action.
 //
+//  `ContentView` owns composition, not data loading. It observes
+//  `LocationProfileViewModel`, lays out the minimal surface, sequences first
+//  reveal animations, and routes the bottom action. Data state, formatting, and
+//  Census service behavior live outside this view.
+//
 
 import CoreLocation
 import SwiftUI
 
+/// Root SwiftUI surface for LOC IQ.
+///
+/// The layout is intentionally phone-like on every supported device. On iPad,
+/// `MinimalViewport` constrains the app surface so the design does not expand
+/// into a dashboard or map-style interface.
 struct ContentView: View {
+    /// Scene phase used to resume location refreshes when the app becomes active.
     @Environment(\.scenePhase) private var scenePhase
+
+    /// Accessibility reduced-motion setting used by all motion helpers.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Location and city profile state machine.
     @StateObject private var locationProfile: LocationProfileViewModel
+
+    /// Whether the secondary details panel is visible.
     @State private var isShowingDetails = false
+
+    /// Temporary loading state used while cycling home and details content.
     @State private var isLoadingContent = false
+
+    /// Whether the first loaded boundary has been revealed.
     @State private var hasRevealedBoundary = false
+
+    /// Whether the first loaded content stack has been revealed.
     @State private var hasRevealedContent = false
+
+    /// Task that sequences first boundary and content reveal.
     @State private var revealTask: Task<Void, Never>?
 
     /// Creates the root view with an optional launch-argument debug coordinate.
@@ -29,34 +54,67 @@ struct ContentView: View {
         locationProfile.coordinate
     }
 
+    /// Snapshot currently projected by the view model.
     private var displaySnapshot: DemographicSnapshot {
         locationProfile.snapshot
     }
 
+    /// True while the app should show only the initial spinner.
     private var isWaitingForInitialData: Bool {
         locationProfile.isWaitingForInitialData
     }
 
+    /// True after initial data is ready and the boundary reveal phase has started.
     private var shouldShowBoundary: Bool {
         !isWaitingForInitialData && hasRevealedBoundary
     }
 
+    /// True after initial data is ready and content reveal has started.
     private var shouldShowLoadedContent: Bool {
         !isWaitingForInitialData && hasRevealedContent
     }
 
+    /// Composes the background, constrained viewport, boundary, content, and bottom identity.
     var body: some View {
         GeometryReader { geometry in
-            let layout = MinimalLayout(geometry: geometry)
+            let viewport = MinimalViewport(geometry: geometry)
+            let layout = MinimalLayout(
+                viewportSize: viewport.size,
+                safeAreaInsets: viewport.safeAreaInsets
+            )
 
-            ZStack(alignment: .topTrailing) {
-                MinimalBackground()
-                boundaryLayer(layout: layout)
-                contentLayer(layout: layout)
-                bottomIdentity(layout: layout)
+            ZStack {
+                // The outer background fills iPad and phone screens. The inner
+                // surface can be constrained on iPad without exposing a blank
+                // platform-default color.
+                Color.lociqInk
+                    .ignoresSafeArea()
+
+                ZStack(alignment: .topTrailing) {
+                    // The inner background is clipped to the constrained
+                    // viewport, which preserves the phone composition on iPad.
+                    MinimalBackground(ignoresSafeArea: false)
+                    if isWaitingForInitialData {
+                        InitialLoadingSpinner(
+                            canvasSize: viewport.size,
+                            reduceMotion: reduceMotion
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                        .transition(.opacity)
+                    } else {
+                        boundaryLayer(layout: layout)
+                        contentLayer(layout: layout)
+                        bottomIdentity(layout: layout)
+                    }
+                }
+                .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: isWaitingForInitialData)
+                .frame(width: viewport.size.width, height: viewport.size.height)
+                .clipped()
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .overlayPreferenceValue(BoundaryCityConnectionPreferenceKey.self) { anchors in
+                // The connector needs anchors from two separate child views:
+                // the boundary glyph and the city label.
                 boundaryConnector(anchors: anchors)
             }
         }
@@ -75,6 +133,10 @@ struct ContentView: View {
         }
     }
 
+    /// Renders the geography layer when boundary geometry should be visible.
+    ///
+    /// Boundary visibility is staged after initial data arrives so the outline
+    /// can trace before demographic text fades in.
     @ViewBuilder
     private func boundaryLayer(layout: MinimalLayout) -> some View {
         if shouldShowBoundary, locationProfile.canShowBoundary, let boundary = locationProfile.boundary {
@@ -93,6 +155,10 @@ struct ContentView: View {
         }
     }
 
+    /// Renders the right-aligned city header and demographic content area.
+    ///
+    /// The scroll view is present to protect smaller devices and dynamic type
+    /// cases from clipping while still appearing static in normal use.
     @ViewBuilder
     private func contentLayer(layout: MinimalLayout) -> some View {
         if shouldShowLoadedContent {
@@ -125,6 +191,10 @@ struct ContentView: View {
         }
     }
 
+    /// Renders the bottom brand/action surface.
+    ///
+    /// The bottom identity receives callbacks instead of owning view-model
+    /// mutations, keeping action routing centralized in `ContentView`.
     private func bottomIdentity(layout: MinimalLayout) -> some View {
         BottomIdentity(
             snapshot: displaySnapshot,
@@ -149,6 +219,10 @@ struct ContentView: View {
     }
 
     /// Sequences the first loaded frame so geography appears before the demographic text.
+    ///
+    /// The sequence is intentionally restrained:
+    /// boundary first, then content. If no boundary is available, content
+    /// appears immediately after the first reveal delay.
     private func handleInitialDataWaitingChange(_ waiting: Bool) {
         revealTask?.cancel()
 
@@ -182,6 +256,11 @@ struct ContentView: View {
         }
     }
 
+    /// Draws the connector line between the boundary projection center and city label.
+    ///
+    /// Anchor preferences are resolved in the root coordinate space here. The
+    /// boundary view publishes the projected geometry center so the line starts
+    /// from the visual center of the polygon rather than from the app center.
     private func boundaryConnector(anchors: BoundaryCityConnectionAnchors) -> some View {
         GeometryReader { proxy in
             if let boundaryAnchor = anchors.boundary, let cityAnchor = anchors.city {
@@ -205,6 +284,9 @@ struct ContentView: View {
     }
 
     /// Places the connector near the city label baseline without touching the text.
+    ///
+    /// The end point stops slightly before the city string, preserving legibility
+    /// while still making the relationship clear.
     private func cityConnectorEnd(for cityRect: CGRect) -> CGPoint {
         CGPoint(
             x: cityRect.minX - 11,
@@ -213,6 +295,9 @@ struct ContentView: View {
     }
 
     /// Runs the minimal fade transition between summary metrics and the detail view.
+    ///
+    /// The bottom line enters loading state while the content swaps. This makes
+    /// the mode change feel intentional without adding a navigation stack.
     private func cycleContent() {
         guard !isLoadingContent else { return }
         guard displaySnapshot.hasDemographicData else { return }
@@ -237,6 +322,9 @@ struct ContentView: View {
     }
 
     /// Routes the single bottom action to data cycling, location permission, or retry.
+    ///
+    /// The visible icon is decided by `BottomIdentity`, but this method owns the
+    /// actual action order: data toggle, location request, then retry.
     private func handleBottomAction() {
         if displaySnapshot.hasDemographicData {
             cycleContent()

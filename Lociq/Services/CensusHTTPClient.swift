@@ -4,11 +4,22 @@
 //
 //  Provides shared HTTP and JSON decoding behavior for Census-backed services.
 //
+//  Census clients all need the same transport behavior: retry transient
+//  failures, enforce a per-request timeout, classify service errors, and decode
+//  JSON consistently. This type centralizes those rules.
+//
 
 import Foundation
 
+/// Shared HTTP transport for Census geocoder, ACS, and TIGERweb clients.
+///
+/// The client is intentionally small and does not know about any specific
+/// endpoint. Endpoint clients provide URLs and response model types.
 struct CensusHTTPClient: Sendable {
+    /// Injected URL session, which lets tests provide protocol-backed responses.
     private let session: URLSession
+
+    /// Retry, timeout, and backoff configuration.
     private let retryPolicy: CensusRetryPolicy
 
     /// Creates a Census HTTP client backed by an injectable URL session.
@@ -18,6 +29,9 @@ struct CensusHTTPClient: Sendable {
     }
 
     /// Performs an HTTP GET and throws when the Census service returns a non-success status.
+    ///
+    /// Retryable failures are retried according to `retryPolicy`. Non-retryable
+    /// failures, such as invalid URLs or decode failures, surface immediately.
     func get(_ url: URL) async throws -> Data {
         var lastError: CensusServiceError?
 
@@ -40,6 +54,9 @@ struct CensusHTTPClient: Sendable {
     }
 
     /// Performs one timeout-bounded HTTP GET attempt.
+    ///
+    /// This method handles only one network attempt. The caller is responsible
+    /// for retrying when the resulting `CensusServiceError` says retry may help.
     private func getOnce(_ url: URL) async throws -> Data {
         let (data, response) = try await withTimeout {
             try await session.data(from: url)
@@ -58,6 +75,11 @@ struct CensusHTTPClient: Sendable {
     }
 
     /// Runs an async operation with the configured per-request timeout.
+    ///
+    /// A throwing task group races the operation against a sleeping timeout
+    /// task. Once one task finishes, the other is cancelled. This avoids waiting
+    /// indefinitely on slow Census services and keeps the UI loading state
+    /// bounded.
     private func withTimeout<T: Sendable>(_ operation: @escaping @Sendable () async throws -> T) async throws -> T {
         let timeout = retryPolicy.requestTimeoutNanoseconds
         return try await withThrowingTaskGroup(of: T.self) { group in
@@ -78,6 +100,9 @@ struct CensusHTTPClient: Sendable {
     }
 
     /// Decodes JSON data using the shared decoder behavior for Census service responses.
+    ///
+    /// Decoding errors are wrapped in `CensusServiceError.decodeFailed` so upper
+    /// layers can classify all Census failures through one error type.
     func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         do {
             return try JSONDecoder().decode(T.self, from: data)

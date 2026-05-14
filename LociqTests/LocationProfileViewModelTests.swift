@@ -4,6 +4,10 @@
 //
 //  Verifies profile ViewModel state transitions, cache behavior, and retry logic.
 //
+//  These tests exercise the view model as a state machine. Service and location
+//  dependencies are replaced by fakes so each test controls authorization,
+//  location updates, async outcomes, cache freshness, and race ordering.
+//
 
 import CoreLocation
 import Foundation
@@ -11,8 +15,12 @@ import Testing
 @testable import Lociq
 
 @MainActor
+/// Tests for `LocationProfileViewModel` orchestration behavior.
 struct LocationProfileViewModelTests {
     /// Verifies the app waits for an explicit user action before requesting first-run location access.
+    ///
+    /// The app should not immediately trigger the system permission prompt on
+    /// launch. It first shows the minimal enable-access state.
     @Test func activateWithUndeterminedPermissionWaitsForUserAction() async throws {
         let manager = FakeLocationManager(authorizationStatus: .notDetermined)
         let viewModel = Self.makeViewModel(
@@ -39,6 +47,9 @@ struct LocationProfileViewModelTests {
     }
 
     /// Verifies denied location permission produces the minimal unavailable state when no cache exists.
+    ///
+    /// Without cached data, denied permission should not show demographic-shaped
+    /// placeholders.
     @Test func deniedPermissionShowsLocationUnavailableWithoutCache() async throws {
         let viewModel = Self.makeViewModel(
             cacheStore: Self.makeCacheStore(),
@@ -55,6 +66,9 @@ struct LocationProfileViewModelTests {
     }
 
     /// Verifies stale cached profiles are shown without exposing cache state to users.
+    ///
+    /// The UI previously showed cache wording. This test protects the current
+    /// product choice to keep stale fallback silent and minimal.
     @Test func staleCachedProfileIsDisplayedAsCached() async throws {
         let now = Date(timeIntervalSinceReferenceDate: 200_000)
         let store = Self.makeCacheStore()
@@ -76,6 +90,8 @@ struct LocationProfileViewModelTests {
     }
 
     /// Verifies successful location loads save a fresh cache entry using the injected clock.
+    ///
+    /// The injected clock makes the saved timestamp deterministic.
     @Test func successfulLocationLoadStoresFreshProfile() async throws {
         let now = Date(timeIntervalSinceReferenceDate: 300_000)
         let store = Self.makeCacheStore()
@@ -102,6 +118,9 @@ struct LocationProfileViewModelTests {
     }
 
     /// Verifies recoverable service failures preserve retry context.
+    ///
+    /// The first outcome fails, then retry forces the same coordinate to load
+    /// again instead of being suppressed as a duplicate.
     @Test func unavailableProfileStatePreservesFailureForRetry() async throws {
         let coordinate = CLLocationCoordinate2D(latitude: 42.3736, longitude: -71.1056)
         let unavailable = CityProfileLoadOutcome.unavailable(
@@ -143,6 +162,9 @@ struct LocationProfileViewModelTests {
     }
 
     /// Verifies a failed refresh keeps the previously loaded city visible as stale data.
+    ///
+    /// This protects the fallback behavior that prevents live refresh failures
+    /// from blanking an already useful profile.
     @Test func failedRefreshKeepsCachedProfileVisibleAsStale() async throws {
         let now = Date(timeIntervalSinceReferenceDate: 400_000)
         let store = Self.makeCacheStore()
@@ -173,6 +195,9 @@ struct LocationProfileViewModelTests {
     }
 
     /// Verifies stale asynchronous profile responses cannot overwrite a newer coordinate load.
+    ///
+    /// The first load is delayed and the second completes immediately. The view
+    /// model's active load ID should ignore the older completion.
     @Test func olderProfileLoadCannotOverwriteNewerLocation() async throws {
         let firstCoordinate = CLLocationCoordinate2D(latitude: 42.3736, longitude: -71.1056)
         let secondCoordinate = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
@@ -207,6 +232,9 @@ struct LocationProfileViewModelTests {
 
 private extension LocationProfileViewModelTests {
     /// Creates a ViewModel with fake dependencies for deterministic tests.
+    ///
+    /// Haptics are replaced with a no-op because these tests assert state, not
+    /// physical feedback.
     static func makeViewModel(
         cacheStore: CityProfileCacheStore,
         manager: FakeLocationManager,
@@ -223,6 +251,9 @@ private extension LocationProfileViewModelTests {
     }
 
     /// Creates an isolated cache store for one test.
+    ///
+    /// Each test receives a unique defaults suite so cached profiles cannot
+    /// bleed across tests.
     static func makeCacheStore() -> CityProfileCacheStore {
         let suiteName = "lociq.tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -231,6 +262,9 @@ private extension LocationProfileViewModelTests {
     }
 
     /// Returns the default Cambridge fixture location.
+    ///
+    /// Horizontal accuracy is set to a realistic value so location-dot styling
+    /// paths can use the fixture when needed.
     static func location() -> CLLocation {
         CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 42.3736, longitude: -71.1056),
@@ -242,6 +276,9 @@ private extension LocationProfileViewModelTests {
     }
 
     /// Creates a cacheable profile fixture.
+    ///
+    /// The fixture is intentionally display-ready because the view model works
+    /// with cached snapshots rather than raw service models.
     static func cachedProfile(
         market: String = "CAMBRIDGE, MASSACHUSETTS",
         latitude: Double = 42.3736,
@@ -274,6 +311,9 @@ private extension LocationProfileViewModelTests {
     }
 
     /// Returns a rectangular GeoJSON fixture around Cambridge.
+    ///
+    /// The geometry is simple but valid GeoJSON, which is enough for cache and
+    /// boundary availability assertions.
     static func sampleBoundary() -> GeoJSONFeatureCollection {
         GeoJSONFeatureCollection(
             type: "FeatureCollection",
@@ -296,6 +336,7 @@ private extension LocationProfileViewModelTests {
     }
 }
 
+/// Fake `LocationManaging` implementation used by view-model tests.
 private final class FakeLocationManager: LocationManaging {
     weak var delegate: CLLocationManagerDelegate?
     var desiredAccuracy: CLLocationAccuracy = kCLLocationAccuracyHundredMeters
@@ -319,6 +360,10 @@ private final class FakeLocationManager: LocationManaging {
     }
 }
 
+/// Actor-backed city profile loader stub.
+///
+/// Outcomes are queued so tests can model failures followed by successful
+/// retries or out-of-order async completions.
 private actor StubCityProfileLoader: CityProfileLoading {
     private var outcomes: [CityProfileLoadOutcome]
     private var delays: [UInt64]
@@ -331,6 +376,9 @@ private actor StubCityProfileLoader: CityProfileLoading {
     }
 
     /// Returns the next queued profile-load outcome.
+    ///
+    /// Optional delays let tests force older requests to finish after newer
+    /// requests.
     func loadProfile(
         for coordinate: CLLocationCoordinate2D,
         horizontalAccuracy: CLLocationAccuracy?

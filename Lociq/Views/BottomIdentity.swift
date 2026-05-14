@@ -4,10 +4,20 @@
 //
 //  Renders the LOC IQ mark, bottom action, and loading line.
 //
+//  This is the only persistent control area in the app. It carries brand,
+//  loading feedback, retry/location actions, the home/details toggle, and a
+//  context menu for secondary actions without adding visible chrome.
+//
 
 import SwiftUI
 
+/// Bottom brand and action surface for the minimal interface.
+///
+/// The component uses one icon button to represent the current primary action.
+/// It changes between location, retry, details, and home based on the view
+/// state supplied by `LocationProfileViewModel`.
 struct BottomIdentity: View {
+    /// Static strings and SF Symbols used by the bottom surface.
     private enum Constants {
         static let brandLeading = "LOC"
         static let brandTrailing = "IQ"
@@ -24,19 +34,43 @@ struct BottomIdentity: View {
         static let showDataLabel = "Show data view"
     }
 
+    /// Current demographic display snapshot.
     let snapshot: DemographicSnapshot
+
+    /// Whether the details view is currently visible.
     let isShowingDetails: Bool
+
+    /// Whether profile loading or content cycling is active.
     let isLoading: Bool
+
+    /// Whether the initial spinner-only state is active.
     let isWaitingForInitialData: Bool
+
+    /// Whether the primary action should retry or request access.
     let canRetry: Bool
+
+    /// Whether the retry state specifically represents missing location permission.
     let needsLocationPermission: Bool
+
+    /// Whether the context menu can expose refresh.
     let canRefresh: Bool
+
+    /// Optional share payload for the context menu.
     let shareText: String?
+
+    /// Layout metrics for the current constrained viewport.
     let layout: MinimalLayout
+
+    /// Accessibility reduced-motion flag passed from the root view.
     var reduceMotion = false
+
+    /// Primary bottom action handler.
     let onShowDetails: () -> Void
+
+    /// Secondary refresh handler used from the context menu.
     let onRefresh: () -> Void
 
+    /// SF Symbol name for the current primary action.
     private var iconName: String {
         if !snapshot.hasDemographicData {
             return needsLocationPermission ? Constants.locationIcon : Constants.retryIcon
@@ -44,6 +78,7 @@ struct BottomIdentity: View {
         return isShowingDetails ? Constants.homeIcon : Constants.detailIcon
     }
 
+    /// Accessibility label for the current primary action.
     private var actionLabel: String {
         if !snapshot.hasDemographicData {
             return needsLocationPermission ? Constants.enableLocationLabel : Constants.retryLabel
@@ -51,6 +86,7 @@ struct BottomIdentity: View {
         return isShowingDetails ? Constants.showHomeLabel : Constants.showDataLabel
     }
 
+    /// Draws the brand, current action icon, and progress/loading line.
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 12) {
@@ -100,6 +136,8 @@ struct BottomIdentity: View {
                 ProgressLine(progress: snapshot.confidence, isLoading: isLoading, reduceMotion: reduceMotion)
                     .contentShape(Rectangle())
                     .onTapGesture {
+                        // The line doubles as the retry target in unavailable
+                        // states, preserving the one-control minimalist surface.
                         if canRetry {
                             onShowDetails()
                         }

@@ -4,6 +4,10 @@
 //
 //  Verifies city-level ACS request construction and value normalization.
 //
+//  These tests use a custom `URLProtocol` instead of the network. That keeps ACS
+//  request behavior deterministic while still exercising URL construction,
+//  variable chunking, table decoding, and mapper normalization together.
+//
 
 import Foundation
 import Testing
@@ -11,8 +15,16 @@ import Testing
 
 @Suite(.serialized)
 @MainActor
+/// Integration-style tests for the ACS demographics client using mocked HTTP.
+///
+/// The suite is serialized because the custom URL protocol stores request
+/// history in static process state.
 struct ACSDemographicsClientTests {
     /// Verifies that place-level ACS requests use city/place geography and normalize unavailable estimates.
+    ///
+    /// Cambridge is the primary hard-coded place fixture used during development
+    /// because it has enough values to exercise normal formatting and sentinel
+    /// handling.
     @Test func cambridgePlaceRequestUsesCityLevelACSGeography() async throws {
         CambridgeACSURLProtocol.reset()
 
@@ -48,6 +60,9 @@ struct ACSDemographicsClientTests {
     }
 
     /// Verifies that census-designated places use the same place-level ACS geography contract.
+    ///
+    /// CDPs are not incorporated cities, but ACS still exposes them through the
+    /// `place` geography. The app should therefore query them the same way.
     @Test func censusDesignatedPlaceRequestUsesPlaceLevelACSGeography() async throws {
         CambridgeACSURLProtocol.reset()
 
@@ -80,6 +95,9 @@ struct ACSDemographicsClientTests {
     }
 
     /// Verifies that sparse ACS rows for very small places still produce a valid normalized profile.
+    ///
+    /// Very small places often have suppressed estimates. Population is enough
+    /// to create a profile, while unavailable income and age should remain nil.
     @Test func verySmallPlaceNormalizesSparseACSValues() async throws {
         CambridgeACSURLProtocol.reset()
 
@@ -108,6 +126,9 @@ struct ACSDemographicsClientTests {
     }
 
     /// Verifies ACS sentinel values and string markers are consistently treated as unavailable.
+    ///
+    /// This test protects the shared normalizer so all demographic fields treat
+    /// suppressed ACS values the same way.
     @Test func suppressedAndMissingACSValuesNormalizeToUnavailable() {
         #expect(ACSValueNormalizer.int("-666666666") == nil)
         #expect(ACSValueNormalizer.int("N/A") == nil)
@@ -119,6 +140,11 @@ struct ACSDemographicsClientTests {
     }
 }
 
+/// URL protocol that intercepts ACS requests and returns generated fixture rows.
+///
+/// The mock builds responses from the request's `get`, `for`, and `in`
+/// parameters. This verifies that the production client sends the geography and
+/// variable query shape expected by the Census API.
 private final class CambridgeACSURLProtocol: URLProtocol {
     private static let recorder = URLRequestRecorder()
 
@@ -171,6 +197,9 @@ private final class CambridgeACSURLProtocol: URLProtocol {
     }
 
     /// Builds the ACS row for the variables requested in the URL.
+    ///
+    /// The client may request different variable chunks. This method mirrors ACS
+    /// by returning exactly the requested header fields plus one matching row.
     private static func responseData(for url: URL) throws -> Data {
         let variables = url.queryValue(named: "get")?
             .split(separator: ",")
@@ -184,6 +213,9 @@ private final class CambridgeACSURLProtocol: URLProtocol {
     }
 
     /// Provides fixture values keyed by ACS variable code.
+    ///
+    /// Variables missing from a fixture default to zero. Specific sentinel and
+    /// string markers are included where tests need to verify unavailable data.
     private static func valuesByVariable(forPlace placeCode: String) -> [String: String] {
         switch placeCode {
         case "19075":
@@ -217,6 +249,10 @@ private final class CambridgeACSURLProtocol: URLProtocol {
     }
 }
 
+/// Thread-safe recorder for URLs observed by custom URL protocol tests.
+///
+/// URL loading callbacks can arrive from background queues, so request history
+/// is guarded by `NSLock` even in serialized test suites.
 private final class URLRequestRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private var storedURLs: [URL] = []
@@ -246,6 +282,9 @@ private final class URLRequestRecorder: @unchecked Sendable {
 
 private extension URL {
     /// Reads a named query value from the URL.
+    ///
+    /// Used by mocks and expectations to inspect Census query parameters without
+    /// relying on string splitting.
     func queryValue(named name: String) -> String? {
         URLComponents(url: self, resolvingAgainstBaseURL: false)?
             .queryItems?

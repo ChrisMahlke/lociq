@@ -4,12 +4,26 @@
 //
 //  Coordinates Census geocoding, ACS demographics, and TIGER city boundaries.
 //
+//  This client performs the direct service fan-out for a coordinate. It is kept
+//  separate from the caching service so tests and higher-level loaders can
+//  choose whether they want memoization or raw Census behavior.
+//
 
 import Foundation
 
+/// Composes geocoder, ACS, and TIGER clients into one resolved city profile.
+///
+/// The client treats boundary loading as optional and demographics loading as
+/// recoverable. That lets the app show partial but useful information when one
+/// Census service fails.
 struct DirectCensusCityProfileClient: Sendable {
+    /// Coordinate-to-Census-geography resolver.
     private let geocoderClient: CensusGeocoderClient
+
+    /// TIGERweb boundary client for the resolved place.
     private let boundaryClient: TIGERBoundaryClient
+
+    /// ACS demographic client for the resolved place.
     private let demographicsClient: ACSDemographicsClient
 
     /// Creates the direct Census client by composing geocoder, ACS, and TIGERweb dependencies over one session.
@@ -29,6 +43,12 @@ struct DirectCensusCityProfileClient: Sendable {
     }
 
     /// Resolves a coordinate into one city-level profile with place demographics and boundary geometry.
+    ///
+    /// Boundary and demographic requests are started concurrently after
+    /// geocoding succeeds because they are independent once the place is known.
+    /// Demographic failure is captured as a partial failure rather than
+    /// throwing immediately, which allows the loader to decide whether a
+    /// location shell can still be useful.
     func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedCityProfile {
         let geographies = try await geocoderClient.fetchGeographiesFromCoordinate(
             latitude: latitude,
@@ -68,6 +88,9 @@ struct DirectCensusCityProfileClient: Sendable {
     }
 
     /// Fetches demographics for a resolved place or throws when no place is available.
+    ///
+    /// Missing place metadata means ACS cannot be queried at the place level,
+    /// so the condition is normalized into `noDemographicsFound`.
     private func fetchPlaceDemographics(place: PlaceInfo?) async throws -> Demographics {
         guard let place else {
             throw CensusServiceError.noDemographicsFound

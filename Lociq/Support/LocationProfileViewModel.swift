@@ -4,13 +4,29 @@
 //
 //  Coordinates location permission, profile loading, cache refresh, and UI state.
 //
+//  This is the app's main state machine. It is deliberately responsible for
+//  orchestration only: Core Location callbacks, cache loading, request planning,
+//  async profile loading, and state publication. Display projection lives in
+//  `LocationProfileViewStateMapper`, and service details live behind protocols.
+//
 
 import Combine
 import CoreLocation
 import Foundation
 
 @MainActor
+/// Main actor state machine backing the root SwiftUI interface.
+///
+/// The view model keeps all published state on the main actor because SwiftUI
+/// observes it directly. Network and service work happens in async tasks, but
+/// outcomes are applied back on the main actor.
 final class LocationProfileViewModel: NSObject, ObservableObject {
+    /// Internal state machine for location and profile loading.
+    ///
+    /// The states distinguish between initial loading, refresh over existing
+    /// data, complete profile availability, permission states, and unavailable
+    /// profile shells. That separation lets the UI stay sparse without lying
+    /// about whether data exists.
     enum State {
         case idle
         case needsLocationPermission
@@ -28,24 +44,56 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         )
     }
 
+    /// Current state machine value observed by SwiftUI.
     @Published private(set) var state: State = .idle
+
+    /// Incrementing token used to restart one-shot boundary and connector animations.
     @Published private(set) var traceToken = 0
 
+    /// Location manager abstraction, real in production and fake in tests.
     private let manager: LocationManaging
+
+    /// Profile loading dependency that hides Census service composition.
     private let profileLoader: any CityProfileLoading
+
+    /// Optional launch-argument coordinate used for deterministic debug testing.
     private let debugCoordinate: CLLocationCoordinate2D?
+
+    /// Local cache for the last successful profile.
     private let cacheStore: CityProfileCacheStore
+
+    /// Clock dependency for testable cache freshness and load durations.
     private let now: @Sendable () -> Date
+
+    /// Haptic closure invoked once when the first real profile resolves.
     private let playProfileResolvedHaptic: @MainActor () -> Void
+
+    /// Cache freshness policy used for restored profiles.
     private let cachePolicy: CityProfileCachePolicy
+
+    /// Pure authorization transition helper.
     private let authorizationCoordinator = LocationAuthorizationCoordinator()
+
+    /// Pure duplicate-suppression and pre-load-state planner.
     private let profileLoadPlanner: ProfileLoadPlanner
+
+    /// Last rounded coordinate key requested by the loader.
     private var lastLoadedCoordinateKey: String?
+
+    /// Identifier for the currently active async profile load.
     private var activeLoadID: UUID?
+
+    /// The current load task, retained so tests can await it and new loads can cancel it.
     private var loadTask: Task<Void, Never>?
+
+    /// Prevents repeated first-profile haptics during refreshes.
     private var hasPlayedProfileResolvedHaptic = false
 
     /// Creates the location profile state machine and wires together location, cache, and Census profile dependencies.
+    ///
+    /// Production defaults construct the real Core Location manager, Census
+    /// services, cache store, and haptic behavior. Tests can inject every
+    /// side-effecting dependency.
     init(
         debugCoordinate: CLLocationCoordinate2D? = nil,
         cacheStore: CityProfileCacheStore? = nil,
@@ -83,57 +131,73 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
 
+        // Restore cached content immediately so launch does not have to wait
+        // for network services before showing a known recent profile.
         if let cached = self.cacheStore.load() {
             state = .loaded(cached, isStale: cachePolicy.isStale(cached, at: now()))
             traceToken += 1
         }
     }
 
+    /// Current display snapshot projected from the state machine.
     var snapshot: DemographicSnapshot {
         viewState.snapshot
     }
 
+    /// Boundary geometry that should currently be available to the view.
     var boundary: GeoJSONFeatureCollection? {
         viewState.boundary
     }
 
+    /// Coordinate associated with the currently displayed state.
     var coordinate: CLLocationCoordinate2D? {
         viewState.coordinate
     }
 
+    /// Horizontal accuracy associated with the displayed coordinate.
     var horizontalAccuracy: CLLocationAccuracy? {
         viewState.horizontalAccuracy
     }
 
+    /// True while location or profile loading is active.
     var isLoading: Bool {
         viewState.isLoading
     }
 
+    /// True before the app has any displayable data or fallback state.
     var isWaitingForInitialData: Bool {
         viewState.isWaitingForInitialData
     }
 
+    /// True when the boundary preview should draw.
     var canShowBoundary: Bool {
         viewState.canShowBoundary
     }
 
+    /// True when the bottom action can retry a recoverable state.
     var canRetry: Bool {
         viewState.canRetry
     }
 
+    /// True when the UI should ask the user to enable location access.
     var needsLocationPermissionPrompt: Bool {
         viewState.needsLocationPermissionPrompt
     }
 
+    /// True when a visible profile can be refreshed in place.
     var canRefreshCurrentCity: Bool {
         viewState.canRefresh
     }
 
+    /// Optional share text for the visible profile.
     var shareText: String? {
         viewState.shareText
     }
 
     /// Starts or resumes the location/profile workflow based on the current authorization state.
+    ///
+    /// Debug coordinates bypass Core Location so simulator and regression tests
+    /// can load a known city deterministically.
     func activate() {
         if let debugCoordinate {
             load(for: debugCoordinate)
@@ -149,6 +213,9 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     }
 
     /// Prompts for location access when possible or falls back to the normal retry path.
+    ///
+    /// If authorization has already been decided, the bottom action behaves as a
+    /// retry instead of repeatedly asking for permission.
     func requestLocationAccess() {
         if manager.authorizationStatus == .notDetermined {
             state = .requestingLocation
@@ -159,6 +226,9 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     }
 
     /// Retries the last recoverable failure without requiring the user to restart the app.
+    ///
+    /// Retry clears the duplicate coordinate key so the same coordinate can be
+    /// requested again after a transient network or service failure.
     func retry() {
         lastLoadedCoordinateKey = nil
 
@@ -179,6 +249,10 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     }
 
     /// Refreshes the currently visible city while keeping cached data on screen if the refresh fails.
+    ///
+    /// The refresh path forces a new request even when the coordinate has not
+    /// changed, but it keeps current data visible through the `.refreshing`
+    /// pre-load state.
     func refreshCurrentCity() {
         lastLoadedCoordinateKey = nil
 
@@ -199,6 +273,9 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     }
 
     /// Applies a Core Location authorization transition to the state machine.
+    ///
+    /// The coordinator decides the action. The view model performs the action so
+    /// all mutations remain centralized.
     func handleAuthorizationChange(_ authorizationStatus: CLAuthorizationStatus) {
         perform(
             authorizationCoordinator.changeAction(
@@ -209,17 +286,27 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     }
 
     /// Starts a profile refresh for the newest location update.
+    ///
+    /// Core Location may deliver multiple locations. The delegate passes only
+    /// the newest one here.
     func handleLocationUpdate(_ location: CLLocation) {
         load(for: location.coordinate, horizontalAccuracy: location.horizontalAccuracy)
     }
 
     /// Converts a location failure into the least noisy user-visible state.
+    ///
+    /// If a profile is already visible, location errors do not replace it. This
+    /// preserves useful stale context instead of flashing an error.
     func handleLocationFailure(authorizationStatus: CLAuthorizationStatus) {
         guard currentLoadedProfile == nil else { return }
         perform(authorizationCoordinator.failureAction(for: authorizationStatus))
     }
 
     /// Starts a guarded city-profile request for a coordinate.
+    ///
+    /// The load planner suppresses duplicate requests and chooses whether to
+    /// show loading or refreshing state. Each actual request receives a UUID so
+    /// late responses from cancelled tasks cannot overwrite newer data.
     private func load(
         for coordinate: CLLocationCoordinate2D,
         horizontalAccuracy: CLLocationAccuracy? = nil,
@@ -251,6 +338,9 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     }
 
     /// Applies the result for the currently active request and ignores stale responses.
+    ///
+    /// `loadID` protects against out-of-order async completion. If a newer load
+    /// has started, older outcomes are ignored.
     private func apply(_ outcome: CityProfileLoadOutcome, loadID: UUID, startedAt: Date) {
         guard loadID == activeLoadID else { return }
 
@@ -285,6 +375,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// Current view-facing projection of the internal state machine.
     private var viewState: LocationProfileViewState {
         LocationProfileViewStateMapper.make(from: state, debugCoordinate: debugCoordinate)
     }
@@ -296,6 +387,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         playProfileResolvedHaptic()
     }
 
+    /// Currently visible loaded profile, including stale profiles shown during refresh.
     private var currentLoadedProfile: CachedCityProfile? {
         switch state {
         case .refreshing(let profile, _), .loaded(let profile, _):
@@ -305,6 +397,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// Staleness flag attached to the currently visible loaded profile.
     private var currentLoadedProfileIsStale: Bool {
         switch state {
         case .refreshing(_, let isStale), .loaded(_, let isStale):
@@ -315,6 +408,9 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     }
 
     /// Applies one authorization action to ViewModel state and Core Location requests.
+    ///
+    /// This is the only method that translates authorization actions into
+    /// concrete state changes and `CLLocationManager` calls.
     private func perform(_ action: LocationAuthorizationAction) {
         switch action {
         case .showPermissionPrompt:

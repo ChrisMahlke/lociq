@@ -4,13 +4,18 @@
 //
 //  Captures launch screenshots for lightweight visual review.
 //
+//  Screenshot artifacts are useful for quick inspection of the minimal launch
+//  state without adding automated visual diff infrastructure.
+//
 
 import XCTest
 
 private enum UITestStrings {
+    /// Attachment name used in Xcode's test report.
     static let launchScreenName = "Launch Screen"
 }
 
+/// Launch screenshot test for manual visual review.
 final class LociqUITestsLaunchTests: XCTestCase {
     /// Configures each launch test to fail immediately on the first assertion failure.
     override func setUpWithError() throws {
@@ -18,13 +23,13 @@ final class LociqUITestsLaunchTests: XCTestCase {
     }
 
     /// Launches the app and preserves a screenshot artifact for visual review.
+    ///
+    /// The test does not navigate because the first frame is the relevant visual
+    /// regression target.
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
         app.launch()
-
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = UITestStrings.launchScreenName

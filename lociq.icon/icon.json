@@ -1,6 +1,6 @@
 {
   "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+    "solid" : "extended-srgb:0.07500,0.07500,0.07200,1.00000"
   },
   "groups" : [
     {
@@ -8,12 +8,12 @@
         {
           "glass" : true,
           "image-name" : "icon.png",
-          "name" : "icon",
+          "name" : "LOC IQ city demographics icon",
           "position" : {
             "scale" : 0.95,
             "translation-in-points" : [
-              -25.600000000000023,
-              -22.514273136680686
+              0,
+              0
             ]
           }
         }

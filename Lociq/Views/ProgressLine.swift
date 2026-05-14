@@ -4,15 +4,27 @@
 //
 //  Renders the minimal one-pixel loading and progress indicator.
 //
+//  The line serves two purposes: static confidence/progress for loaded content
+//  and a quiet sweeping indicator while services are loading.
+//
 
 import SwiftUI
 
+/// One-pixel progress and loading line used by the bottom identity and details.
 struct ProgressLine: View {
+    /// Normalized progress value used when not loading.
     let progress: Double
+
+    /// Whether to show a sweeping loading segment.
     var isLoading = false
+
+    /// Accessibility reduced-motion flag.
     var reduceMotion = false
+
+    /// Horizontal loading segment offset expressed as a fraction of width.
     @State private var loadingOffset: CGFloat = -0.28
 
+    /// Draws the track plus either a static progress fill or animated sweep.
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -38,6 +50,8 @@ struct ProgressLine: View {
         }
         .frame(height: 1)
         .task(id: isLoading) {
+            // The task restarts when loading changes. It loops until SwiftUI
+            // cancels it because the view disappeared or loading ended.
             guard isLoading else {
                 loadingOffset = -0.28
                 return
@@ -48,10 +62,12 @@ struct ProgressLine: View {
             }
 
             while !Task.isCancelled {
+                // Reset slightly offscreen so the sweep appears to enter the line.
                 loadingOffset = -0.28
                 try? await Task.sleep(nanoseconds: 80_000_000)
                 guard let animation = LociqMotion.loadingSweep(reduceMotion: reduceMotion) else { return }
                 withAnimation(animation) {
+                    // Move past the far edge so the segment exits cleanly.
                     loadingOffset = 1.02
                 }
                 try? await Task.sleep(nanoseconds: LociqMotion.loadingSweepPauseNanoseconds)
