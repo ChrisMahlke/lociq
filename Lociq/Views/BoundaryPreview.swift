@@ -27,8 +27,8 @@ struct CityBoundaryPreview: View {
                     BoundaryPreviewShape(projection: projection)
                         .trim(from: 0, to: traceProgress)
                         .stroke(
-                            Color.white.opacity(0.18),
-                            style: StrokeStyle(lineWidth: 0.75, lineCap: .round, lineJoin: .round)
+                            Color.white.opacity(0.28),
+                            style: StrokeStyle(lineWidth: 0.9, lineCap: .round, lineJoin: .round)
                         )
 
                     if showsLocationDot, let coordinate, let locationPoint = projection.point(for: coordinate) {
