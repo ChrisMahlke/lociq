@@ -4,11 +4,11 @@ Lociq uses the device location only to request a city-level Census profile.
 
 ## What Leaves The Device
 
-When location access is granted, the app sends latitude and longitude to U.S. Census endpoints:
+When location access is granted, the app sends latitude and longitude to the Census geocoder only. The geocoder returns Census place identifiers that are then used for ACS and TIGERweb requests:
 
-- Census geocoder, to resolve the place
-- ACS API, to request place-level demographics
-- TIGERweb, to request place boundary geometry
+- Census geocoder receives latitude and longitude to resolve the place.
+- ACS API receives Census geography identifiers, such as state and place codes, to request place-level demographics.
+- TIGERweb receives Census geography identifiers, such as state and place codes, to request place boundary geometry.
 
 The app does not send the coordinate to an app-owned server.
 

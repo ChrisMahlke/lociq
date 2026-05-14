@@ -20,7 +20,7 @@ Lociq is intentionally small. The app has one visible product surface and a narr
 4. `CityProfileCacheStore` persists the last successful city profile independently from the ViewModel.
 5. `CityProfileLoading` is the service boundary between UI state and data loading. Tests inject this protocol so location and cache behavior can be verified without hitting the network.
 6. `CensusCityProfileLoader` maps service outcomes into either a cacheable `CachedCityProfile` or a minimal unavailable-state snapshot.
-7. `CensusCityProfileService` adds in-memory request caching and delegates actual network composition to `DirectCensusCityProfileClient`.
+7. `CensusCityProfileService` adds in-memory caching for successful demographic lookups and delegates actual network composition to `DirectCensusCityProfileClient`.
 8. `DirectCensusCityProfileClient` composes three Census-backed clients:
    - `CensusGeocoderClient` resolves coordinates to Census county/place geography.
    - `ACSDemographicsClient` fetches ACS 5-year city/place estimates.
@@ -28,11 +28,11 @@ Lociq is intentionally small. The app has one visible product surface and a narr
 9. `ACSDemographicsMapper` converts raw ACS values into app demographics, while `ACSDemographicsVariableCatalog` owns the Census variable list.
 10. `GeoJSONBoundaryPathBuilder` projects boundary coordinates into a north-up Web Mercator drawing space that visually matches Google Maps orientation without embedding a map SDK.
 
-The UI never talks directly to Census services. It receives a `DemographicSnapshot`, an optional boundary, and a small number of state flags from the ViewModel. This keeps the visual layer minimal and keeps network, cache, and authorization behavior testable.
+The UI never talks directly to Census services. It reads a `DemographicSnapshot`, an optional boundary, and a small number of state flags through ViewModel computed properties backed by `LocationProfileViewStateMapper`. This keeps the visual layer minimal and keeps network, cache, and authorization behavior testable.
 
 ```mermaid
 flowchart TD
-    A[ContentView] --> B[LocationProfileViewModel]
+    A[ContentView] --> B[LocationProfileViewModel computed display properties]
     B --> C[LocationProfileViewStateMapper]
     B --> D[CityProfileCacheStore]
     B --> E[CityProfileLoading]
@@ -78,7 +78,7 @@ The ViewModel uses explicit states instead of loosely coupled booleans:
 
 Each profile load is tagged with a request identity. If the user moves, retries, or the app receives a newer coordinate before an older Census request finishes, the older response is ignored. This prevents stale data from replacing newer UI state.
 
-Successful profiles are cached in `UserDefaults` as `CachedCityProfile`. Cache timestamps are assigned by the ViewModel's injected clock so tests can verify cache freshness deterministically. Missing legacy timestamps are treated as stale.
+Successful profiles are cached in `UserDefaults` as `CachedCityProfile`. The ViewModel loads the last cached profile during initialization, before `activate()` requests fresh location data. Cache timestamps are assigned by the ViewModel's injected clock so tests can verify cache freshness deterministically. Missing legacy timestamps are treated as stale.
 
 ## Data Source
 
