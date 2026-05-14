@@ -59,8 +59,6 @@ nonisolated struct GeoJSONBoundaryProjection {
 }
 
 enum GeoJSONBoundaryPathBuilder {
-    nonisolated private static let drawingScale: CGFloat = 0.92
-
     /// Builds a reusable projection for the supplied boundary and drawing rectangle.
     nonisolated static func projection(
         for boundary: GeoJSONFeatureCollection,
@@ -78,7 +76,7 @@ enum GeoJSONBoundaryPathBuilder {
         let projectedHeight = projectedBounds.height
         guard projectedWidth > 0, projectedHeight > 0 else { return nil }
 
-        let scale = min(rect.width / projectedWidth, rect.height / projectedHeight) * drawingScale
+        let scale = min(rect.width / projectedWidth, rect.height / projectedHeight) * drawingScale(for: projectedBounds)
         let drawingWidth = projectedWidth * scale
         let drawingHeight = projectedHeight * scale
         let xOffset = rect.midX - drawingWidth / 2
@@ -172,6 +170,25 @@ enum GeoJSONBoundaryPathBuilder {
         }
 
         return projection.point(for: coordinate)
+    }
+
+    /// Chooses a restrained drawing scale so very small or elongated places keep breathing room.
+    nonisolated private static func drawingScale(for projectedBounds: CGRect) -> CGFloat {
+        let width = max(projectedBounds.width, 0.000_001)
+        let height = max(projectedBounds.height, 0.000_001)
+        let aspectRatio = max(width / height, height / width)
+        let area = width * height
+
+        if aspectRatio > 4 {
+            return 0.78
+        }
+        if area < 0.000_000_4 {
+            return 0.80
+        }
+        if aspectRatio > 2.4 {
+            return 0.84
+        }
+        return 0.90
     }
 
 }

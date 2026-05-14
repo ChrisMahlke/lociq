@@ -143,19 +143,27 @@ enum ACSValueNormalizer {
         -888_888_888,
         -999_999_999
     ]
+    private static let missingStrings: Set<String> = ["", "N", "NA", "N/A", "NULL", "-"]
 
     /// Converts an ACS string into an integer while filtering missing-value sentinel codes.
     static func int(_ value: String?) -> Int? {
-        guard let value, let intValue = Int(value), intValue >= 0 else { return nil }
-        return missingValueCodes.contains(intValue) ? nil : intValue
+        guard let normalized = normalized(value), let intValue = Int(normalized) else { return nil }
+        guard !missingValueCodes.contains(intValue), intValue >= 0 else { return nil }
+        return intValue
     }
 
     /// Converts an ACS string into a decimal while filtering missing-value sentinel codes.
     static func double(_ value: String?) -> Double? {
-        guard let value, let doubleValue = Double(value), doubleValue >= 0 else { return nil }
-        if let intValue = Int(value), missingValueCodes.contains(intValue) {
-            return nil
-        }
+        guard let normalized = normalized(value), let doubleValue = Double(normalized) else { return nil }
+        guard doubleValue >= 0 else { return nil }
+        if missingValueCodes.contains(Int(doubleValue.rounded(.towardZero))) { return nil }
         return doubleValue
+    }
+
+    /// Trims ACS text and filters string-level missing markers before numeric parsing.
+    private static func normalized(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return missingStrings.contains(trimmed.uppercased()) ? nil : trimmed
     }
 }

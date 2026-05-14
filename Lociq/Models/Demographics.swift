@@ -8,6 +8,11 @@
 import Foundation
 
 /// Top-level city/place demographic aggregate consumed by the UI snapshot layer.
+///
+/// This is an app-domain model, not the raw ACS response. The Census ACS API returns tabular JSON
+/// values keyed by variable codes, and `ACSDemographicsMapper` is responsible for translating those
+/// codes into these semantic groups. Optional values represent unavailable, suppressed, or missing
+/// ACS estimates after normalization.
 struct Demographics: Sendable {
     let name: String
     let population: PopulationDemographics

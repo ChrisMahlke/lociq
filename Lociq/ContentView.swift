@@ -133,10 +133,15 @@ struct ContentView: View {
             isWaitingForInitialData: isWaitingForInitialData,
             canRetry: locationProfile.canRetry,
             needsLocationPermission: locationProfile.needsLocationPermissionPrompt,
+            canRefresh: locationProfile.canRefreshCurrentCity,
+            shareText: locationProfile.shareText,
             layout: layout,
             reduceMotion: reduceMotion
         ) {
             handleBottomAction()
+        } onRefresh: {
+            Haptics.selectionChanged()
+            locationProfile.refreshCurrentCity()
         }
         .padding(.horizontal, layout.horizontalInset)
         .padding(.bottom, layout.bottomInset)

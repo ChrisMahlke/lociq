@@ -30,9 +30,12 @@ struct BottomIdentity: View {
     let isWaitingForInitialData: Bool
     let canRetry: Bool
     let needsLocationPermission: Bool
+    let canRefresh: Bool
+    let shareText: String?
     let layout: MinimalLayout
     var reduceMotion = false
     let onShowDetails: () -> Void
+    let onRefresh: () -> Void
 
     private var iconName: String {
         if !snapshot.hasDemographicData {
@@ -81,6 +84,16 @@ struct BottomIdentity: View {
                         .accessibilityLabel(actionLabel)
                         .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: iconName)
                         .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: isLoading)
+                        .contextMenu {
+                            if canRefresh {
+                                Button("Refresh", systemImage: Constants.retryIcon, action: onRefresh)
+                            }
+                            if let shareText {
+                                ShareLink(item: shareText) {
+                                    Label("Share", systemImage: "square.and.arrow.up")
+                                }
+                            }
+                        }
                     }
                 }
 

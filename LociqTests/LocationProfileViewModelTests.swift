@@ -142,6 +142,36 @@ struct LocationProfileViewModelTests {
         #expect(await loader.requestCount() == 2)
     }
 
+    /// Verifies a failed refresh keeps the previously loaded city visible as stale data.
+    @Test func failedRefreshKeepsCachedProfileVisibleAsStale() async throws {
+        let now = Date(timeIntervalSinceReferenceDate: 400_000)
+        let store = Self.makeCacheStore()
+        store.save(Self.cachedProfile(cachedAt: now))
+        let unavailable = CityProfileLoadOutcome.unavailable(
+            snapshot: .status(for: .networkUnavailable, market: "NETWORK"),
+            boundary: nil,
+            coordinate: Self.location().coordinate,
+            horizontalAccuracy: 80,
+            failure: .networkUnavailable
+        )
+        let viewModel = Self.makeViewModel(
+            cacheStore: store,
+            manager: FakeLocationManager(authorizationStatus: .authorizedWhenInUse),
+            loader: StubCityProfileLoader(outcomes: [unavailable]),
+            now: { now }
+        )
+
+        viewModel.refreshCurrentCity()
+        await viewModel.waitForPendingLoad()
+
+        guard case .loaded(let profile, let isStale) = viewModel.state else {
+            Issue.record("Expected cached profile to remain loaded")
+            return
+        }
+        #expect(profile.snapshot.market == "CAMBRIDGE, MASSACHUSETTS")
+        #expect(isStale)
+    }
+
     /// Verifies stale asynchronous profile responses cannot overwrite a newer coordinate load.
     @Test func olderProfileLoadCannotOverwriteNewerLocation() async throws {
         let firstCoordinate = CLLocationCoordinate2D(latitude: 42.3736, longitude: -71.1056)

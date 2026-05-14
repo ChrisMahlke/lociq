@@ -33,7 +33,9 @@ struct CensusCityProfileService: Sendable {
         }
 
         let profile = try await directClient.fetchPlaceProfile(latitude: latitude, longitude: longitude)
-        await lookupCache.store(placeProfile: profile, for: cacheKey)
+        if profile.demographics.place != nil {
+            await lookupCache.store(placeProfile: profile, for: cacheKey)
+        }
         return profile
     }
 

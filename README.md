@@ -30,6 +30,29 @@ Lociq is intentionally small. The app has one visible product surface and a narr
 
 The UI never talks directly to Census services. It receives a `DemographicSnapshot`, an optional boundary, and a small number of state flags from the ViewModel. This keeps the visual layer minimal and keeps network, cache, and authorization behavior testable.
 
+```mermaid
+flowchart TD
+    A[ContentView] --> B[LocationProfileViewModel]
+    B --> C[LocationProfileViewStateMapper]
+    B --> D[CityProfileCacheStore]
+    B --> E[CityProfileLoading]
+    E --> F[CensusCityProfileLoader]
+    F --> G[CensusCityProfileService]
+    G --> H[DirectCensusCityProfileClient]
+    H --> I[CensusGeocoderClient]
+    H --> J[ACSDemographicsClient]
+    H --> K[TIGERBoundaryClient]
+    J --> L[ACSDemographicsMapper]
+    A --> M[BoundaryPreview]
+    M --> N[GeoJSONBoundaryPathBuilder]
+```
+
+More detail:
+
+- [Architecture](docs/architecture.md)
+- [Data sources](docs/data-sources.md)
+- [Privacy and data flow](docs/privacy-data-flow.md)
+
 ## Model Boundaries
 
 The app separates raw transport concerns from app-domain models:

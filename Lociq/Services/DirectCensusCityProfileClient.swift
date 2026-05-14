@@ -41,20 +41,29 @@ struct DirectCensusCityProfileClient: Sendable {
 
         async let cityBoundaryTask = boundaryClient.fetchPlaceBoundary(place: geography.place)
         async let placeDemographicsTask = fetchPlaceDemographics(place: geography.place)
+        var partialFailures: [CityProfilePartialFailure] = []
         let placeDemographics: Demographics?
         do {
             placeDemographics = try await placeDemographicsTask
         } catch {
             LociqDiagnostics.cityProfilePartialLoadFailed(error, stage: "acs-demographics")
+            partialFailures.append(
+                CityProfilePartialFailure(stage: .demographics, failure: CityProfileLoadFailure(error: error))
+            )
             placeDemographics = nil
         }
+        let cityBoundary = await cityBoundaryTask
+        if cityBoundary == nil {
+            partialFailures.append(CityProfilePartialFailure(stage: .boundary, failure: .boundaryUnavailable))
+        }
 
-        return await ResolvedCityProfile(
+        return ResolvedCityProfile(
             geography: geography,
-            boundarySet: CityBoundarySet(city: cityBoundaryTask),
+            boundarySet: CityBoundarySet(city: cityBoundary),
             demographics: CityDemographicsBundle(
                 place: placeDemographics
-            )
+            ),
+            partialFailures: partialFailures
         )
     }
 

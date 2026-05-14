@@ -10,20 +10,22 @@ import Foundation
 
 struct CachedCityProfile: Codable, Sendable {
     let snapshot: DemographicSnapshot
-    let boundary: GeoJSONFeatureCollection
+    let boundary: GeoJSONFeatureCollection?
     let latitude: Double
     let longitude: Double
     let horizontalAccuracy: Double?
     let cachedAt: Date?
+    let partialFailures: [CityProfilePartialFailure]
 
     /// Creates a cacheable city profile payload.
     init(
         snapshot: DemographicSnapshot,
-        boundary: GeoJSONFeatureCollection,
+        boundary: GeoJSONFeatureCollection?,
         latitude: Double,
         longitude: Double,
         horizontalAccuracy: Double?,
-        cachedAt: Date? = nil
+        cachedAt: Date? = nil,
+        partialFailures: [CityProfilePartialFailure] = []
     ) {
         self.snapshot = snapshot
         self.boundary = boundary
@@ -31,6 +33,19 @@ struct CachedCityProfile: Codable, Sendable {
         self.longitude = longitude
         self.horizontalAccuracy = horizontalAccuracy
         self.cachedAt = cachedAt
+        self.partialFailures = partialFailures
+    }
+
+    /// Decodes cached profiles while preserving compatibility with profiles saved before partial failures existed.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        snapshot = try container.decode(DemographicSnapshot.self, forKey: .snapshot)
+        boundary = try container.decodeIfPresent(GeoJSONFeatureCollection.self, forKey: .boundary)
+        latitude = try container.decode(Double.self, forKey: .latitude)
+        longitude = try container.decode(Double.self, forKey: .longitude)
+        horizontalAccuracy = try container.decodeIfPresent(Double.self, forKey: .horizontalAccuracy)
+        cachedAt = try container.decodeIfPresent(Date.self, forKey: .cachedAt)
+        partialFailures = try container.decodeIfPresent([CityProfilePartialFailure].self, forKey: .partialFailures) ?? []
     }
 
     var coordinate: CLLocationCoordinate2D {
@@ -51,7 +66,8 @@ struct CachedCityProfile: Codable, Sendable {
             latitude: latitude,
             longitude: longitude,
             horizontalAccuracy: horizontalAccuracy,
-            cachedAt: date
+            cachedAt: date,
+            partialFailures: partialFailures
         )
     }
 }

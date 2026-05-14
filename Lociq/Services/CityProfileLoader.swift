@@ -8,14 +8,6 @@
 import CoreLocation
 import Foundation
 
-enum CityProfileLoadFailure: Equatable, Sendable {
-    case censusKeyMissing
-    case cityUnavailable
-    case demographicsUnavailable
-    case boundaryUnavailable
-    case serviceUnavailable
-}
-
 enum CityProfileLoadOutcome: Sendable {
     case loaded(CachedCityProfile)
     case unavailable(
@@ -36,16 +28,16 @@ protocol CityProfileLoading: Sendable {
 }
 
 struct CensusCityProfileLoader: CityProfileLoading {
-    private let profileService: CensusCityProfileService
-    private let geocoderClient: CensusGeocoderClient
-    private let boundaryClient: TIGERBoundaryClient
+    private let profileService: any CityProfileFetching
+    private let geocoderClient: any CensusGeographyFetching
+    private let boundaryClient: any TIGERBoundaryFetching
     private let hasCensusAPIKey: Bool
 
     /// Creates a loader that maps Census service outcomes into cacheable profiles or minimal fallback states.
     init(
-        profileService: CensusCityProfileService,
-        geocoderClient: CensusGeocoderClient,
-        boundaryClient: TIGERBoundaryClient,
+        profileService: any CityProfileFetching,
+        geocoderClient: any CensusGeographyFetching,
+        boundaryClient: any TIGERBoundaryFetching,
         hasCensusAPIKey: Bool
     ) {
         self.profileService = profileService
@@ -94,19 +86,9 @@ struct CensusCityProfileLoader: CityProfileLoading {
             if cityBoundary == nil {
                 cityBoundary = await boundaryClient.fetchPlaceBoundary(place: profile.geography.place)
             }
-            guard let cityBoundary else {
-                return .unavailable(
-                    snapshot: DemographicSnapshot.status(
-                        for: .boundaryUnavailable,
-                        market: DemographicValueFormatter.title(from: profile).uppercased()
-                    ),
-                    boundary: nil,
-                    coordinate: coordinate,
-                    horizontalAccuracy: horizontalAccuracy,
-                    failure: .boundaryUnavailable
-                )
-            }
-
+            let partialFailures = cityBoundary == nil
+                ? profile.partialFailures
+                : profile.partialFailures.filter { $0.stage != .boundary }
             return .loaded(
                 CachedCityProfile(
                     snapshot: DemographicSnapshot(profile: profile, demographics: cityDemographics),
@@ -114,7 +96,8 @@ struct CensusCityProfileLoader: CityProfileLoading {
                     latitude: coordinate.latitude,
                     longitude: coordinate.longitude,
                     horizontalAccuracy: horizontalAccuracy,
-                    cachedAt: nil
+                    cachedAt: nil,
+                    partialFailures: partialFailures
                 )
             )
         } catch {
@@ -122,7 +105,7 @@ struct CensusCityProfileLoader: CityProfileLoading {
             return await loadLocationShell(
                 for: coordinate,
                 horizontalAccuracy: horizontalAccuracy,
-                failure: .serviceUnavailable
+                failure: CityProfileLoadFailure(error: error)
             )
         }
     }
@@ -178,6 +161,10 @@ private extension CityProfileLoadFailure {
             return "DEMOGRAPHICS"
         case .boundaryUnavailable:
             return "BOUNDARY"
+        case .networkUnavailable:
+            return "NETWORK"
+        case .timedOut:
+            return "TIMEOUT"
         case .serviceUnavailable:
             return "ACS"
         }
@@ -196,6 +183,10 @@ private extension DemographicSnapshot.LocationStatus {
             self = .demographicsUnavailable
         case .boundaryUnavailable:
             self = .boundaryUnavailable
+        case .networkUnavailable:
+            self = .networkUnavailable
+        case .timedOut:
+            self = .timedOut
         case .serviceUnavailable:
             self = .serviceUnavailable
         }

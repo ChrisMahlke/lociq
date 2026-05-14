@@ -13,6 +13,8 @@ struct DemographicSnapshot: Codable, Sendable {
         case cityUnavailable
         case demographicsUnavailable
         case boundaryUnavailable
+        case networkUnavailable
+        case timedOut
         case serviceUnavailable
 
         var fallbackMarket: String {
@@ -25,6 +27,10 @@ struct DemographicSnapshot: Codable, Sendable {
                 return "DEMOGRAPHICS"
             case .boundaryUnavailable:
                 return "BOUNDARY"
+            case .networkUnavailable:
+                return "NETWORK"
+            case .timedOut:
+                return "TIMEOUT"
             case .serviceUnavailable:
                 return "ACS"
             }
@@ -95,6 +101,20 @@ struct DemographicSnapshot: Codable, Sendable {
                 cadence: "NO OUTLINE",
                 mode: "NO BOUNDARY"
             )
+        case .networkUnavailable:
+            return DemographicSnapshot.status(
+                market: market,
+                dateLabel: "NETWORK",
+                cadence: "TRY AGAIN",
+                mode: "OFFLINE"
+            )
+        case .timedOut:
+            return DemographicSnapshot.status(
+                market: market,
+                dateLabel: "TIMEOUT",
+                cadence: "TRY AGAIN",
+                mode: "SLOW ACS"
+            )
         case .serviceUnavailable:
             return DemographicSnapshot.status(
                 market: market,
@@ -139,6 +159,12 @@ struct DemographicSnapshot: Codable, Sendable {
             detailSections: detailSections
         )
     }
+
+    var shareText: String? {
+        guard hasDemographicData else { return nil }
+        let metricLines = metrics.map { "\($0.title): \($0.primaryValue)" }
+        return ([market] + metricLines).joined(separator: "\n")
+    }
 }
 
 extension DemographicSnapshot {
@@ -148,7 +174,7 @@ extension DemographicSnapshot {
         let ownerPct = DemographicValueFormatter.percent(demographics.housing.ownerOccupiedPct)
 
         self.init(
-            market: DemographicValueFormatter.title(from: profile).uppercased(),
+            market: DemographicValueFormatter.title(from: profile, demographics: demographics).uppercased(),
             dateLabel: "",
             cadence: "",
             mode: "DEMOGRAPHICS",

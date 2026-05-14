@@ -28,6 +28,20 @@ struct ResolvedCityProfile: Sendable {
     let geography: CityGeographyProfile
     let boundarySet: CityBoundarySet
     let demographics: CityDemographicsBundle
+    let partialFailures: [CityProfilePartialFailure]
+
+    /// Creates a resolved city profile with optional typed partial failures for failed subrequests.
+    init(
+        geography: CityGeographyProfile,
+        boundarySet: CityBoundarySet,
+        demographics: CityDemographicsBundle,
+        partialFailures: [CityProfilePartialFailure] = []
+    ) {
+        self.geography = geography
+        self.boundarySet = boundarySet
+        self.demographics = demographics
+        self.partialFailures = partialFailures
+    }
 }
 
 /// Census county metadata returned by the Census geocoder.

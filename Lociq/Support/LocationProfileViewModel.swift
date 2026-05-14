@@ -37,7 +37,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     private let cacheStore: CityProfileCacheStore
     private let now: @Sendable () -> Date
     private let playProfileResolvedHaptic: @MainActor () -> Void
-    private let cacheMaxAge: TimeInterval
+    private let cachePolicy: CityProfileCachePolicy
     private let authorizationCoordinator = LocationAuthorizationCoordinator()
     private let profileLoadPlanner: ProfileLoadPlanner
     private var lastLoadedCoordinateKey: String?
@@ -73,7 +73,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         self.cacheStore = cacheStore ?? CityProfileCacheStore()
         self.now = now
         self.playProfileResolvedHaptic = profileResolvedHaptic
-        self.cacheMaxAge = cacheMaxAge
+        self.cachePolicy = CityProfileCachePolicy(maxAge: cacheMaxAge)
         self.profileLoadPlanner = ProfileLoadPlanner(
             cacheMaxAge: cacheMaxAge,
             moveThresholdMeters: moveThresholdMeters,
@@ -84,93 +84,53 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
 
         if let cached = self.cacheStore.load() {
-            state = .loaded(cached, isStale: cached.isExpired(at: now(), maxAge: cacheMaxAge))
+            state = .loaded(cached, isStale: cachePolicy.isStale(cached, at: now()))
             traceToken += 1
         }
     }
 
     var snapshot: DemographicSnapshot {
-        switch state {
-        case .idle, .requestingLocation, .loading:
-            return .loading
-        case .needsLocationPermission, .locationUnavailable:
-            return .placeholder
-        case .refreshing(let profile, let isStale), .loaded(let profile, let isStale):
-            return isStale ? profile.snapshot.replacingDateLabel("") : profile.snapshot
-        case .profileUnavailable(let snapshot, _, _, _, _):
-            return snapshot
-        }
+        viewState.snapshot
     }
 
     var boundary: GeoJSONFeatureCollection? {
-        switch state {
-        case .refreshing(let profile, _), .loaded(let profile, _):
-            return profile.boundary
-        case .profileUnavailable(_, let boundary, _, _, _):
-            return boundary
-        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable:
-            return nil
-        }
+        viewState.boundary
     }
 
     var coordinate: CLLocationCoordinate2D? {
-        switch state {
-        case .refreshing(let profile, _), .loaded(let profile, _):
-            return profile.coordinate
-        case .profileUnavailable(_, _, let coordinate, _, _):
-            return coordinate
-        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable:
-            return debugCoordinate
-        }
+        viewState.coordinate
     }
 
     var horizontalAccuracy: CLLocationAccuracy? {
-        switch state {
-        case .refreshing(let profile, _), .loaded(let profile, _):
-            return profile.horizontalAccuracy
-        case .profileUnavailable(_, _, _, let horizontalAccuracy, _):
-            return horizontalAccuracy
-        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable:
-            return nil
-        }
+        viewState.horizontalAccuracy
     }
 
     var isLoading: Bool {
-        switch state {
-        case .idle, .requestingLocation, .loading, .refreshing:
-            return true
-        case .needsLocationPermission, .loaded, .locationUnavailable, .profileUnavailable:
-            return false
-        }
+        viewState.isLoading
     }
 
     var isWaitingForInitialData: Bool {
-        switch state {
-        case .idle, .requestingLocation, .loading:
-            return true
-        case .needsLocationPermission, .refreshing, .loaded, .locationUnavailable, .profileUnavailable:
-            return false
-        }
+        viewState.isWaitingForInitialData
     }
 
     var canShowBoundary: Bool {
-        boundary != nil && !isWaitingForInitialData && snapshot.hasDemographicData
+        viewState.canShowBoundary
     }
 
     var canRetry: Bool {
-        switch state {
-        case .needsLocationPermission, .locationUnavailable, .profileUnavailable:
-            return true
-        case .idle, .requestingLocation, .loading, .refreshing, .loaded:
-            return false
-        }
+        viewState.canRetry
     }
 
     var needsLocationPermissionPrompt: Bool {
-        if case .needsLocationPermission = state {
-            return true
-        }
-        return false
+        viewState.needsLocationPermissionPrompt
+    }
+
+    var canRefreshCurrentCity: Bool {
+        viewState.canRefresh
+    }
+
+    var shareText: String? {
+        viewState.shareText
     }
 
     /// Starts or resumes the location/profile workflow based on the current authorization state.
@@ -214,6 +174,21 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         case .locationUnavailable:
             activate()
         case .idle, .requestingLocation, .loading, .refreshing, .loaded:
+            activate()
+        }
+    }
+
+    /// Refreshes the currently visible city while keeping cached data on screen if the refresh fails.
+    func refreshCurrentCity() {
+        lastLoadedCoordinateKey = nil
+
+        if let profile = currentLoadedProfile {
+            load(
+                for: profile.coordinate,
+                horizontalAccuracy: profile.horizontalAccuracy,
+                force: true
+            )
+        } else {
             activate()
         }
     }
@@ -288,14 +263,18 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
             traceToken += 1
             LociqDiagnostics.cityProfileLoadCompleted(duration: now().timeIntervalSince(startedAt))
         case .unavailable(let snapshot, let boundary, let coordinate, let horizontalAccuracy, let failure):
-            state = .profileUnavailable(
-                snapshot: snapshot,
-                boundary: boundary,
-                coordinate: coordinate,
-                horizontalAccuracy: horizontalAccuracy,
-                failure: failure
-            )
-            if boundary != nil {
+            if let cached = currentLoadedProfile {
+                state = .loaded(cached, isStale: true)
+            } else {
+                state = .profileUnavailable(
+                    snapshot: snapshot,
+                    boundary: boundary,
+                    coordinate: coordinate,
+                    horizontalAccuracy: horizontalAccuracy,
+                    failure: failure
+                )
+            }
+            if boundary != nil || currentLoadedProfile?.boundary != nil {
                 traceToken += 1
             }
             LociqDiagnostics.cityProfileLoadFailed(
@@ -304,6 +283,10 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
                 longitude: coordinate.longitude
             )
         }
+    }
+
+    private var viewState: LocationProfileViewState {
+        LocationProfileViewStateMapper.make(from: state, debugCoordinate: debugCoordinate)
     }
 
     /// Emits the first successful profile haptic once per app session.

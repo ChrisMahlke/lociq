@@ -13,6 +13,15 @@ enum DemographicValueFormatter {
         title(from: profile.geography)
     }
 
+    /// Returns the display title, falling back to the ACS row name when geocoder metadata is incomplete.
+    static func title(from profile: ResolvedCityProfile, demographics: Demographics) -> String {
+        let geographyTitle = title(from: profile)
+        guard geographyTitle == "CITY", !demographics.name.isEmpty else {
+            return geographyTitle
+        }
+        return cleanGeographyName(demographics.name)
+    }
+
     /// Returns the display title from Census geocoder geography.
     static func title(from geography: CensusGeographiesBundle) -> String {
         if let placeName = geography.place?.name, !placeName.isEmpty {

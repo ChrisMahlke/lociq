@@ -17,14 +17,14 @@ struct ProgressLine: View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(Color.white.opacity(0.24))
+                    .fill(Color.white.opacity(0.30))
                     .frame(height: 1)
 
                 if isLoading {
                     Rectangle()
-                        .fill(Color.white.opacity(0.82))
+                        .fill(Color.white.opacity(0.78))
                         .frame(
-                            width: reduceMotion ? geometry.size.width : max(56, geometry.size.width * 0.30),
+                            width: reduceMotion ? geometry.size.width : max(68, geometry.size.width * 0.34),
                             height: 1
                         )
                         .offset(x: reduceMotion ? 0 : geometry.size.width * loadingOffset)
