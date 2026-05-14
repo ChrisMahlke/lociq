@@ -13,8 +13,6 @@ struct CensusGeographiesBundle: Sendable {
 }
 
 final class CensusGeocoderClient: @unchecked Sendable {
-    private typealias ServiceError = CensusCityProfileService.ServiceError
-
     private let httpClient: CensusHTTPClient
     private let geocoderBenchmark = "Public_AR_Current"
     private let geocoderVintage = "Current_Current"
@@ -47,7 +45,7 @@ final class CensusGeocoderClient: @unchecked Sendable {
             .init(name: "format", value: "json")
         ]
 
-        guard let url = components?.url else { throw ServiceError.invalidURL }
+        guard let url = components?.url else { throw CensusServiceError.invalidURL }
 
         let data = try await httpClient.get(url)
         let decoded = try httpClient.decode(CensusGeocoderResponse.self, from: data)

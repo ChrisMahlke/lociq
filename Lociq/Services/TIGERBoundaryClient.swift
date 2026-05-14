@@ -8,8 +8,6 @@
 import Foundation
 
 final class TIGERBoundaryClient: @unchecked Sendable {
-    private typealias ServiceError = CensusCityProfileService.ServiceError
-
     private let httpClient: CensusHTTPClient
     private let incorporatedPlacesLayerId = "28"
     private let cdpLayerId = "30"
@@ -61,13 +59,13 @@ final class TIGERBoundaryClient: @unchecked Sendable {
             .init(name: "f", value: "geojson")
         ]
 
-        guard let url = components?.url else { throw ServiceError.invalidURL }
+        guard let url = components?.url else { throw CensusServiceError.invalidURL }
 
         let data = try await httpClient.get(url)
         let featureCollection = try httpClient.decode(GeoJSONFeatureCollection.self, from: data)
 
         guard !featureCollection.features.isEmpty else {
-            throw ServiceError.noBoundaryFound
+            throw CensusServiceError.noBoundaryFound
         }
 
         return featureCollection

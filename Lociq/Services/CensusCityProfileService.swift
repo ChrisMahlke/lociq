@@ -7,30 +7,12 @@
 
 import Foundation
 
-public final class CensusCityProfileService: @unchecked Sendable {
-    public enum ServiceError: Error, LocalizedError {
-        case invalidURL
-        case requestFailed(status: Int, bodySnippet: String)
-        case decodeFailed(String)
-        case noBoundaryFound
-        case noDemographicsFound
-
-        public var errorDescription: String? {
-            switch self {
-            case .invalidURL: return "Invalid URL"
-            case .requestFailed(let status, let body): return "HTTP \(status): \(body)"
-            case .decodeFailed(let message): return "Decode failed: \(message)"
-            case .noBoundaryFound: return "No boundary found"
-            case .noDemographicsFound: return "No demographics returned"
-            }
-        }
-    }
-
+final class CensusCityProfileService: @unchecked Sendable {
     private let directClient: DirectCensusCityProfileClient
     private let lookupCache = CityLookupCache()
 
     /// Creates a cached city-profile service for the supplied ACS dataset year.
-    public nonisolated init(
+    nonisolated init(
         censusApiKey: String,
         acsYear: Int = 2024,
         session: URLSession = .shared

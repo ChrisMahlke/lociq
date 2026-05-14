@@ -54,7 +54,7 @@ final class DirectCensusCityProfileClient: @unchecked Sendable {
     /// Fetches demographics for a resolved place or throws when no place is available.
     private func fetchPlaceDemographics(place: PlaceInfo?) async throws -> Demographics {
         guard let place else {
-            throw CensusCityProfileService.ServiceError.noDemographicsFound
+            throw CensusServiceError.noDemographicsFound
         }
 
         return try await demographicsClient.fetchDemographics(place: place)

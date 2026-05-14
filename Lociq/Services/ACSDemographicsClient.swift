@@ -8,7 +8,6 @@
 import Foundation
 
 final class ACSDemographicsClient: @unchecked Sendable {
-    private typealias ServiceError = CensusCityProfileService.ServiceError
     private enum Constants {
         static let acsBasePath = "https://api.census.gov/data"
     }
@@ -32,7 +31,7 @@ final class ACSDemographicsClient: @unchecked Sendable {
             state.count == 2,
             placeFIPS.count == 5
         else {
-            throw ServiceError.noDemographicsFound
+            throw CensusServiceError.noDemographicsFound
         }
 
         return try await fetchACSDemographics(
@@ -79,7 +78,7 @@ final class ACSDemographicsClient: @unchecked Sendable {
             }
 
             guard !mergedValues.isEmpty else {
-                throw ServiceError.noDemographicsFound
+                throw CensusServiceError.noDemographicsFound
             }
 
             return mergedValues
@@ -108,7 +107,7 @@ final class ACSDemographicsClient: @unchecked Sendable {
         }
 
         components?.queryItems = queryItems
-        guard let url = components?.url else { throw ServiceError.invalidURL }
+        guard let url = components?.url else { throw CensusServiceError.invalidURL }
 
         let data = try await httpClient.get(url)
 
@@ -116,13 +115,13 @@ final class ACSDemographicsClient: @unchecked Sendable {
             let top = try JSONSerialization.jsonObject(with: data) as? [[String]],
             top.count >= 2
         else {
-            throw ServiceError.decodeFailed("Unexpected ACS response shape")
+            throw CensusServiceError.decodeFailed("Unexpected ACS response shape")
         }
 
         let header = top[0]
         let row = top[1]
         guard header.count == row.count else {
-            throw ServiceError.decodeFailed("Header/row length mismatch")
+            throw CensusServiceError.decodeFailed("Header/row length mismatch")
         }
 
         return Dictionary(uniqueKeysWithValues: zip(header, row))

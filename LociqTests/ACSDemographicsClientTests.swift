@@ -40,10 +40,10 @@ struct ACSDemographicsClientTests {
             #expect(url.queryValue(named: "in") == "state:25")
         }
         #expect(demographics.name == "Cambridge city, Massachusetts")
-        #expect(demographics.population == 118_214)
-        #expect(demographics.medianHouseholdIncome == 121_539)
-        #expect(demographics.medianHomeValue == nil)
-        #expect(demographics.medianGrossRent == nil)
+        #expect(demographics.population.total == 118_214)
+        #expect(demographics.income.medianHousehold == 121_539)
+        #expect(demographics.housing.medianHomeValue == nil)
+        #expect(demographics.housing.medianGrossRent == nil)
     }
 }
 

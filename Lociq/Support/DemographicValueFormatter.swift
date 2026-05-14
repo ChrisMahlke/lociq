@@ -60,10 +60,10 @@ enum DemographicValueFormatter {
 
     /// Returns occupied households, falling back to total housing units when occupancy values are unavailable.
     static func households(from demographics: Demographics) -> Int? {
-        if let owner = demographics.ownerOccupied, let renter = demographics.renterOccupied {
+        if let owner = demographics.housing.ownerOccupied, let renter = demographics.housing.renterOccupied {
             return owner + renter
         }
-        return demographics.housingUnits
+        return demographics.housing.units
     }
 
     /// Formats an integer for compact display.
@@ -102,7 +102,6 @@ enum DemographicValueFormatter {
             .replacingOccurrences(of: " city", with: "")
             .replacingOccurrences(of: " town", with: "")
             .replacingOccurrences(of: " CDP", with: "")
-            .replacingOccurrences(of: "ZCTA5 ", with: "ZIP ")
             .replacingOccurrences(of: ", United States", with: "")
     }
 }

@@ -30,6 +30,16 @@ Lociq is intentionally small. The app has one visible product surface and a narr
 
 The UI never talks directly to Census services. It receives a `DemographicSnapshot`, an optional boundary, and a small number of state flags from the ViewModel. This keeps the visual layer minimal and keeps network, cache, and authorization behavior testable.
 
+## Model Boundaries
+
+The app separates raw transport concerns from app-domain models:
+
+- `GeographyModels.swift` defines resolved Census geography and the assembled `ResolvedCityProfile`.
+- `Demographics.swift` defines normalized app-domain demographic groups such as `HousingDemographics`, `AgeDemographics`, and `MobilityDemographics`.
+- `GeoJSONModels.swift` defines the minimal Codable GeoJSON transport shape needed by TIGERweb and the boundary renderer.
+
+ACS JSON is intentionally not passed into SwiftUI. The Census API returns tabular rows keyed by ACS variable codes, so `ACSDemographicsMapper` is the only layer that translates codes such as `B01003_001E` into semantic fields like `population.total`. UI and cache-facing code should use the semantic model, not raw Census dictionaries or variable IDs.
+
 ## State Model
 
 The ViewModel uses explicit states instead of loosely coupled booleans:

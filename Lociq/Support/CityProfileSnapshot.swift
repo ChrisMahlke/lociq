@@ -145,7 +145,7 @@ extension DemographicSnapshot {
     /// Creates the visible home and details content from a resolved city profile.
     init(profile: ResolvedCityProfile, demographics: Demographics) {
         let households = DemographicValueFormatter.households(from: demographics)
-        let ownerPct = DemographicValueFormatter.percent(demographics.ownerOccupiedPct)
+        let ownerPct = DemographicValueFormatter.percent(demographics.housing.ownerOccupiedPct)
 
         self.init(
             market: DemographicValueFormatter.title(from: profile).uppercased(),
@@ -157,8 +157,8 @@ extension DemographicSnapshot {
             metrics: [
                 DemographicMetric(
                     title: "POPULATION",
-                    primaryValue: DemographicValueFormatter.number(demographics.population),
-                    detail: "MEDIAN AGE \(DemographicValueFormatter.decimal(demographics.medianAge))"
+                    primaryValue: DemographicValueFormatter.number(demographics.population.total),
+                    detail: "MEDIAN AGE \(DemographicValueFormatter.decimal(demographics.age.median))"
                 ),
                 DemographicMetric(
                     title: "HOUSEHOLDS",
@@ -167,17 +167,17 @@ extension DemographicSnapshot {
                 ),
                 DemographicMetric(
                     title: "INCOME",
-                    primaryValue: DemographicValueFormatter.currency(demographics.medianHouseholdIncome),
+                    primaryValue: DemographicValueFormatter.currency(demographics.income.medianHousehold),
                     detail: "MEDIAN HOUSEHOLD"
                 ),
                 DemographicMetric(
                     title: "RENTERS",
-                    primaryValue: DemographicValueFormatter.percent(demographics.renterOccupiedPct),
+                    primaryValue: DemographicValueFormatter.percent(demographics.housing.renterOccupiedPct),
                     detail: "\(ownerPct) OWNER OCCUPIED"
                 ),
                 DemographicMetric(
                     title: "EDUCATION",
-                    primaryValue: DemographicValueFormatter.percent(demographics.bachelorsOrHigherPct),
+                    primaryValue: DemographicValueFormatter.percent(demographics.education.bachelorsOrHigherPct),
                     detail: "BACHELOR'S OR HIGHER"
                 )
             ],
@@ -185,26 +185,26 @@ extension DemographicSnapshot {
                 DemographicDetailSection(
                     title: "AGE",
                     rows: [
-                        DemographicDetailRow(label: "UNDER 18", value: DemographicValueFormatter.percent(demographics.under18Pct)),
-                        DemographicDetailRow(label: "18 TO 34", value: DemographicValueFormatter.percent(demographics.age18To34Pct)),
-                        DemographicDetailRow(label: "35 TO 64", value: DemographicValueFormatter.percent(demographics.age35To64Pct)),
-                        DemographicDetailRow(label: "65 PLUS", value: DemographicValueFormatter.percent(demographics.age65PlusPct))
+                        DemographicDetailRow(label: "UNDER 18", value: DemographicValueFormatter.percent(demographics.age.under18Pct)),
+                        DemographicDetailRow(label: "18 TO 34", value: DemographicValueFormatter.percent(demographics.age.age18To34Pct)),
+                        DemographicDetailRow(label: "35 TO 64", value: DemographicValueFormatter.percent(demographics.age.age35To64Pct)),
+                        DemographicDetailRow(label: "65 PLUS", value: DemographicValueFormatter.percent(demographics.age.age65PlusPct))
                     ]
                 ),
                 DemographicDetailSection(
                     title: "HOUSING",
                     rows: [
-                        DemographicDetailRow(label: "MEDIAN RENT", value: DemographicValueFormatter.currency(demographics.medianGrossRent)),
-                        DemographicDetailRow(label: "MEDIAN VALUE", value: DemographicValueFormatter.currency(demographics.medianHomeValue)),
-                        DemographicDetailRow(label: "VACANCY", value: DemographicValueFormatter.percent(demographics.vacancyRatePct))
+                        DemographicDetailRow(label: "MEDIAN RENT", value: DemographicValueFormatter.currency(demographics.housing.medianGrossRent)),
+                        DemographicDetailRow(label: "MEDIAN VALUE", value: DemographicValueFormatter.currency(demographics.housing.medianHomeValue)),
+                        DemographicDetailRow(label: "VACANCY", value: DemographicValueFormatter.percent(demographics.housing.vacancyRatePct))
                     ]
                 ),
                 DemographicDetailSection(
                     title: "MOBILITY",
                     rows: [
-                        DemographicDetailRow(label: "TRANSIT", value: DemographicValueFormatter.percent(demographics.transitCommutersPct)),
-                        DemographicDetailRow(label: "REMOTE WORK", value: DemographicValueFormatter.percent(demographics.workersWfhPct)),
-                        DemographicDetailRow(label: "AVG COMMUTE", value: DemographicValueFormatter.minutes(demographics.averageCommuteMinutes))
+                        DemographicDetailRow(label: "TRANSIT", value: DemographicValueFormatter.percent(demographics.mobility.transitCommutersPct)),
+                        DemographicDetailRow(label: "REMOTE WORK", value: DemographicValueFormatter.percent(demographics.mobility.workersWfhPct)),
+                        DemographicDetailRow(label: "AVG COMMUTE", value: DemographicValueFormatter.minutes(demographics.mobility.averageCommuteMinutes))
                     ]
                 )
             ]

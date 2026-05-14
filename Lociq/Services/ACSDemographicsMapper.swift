@@ -8,7 +8,6 @@
 import Foundation
 
 struct ACSDemographicsMapper {
-    private typealias ServiceError = CensusCityProfileService.ServiceError
     private let valuesByKey: [String: String]
     private let fallbackName: String
 
@@ -21,7 +20,7 @@ struct ACSDemographicsMapper {
     /// Converts raw ACS string values into the app's compact demographic model.
     func makeDemographics() throws -> Demographics {
         guard intValue("B01003_001E") != nil else {
-            throw ServiceError.noDemographicsFound
+            throw CensusServiceError.noDemographicsFound
         }
 
         let owner = intValue("B25003_002E")
@@ -61,40 +60,52 @@ struct ACSDemographicsMapper {
 
         return Demographics(
             name: valuesByKey["NAME"] ?? fallbackName,
-            population: intValue("B01003_001E"),
-            medianHouseholdIncome: intValue("B19013_001E"),
-            medianAge: doubleValue("B01002_001E"),
-            housingUnits: intValue("B25001_001E"),
-            medianHomeValue: intValue("B25077_001E"),
-            medianGrossRent: intValue("B25064_001E"),
-            averageHouseholdSize: doubleValue("B25010_001E"),
-            ownerOccupied: owner,
-            renterOccupied: renter,
-            ownerOccupiedPct: percent(owner, occupancyTotal),
-            renterOccupiedPct: percent(renter, occupancyTotal),
-            workersTotal: workersTotal,
-            workersWfh: workersWfh,
-            workersWfhPct: percent(workersWfh, workersTotal),
-            transitCommuters: transitCommuters,
-            transitCommutersPct: percent(transitCommuters, workersTotal),
-            averageCommuteMinutes: {
-                guard let aggregateCommuteMinutes, let workersTotal, workersTotal > 0 else { return nil }
-                return Double(aggregateCommuteMinutes) / Double(workersTotal)
-            }(),
-            vacantHousingUnits: vacantHousingUnits,
-            vacancyRatePct: percent(vacantHousingUnits, totalHousingUnits),
-            under18Pct: percent(under18, totalAgeUniverse),
-            age18To34Pct: percent(age18To34, totalAgeUniverse),
-            age35To64Pct: percent(age35To64, totalAgeUniverse),
-            age65PlusPct: percent(age65Plus, totalAgeUniverse),
-            bachelorsOrHigherPct: percent(bachelorsOrHigher, educationUniverse),
-            povertyUniverse: povertyUniverse,
-            povertyBelow: povertyBelow,
-            povertyRatePct: percent(povertyBelow, povertyUniverse),
-            whiteAlone: intValue("B02001_002E"),
-            blackAlone: intValue("B02001_003E"),
-            asianAlone: intValue("B02001_005E"),
-            hispanicOrLatino: intValue("B03003_003E")
+            population: PopulationDemographics(total: intValue("B01003_001E")),
+            income: IncomeDemographics(medianHousehold: intValue("B19013_001E")),
+            age: AgeDemographics(
+                median: doubleValue("B01002_001E"),
+                under18Pct: percent(under18, totalAgeUniverse),
+                age18To34Pct: percent(age18To34, totalAgeUniverse),
+                age35To64Pct: percent(age35To64, totalAgeUniverse),
+                age65PlusPct: percent(age65Plus, totalAgeUniverse)
+            ),
+            housing: HousingDemographics(
+                units: intValue("B25001_001E"),
+                medianHomeValue: intValue("B25077_001E"),
+                medianGrossRent: intValue("B25064_001E"),
+                averageHouseholdSize: doubleValue("B25010_001E"),
+                ownerOccupied: owner,
+                renterOccupied: renter,
+                ownerOccupiedPct: percent(owner, occupancyTotal),
+                renterOccupiedPct: percent(renter, occupancyTotal),
+                vacantUnits: vacantHousingUnits,
+                vacancyRatePct: percent(vacantHousingUnits, totalHousingUnits)
+            ),
+            education: EducationDemographics(
+                bachelorsOrHigherPct: percent(bachelorsOrHigher, educationUniverse)
+            ),
+            mobility: MobilityDemographics(
+                workersTotal: workersTotal,
+                workersWfh: workersWfh,
+                workersWfhPct: percent(workersWfh, workersTotal),
+                transitCommuters: transitCommuters,
+                transitCommutersPct: percent(transitCommuters, workersTotal),
+                averageCommuteMinutes: {
+                    guard let aggregateCommuteMinutes, let workersTotal, workersTotal > 0 else { return nil }
+                    return Double(aggregateCommuteMinutes) / Double(workersTotal)
+                }()
+            ),
+            poverty: PovertyDemographics(
+                universe: povertyUniverse,
+                below: povertyBelow,
+                ratePct: percent(povertyBelow, povertyUniverse)
+            ),
+            raceEthnicity: RaceEthnicityDemographics(
+                whiteAlone: intValue("B02001_002E"),
+                blackAlone: intValue("B02001_003E"),
+                asianAlone: intValue("B02001_005E"),
+                hispanicOrLatino: intValue("B03003_003E")
+            )
         )
     }
 

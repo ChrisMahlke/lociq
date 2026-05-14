@@ -8,8 +8,6 @@
 import Foundation
 
 final class CensusHTTPClient: @unchecked Sendable {
-    private typealias ServiceError = CensusCityProfileService.ServiceError
-
     private let session: URLSession
 
     /// Creates a Census HTTP client backed by an injectable URL session.
@@ -22,12 +20,12 @@ final class CensusHTTPClient: @unchecked Sendable {
         let (data, response) = try await session.data(from: url)
 
         guard let http = response as? HTTPURLResponse else {
-            throw ServiceError.requestFailed(status: -1, bodySnippet: "Non-HTTP response")
+            throw CensusServiceError.requestFailed(status: -1, bodySnippet: "Non-HTTP response")
         }
 
         guard (200..<300).contains(http.statusCode) else {
             let snippet = String(data: data, encoding: .utf8)?.prefix(500) ?? ""
-            throw ServiceError.requestFailed(status: http.statusCode, bodySnippet: String(snippet))
+            throw CensusServiceError.requestFailed(status: http.statusCode, bodySnippet: String(snippet))
         }
 
         return data
@@ -38,7 +36,7 @@ final class CensusHTTPClient: @unchecked Sendable {
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            throw ServiceError.decodeFailed(error.localizedDescription)
+            throw CensusServiceError.decodeFailed(error.localizedDescription)
         }
     }
 }

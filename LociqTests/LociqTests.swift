@@ -117,37 +117,47 @@ private extension LociqTests {
     static func cambridgeDemographics() -> Demographics {
         Demographics(
             name: "Cambridge city, Massachusetts",
-            population: 118_214,
-            medianHouseholdIncome: 121_539,
-            medianAge: 30.8,
-            housingUnits: 54_000,
-            medianHomeValue: 940_000,
-            medianGrossRent: 2_475,
-            averageHouseholdSize: 2.1,
-            ownerOccupied: 18_000,
-            renterOccupied: 33_000,
-            ownerOccupiedPct: 35.3,
-            renterOccupiedPct: 64.7,
-            workersTotal: 72_000,
-            workersWfh: 19_000,
-            workersWfhPct: 26.4,
-            transitCommuters: 18_500,
-            transitCommutersPct: 25.7,
-            averageCommuteMinutes: 27.2,
-            vacantHousingUnits: 3_000,
-            vacancyRatePct: 5.6,
-            under18Pct: 12.0,
-            age18To34Pct: 43.0,
-            age35To64Pct: 32.0,
-            age65PlusPct: 13.0,
-            bachelorsOrHigherPct: 81.0,
-            povertyUniverse: 112_000,
-            povertyBelow: 13_500,
-            povertyRatePct: 12.1,
-            whiteAlone: 74_000,
-            blackAlone: 10_000,
-            asianAlone: 20_000,
-            hispanicOrLatino: 9_000
+            population: PopulationDemographics(total: 118_214),
+            income: IncomeDemographics(medianHousehold: 121_539),
+            age: AgeDemographics(
+                median: 30.8,
+                under18Pct: 12.0,
+                age18To34Pct: 43.0,
+                age35To64Pct: 32.0,
+                age65PlusPct: 13.0
+            ),
+            housing: HousingDemographics(
+                units: 54_000,
+                medianHomeValue: 940_000,
+                medianGrossRent: 2_475,
+                averageHouseholdSize: 2.1,
+                ownerOccupied: 18_000,
+                renterOccupied: 33_000,
+                ownerOccupiedPct: 35.3,
+                renterOccupiedPct: 64.7,
+                vacantUnits: 3_000,
+                vacancyRatePct: 5.6
+            ),
+            education: EducationDemographics(bachelorsOrHigherPct: 81.0),
+            mobility: MobilityDemographics(
+                workersTotal: 72_000,
+                workersWfh: 19_000,
+                workersWfhPct: 26.4,
+                transitCommuters: 18_500,
+                transitCommutersPct: 25.7,
+                averageCommuteMinutes: 27.2
+            ),
+            poverty: PovertyDemographics(
+                universe: 112_000,
+                below: 13_500,
+                ratePct: 12.1
+            ),
+            raceEthnicity: RaceEthnicityDemographics(
+                whiteAlone: 74_000,
+                blackAlone: 10_000,
+                asianAlone: 20_000,
+                hispanicOrLatino: 9_000
+            )
         )
     }
 
