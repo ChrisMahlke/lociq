@@ -35,7 +35,7 @@ protocol CityProfileLoading: Sendable {
     ) async -> CityProfileLoadOutcome
 }
 
-final class CensusCityProfileLoader: @unchecked Sendable, CityProfileLoading {
+struct CensusCityProfileLoader: CityProfileLoading {
     private let profileService: CensusCityProfileService
     private let geocoderClient: CensusGeocoderClient
     private let boundaryClient: TIGERBoundaryClient
@@ -118,6 +118,7 @@ final class CensusCityProfileLoader: @unchecked Sendable, CityProfileLoading {
                 )
             )
         } catch {
+            LociqDiagnostics.cityProfilePartialLoadFailed(error, stage: "city-profile")
             return await loadLocationShell(
                 for: coordinate,
                 horizontalAccuracy: horizontalAccuracy,
@@ -151,6 +152,7 @@ final class CensusCityProfileLoader: @unchecked Sendable, CityProfileLoading {
                 failure: areaTitle == "CITY UNAVAILABLE" ? .cityUnavailable : failure
             )
         } catch {
+            LociqDiagnostics.cityProfilePartialLoadFailed(error, stage: "location-shell")
             return .unavailable(
                 snapshot: DemographicSnapshot.status(
                     for: DemographicSnapshot.LocationStatus(failure: failure),

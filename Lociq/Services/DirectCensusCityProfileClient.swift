@@ -7,13 +7,13 @@
 
 import Foundation
 
-final class DirectCensusCityProfileClient: @unchecked Sendable {
+struct DirectCensusCityProfileClient: Sendable {
     private let geocoderClient: CensusGeocoderClient
     private let boundaryClient: TIGERBoundaryClient
     private let demographicsClient: ACSDemographicsClient
 
     /// Creates the direct Census client by composing geocoder, ACS, and TIGERweb dependencies over one session.
-    nonisolated init(
+    init(
         censusApiKey: String,
         acsYear: Int = 2024,
         session: URLSession = .shared
@@ -41,12 +41,19 @@ final class DirectCensusCityProfileClient: @unchecked Sendable {
 
         async let cityBoundaryTask = boundaryClient.fetchPlaceBoundary(place: geography.place)
         async let placeDemographicsTask = fetchPlaceDemographics(place: geography.place)
+        let placeDemographics: Demographics?
+        do {
+            placeDemographics = try await placeDemographicsTask
+        } catch {
+            LociqDiagnostics.cityProfilePartialLoadFailed(error, stage: "acs-demographics")
+            placeDemographics = nil
+        }
 
         return await ResolvedCityProfile(
             geography: geography,
             boundarySet: CityBoundarySet(city: cityBoundaryTask),
             demographics: CityDemographicsBundle(
-                place: try? placeDemographicsTask
+                place: placeDemographics
             )
         )
     }

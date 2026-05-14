@@ -12,7 +12,7 @@ struct CensusGeographiesBundle: Sendable {
     let place: PlaceInfo?
 }
 
-final class CensusGeocoderClient: @unchecked Sendable {
+struct CensusGeocoderClient: Sendable {
     private let httpClient: CensusHTTPClient
     private let geocoderBenchmark = "Public_AR_Current"
     private let geocoderVintage = "Current_Current"
@@ -22,7 +22,7 @@ final class CensusGeocoderClient: @unchecked Sendable {
     private let geocoderCoordinatesURL = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
 
     /// Creates a Census geocoder client with an injectable HTTP transport.
-    nonisolated init(httpClient: CensusHTTPClient) {
+    init(httpClient: CensusHTTPClient) {
         self.httpClient = httpClient
     }
 

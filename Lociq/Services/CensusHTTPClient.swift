@@ -7,11 +7,11 @@
 
 import Foundation
 
-final class CensusHTTPClient: @unchecked Sendable {
+struct CensusHTTPClient: Sendable {
     private let session: URLSession
 
     /// Creates a Census HTTP client backed by an injectable URL session.
-    nonisolated init(session: URLSession) {
+    init(session: URLSession) {
         self.session = session
     }
 

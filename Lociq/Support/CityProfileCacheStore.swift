@@ -68,13 +68,22 @@ struct CityProfileCacheStore {
     /// Loads the most recently saved city profile.
     func load() -> CachedCityProfile? {
         guard let data = defaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(CachedCityProfile.self, from: data)
+        do {
+            return try JSONDecoder().decode(CachedCityProfile.self, from: data)
+        } catch {
+            LociqDiagnostics.cityProfileCacheFailed(error, operation: "decode")
+            return nil
+        }
     }
 
     /// Persists the latest successful city profile.
     func save(_ profile: CachedCityProfile) {
-        guard let data = try? JSONEncoder().encode(profile) else { return }
-        defaults.set(data, forKey: key)
+        do {
+            let data = try JSONEncoder().encode(profile)
+            defaults.set(data, forKey: key)
+        } catch {
+            LociqDiagnostics.cityProfileCacheFailed(error, operation: "encode")
+        }
     }
 
     /// Removes the cached city profile.

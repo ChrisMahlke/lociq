@@ -7,19 +7,13 @@
 
 import Foundation
 
-final class ACSDemographicsClient: @unchecked Sendable {
-    private enum Constants {
-        static let acsBasePath = "https://api.census.gov/data"
-    }
-
-    private let censusApiKey: String
-    private let acsYear: Int
+struct ACSDemographicsClient: Sendable {
+    private let requestBuilder: ACSRequestBuilder
     private let httpClient: CensusHTTPClient
 
     /// Creates a Census ACS client for a specific dataset year and HTTP transport.
-    nonisolated init(censusApiKey: String, acsYear: Int, httpClient: CensusHTTPClient) {
-        self.censusApiKey = censusApiKey
-        self.acsYear = acsYear
+    init(censusApiKey: String, acsYear: Int, httpClient: CensusHTTPClient) {
+        requestBuilder = ACSRequestBuilder(censusApiKey: censusApiKey, acsYear: acsYear)
         self.httpClient = httpClient
     }
 
@@ -91,42 +85,10 @@ final class ACSDemographicsClient: @unchecked Sendable {
         forQuery: String,
         inQuery: String?
     ) async throws -> [String: String] {
-        let baseURL = "\(Constants.acsBasePath)/\(acsYear)/acs/acs5"
-        var components = URLComponents(string: baseURL)
-        var queryItems: [URLQueryItem] = [
-            .init(name: "get", value: variables.joined(separator: ",")),
-            .init(name: "for", value: forQuery)
-        ]
-
-        if let inQuery {
-            queryItems.append(.init(name: "in", value: inQuery))
-        }
-
-        if !censusApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            queryItems.append(.init(name: "key", value: censusApiKey))
-        }
-
-        components?.queryItems = queryItems
-        guard let url = components?.url else { throw CensusServiceError.invalidURL }
-
+        let url = try requestBuilder.makeURL(variables: variables, forQuery: forQuery, inQuery: inQuery)
         let data = try await httpClient.get(url)
-
-        guard
-            let top = try JSONSerialization.jsonObject(with: data) as? [[String]],
-            top.count >= 2
-        else {
-            throw CensusServiceError.decodeFailed("Unexpected ACS response shape")
-        }
-
-        let header = top[0]
-        let row = top[1]
-        guard header.count == row.count else {
-            throw CensusServiceError.decodeFailed("Header/row length mismatch")
-        }
-
-        return Dictionary(uniqueKeysWithValues: zip(header, row))
+        return try ACSTableResponse(data: data).valuesByKey()
     }
-
 }
 
 private extension Array {

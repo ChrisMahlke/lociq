@@ -42,7 +42,7 @@ nonisolated struct GeoJSONBoundaryProjection {
     /// Projects a geographic coordinate into this projection's drawing space.
     func point(for coordinate: CLLocationCoordinate2D) -> CGPoint? {
         guard
-            let projectedPoint = GeoJSONBoundaryPathBuilder.worldPoint(
+            let projectedPoint = WebMercatorProjection.worldPoint(
                 longitude: coordinate.longitude,
                 latitude: coordinate.latitude
             )
@@ -67,13 +67,13 @@ enum GeoJSONBoundaryPathBuilder {
         in rect: CGRect,
         fittingTo fittingBoundary: GeoJSONFeatureCollection? = nil
     ) -> GeoJSONBoundaryProjection? {
-        let rings = exteriorRings(from: boundary)
+        let rings = GeoJSONBoundaryRings.exteriorRings(from: boundary)
         guard !rings.isEmpty else { return nil }
 
-        let fittingRings = fittingBoundary.map(exteriorRings(from:))
+        let fittingRings = fittingBoundary.map(GeoJSONBoundaryRings.exteriorRings(from:))
         let boundsRings = fittingRings?.isEmpty == false ? fittingRings ?? rings : rings
 
-        guard let projectedBounds = projectedBounds(for: boundsRings) else { return nil }
+        guard let projectedBounds = WebMercatorProjection.projectedBounds(for: boundsRings) else { return nil }
         let projectedWidth = projectedBounds.width
         let projectedHeight = projectedBounds.height
         guard projectedWidth > 0, projectedHeight > 0 else { return nil }
@@ -96,7 +96,7 @@ enum GeoJSONBoundaryPathBuilder {
             projectedRing.reserveCapacity(ring.count)
 
             for coordinate in ring where coordinate.count >= 2 {
-                guard let projectedPoint = worldPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
+                guard let projectedPoint = WebMercatorProjection.worldPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
                     continue
                 }
 
@@ -174,60 +174,4 @@ enum GeoJSONBoundaryPathBuilder {
         return projection.point(for: coordinate)
     }
 
-    /// Finds the normalized Web Mercator bounds for a collection of exterior rings.
-    nonisolated private static func projectedBounds(for rings: [[[Double]]]) -> CGRect? {
-        var minX = CGFloat.infinity
-        var maxX = -CGFloat.infinity
-        var minY = CGFloat.infinity
-        var maxY = -CGFloat.infinity
-        var didProjectAnyPoint = false
-
-        for ring in rings {
-            for coordinate in ring where coordinate.count >= 2 {
-                guard let projectedPoint = worldPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
-                    continue
-                }
-                minX = min(minX, projectedPoint.x)
-                maxX = max(maxX, projectedPoint.x)
-                minY = min(minY, projectedPoint.y)
-                maxY = max(maxY, projectedPoint.y)
-                didProjectAnyPoint = true
-            }
-        }
-
-        guard didProjectAnyPoint else { return nil }
-        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-    }
-
-    /// Converts a coordinate into normalized Web Mercator world coordinates.
-    nonisolated static func worldPoint(longitude: Double, latitude: Double) -> CGPoint? {
-        guard longitude.isFinite, latitude.isFinite else { return nil }
-        let clampedLatitude = min(max(latitude, -85.05112878), 85.05112878)
-        let latitudeRadians = clampedLatitude * .pi / 180
-        let sinLatitude = sin(latitudeRadians)
-        return CGPoint(
-            x: (longitude + 180) / 360,
-            y: 0.5 - log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * .pi)
-        )
-    }
-
-    /// Extracts exterior polygon rings from supported GeoJSON geometry types.
-    nonisolated private static func exteriorRings(from boundary: GeoJSONFeatureCollection) -> [[[Double]]] {
-        boundary.features
-            .compactMap(\.geometry)
-            .flatMap(exteriorRings(from:))
-            .filter { $0.count > 2 }
-    }
-
-    /// Extracts exterior polygon rings from one supported GeoJSON geometry.
-    nonisolated private static func exteriorRings(from geometry: GeoJSONGeometry) -> [[[Double]]] {
-        switch geometry {
-        case .polygon(let rings):
-            return rings.first.map { [$0] } ?? []
-        case .multiPolygon(let polygons):
-            return polygons.compactMap(\.first)
-        case .other:
-            return []
-        }
-    }
 }

@@ -7,12 +7,12 @@
 
 import Foundation
 
-final class CensusCityProfileService: @unchecked Sendable {
+struct CensusCityProfileService: Sendable {
     private let directClient: DirectCensusCityProfileClient
     private let lookupCache = CityLookupCache()
 
     /// Creates a cached city-profile service for the supplied ACS dataset year.
-    nonisolated init(
+    init(
         censusApiKey: String,
         acsYear: Int = 2024,
         session: URLSession = .shared

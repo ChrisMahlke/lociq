@@ -38,7 +38,8 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     private let now: @Sendable () -> Date
     private let playProfileResolvedHaptic: @MainActor () -> Void
     private let cacheMaxAge: TimeInterval
-    private let moveThresholdMeters: CLLocationDistance
+    private let authorizationCoordinator = LocationAuthorizationCoordinator()
+    private let profileLoadPlanner: ProfileLoadPlanner
     private var lastLoadedCoordinateKey: String?
     private var activeLoadID: UUID?
     private var loadTask: Task<Void, Never>?
@@ -73,7 +74,11 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         self.now = now
         self.playProfileResolvedHaptic = profileResolvedHaptic
         self.cacheMaxAge = cacheMaxAge
-        self.moveThresholdMeters = moveThresholdMeters
+        self.profileLoadPlanner = ProfileLoadPlanner(
+            cacheMaxAge: cacheMaxAge,
+            moveThresholdMeters: moveThresholdMeters,
+            now: now
+        )
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
@@ -175,25 +180,12 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
             return
         }
 
-        switch manager.authorizationStatus {
-        case .notDetermined:
-            if currentLoadedProfile == nil {
-                state = .needsLocationPermission
-            }
-        case .authorizedAlways, .authorizedWhenInUse:
-            if currentLoadedProfile == nil {
-                state = .requestingLocation
-            }
-            manager.requestLocation()
-        case .denied, .restricted:
-            if currentLoadedProfile == nil {
-                state = .locationUnavailable
-            }
-        @unknown default:
-            if currentLoadedProfile == nil {
-                state = .locationUnavailable
-            }
-        }
+        perform(
+            authorizationCoordinator.activationAction(
+                for: manager.authorizationStatus,
+                hasLoadedProfile: currentLoadedProfile != nil
+            )
+        )
     }
 
     /// Prompts for location access when possible or falls back to the normal retry path.
@@ -233,23 +225,12 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
 
     /// Applies a Core Location authorization transition to the state machine.
     func handleAuthorizationChange(_ authorizationStatus: CLAuthorizationStatus) {
-        switch authorizationStatus {
-        case .authorizedAlways, .authorizedWhenInUse:
-            state = currentLoadedProfile == nil ? .requestingLocation : state
-            manager.requestLocation()
-        case .denied, .restricted:
-            if currentLoadedProfile == nil {
-                state = .locationUnavailable
-            }
-        case .notDetermined:
-            if currentLoadedProfile == nil {
-                state = .needsLocationPermission
-            }
-        @unknown default:
-            if currentLoadedProfile == nil {
-                state = .locationUnavailable
-            }
-        }
+        perform(
+            authorizationCoordinator.changeAction(
+                for: authorizationStatus,
+                hasLoadedProfile: currentLoadedProfile != nil
+            )
+        )
     }
 
     /// Starts a profile refresh for the newest location update.
@@ -260,9 +241,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     /// Converts a location failure into the least noisy user-visible state.
     func handleLocationFailure(authorizationStatus: CLAuthorizationStatus) {
         guard currentLoadedProfile == nil else { return }
-        state = authorizationStatus == .denied || authorizationStatus == .restricted
-            ? .locationUnavailable
-            : .requestingLocation
+        perform(authorizationCoordinator.failureAction(for: authorizationStatus))
     }
 
     /// Starts a guarded city-profile request for a coordinate.
@@ -271,26 +250,16 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         horizontalAccuracy: CLLocationAccuracy? = nil,
         force: Bool = false
     ) {
-        let coordinateKey = Self.coordinateKey(for: coordinate)
-        guard force || coordinateKey != lastLoadedCoordinateKey else { return }
+        guard let plan = profileLoadPlanner.plan(
+            coordinate: coordinate,
+            previousProfile: currentLoadedProfile,
+            previousStale: currentLoadedProfileIsStale,
+            lastCoordinateKey: lastLoadedCoordinateKey,
+            force: force
+        ) else { return }
 
-        let previousProfile = currentLoadedProfile
-        let previousStale = currentLoadedProfileIsStale
-        lastLoadedCoordinateKey = coordinateKey
-
-        if let previousProfile,
-           !Self.isMeaningfullyDifferent(
-            previousProfile.coordinate,
-            from: coordinate,
-            thresholdMeters: moveThresholdMeters
-           ) {
-            state = .refreshing(
-                previousProfile,
-                isStale: previousStale || previousProfile.isExpired(at: now(), maxAge: cacheMaxAge)
-            )
-        } else {
-            state = .loading
-        }
+        lastLoadedCoordinateKey = plan.coordinateKey
+        state = plan.preLoadState
 
         let loadID = UUID()
         activeLoadID = loadID
@@ -362,20 +331,21 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// Rounds a coordinate into a stable key for suppressing duplicate loads.
-    private static func coordinateKey(for coordinate: CLLocationCoordinate2D) -> String {
-        String(format: "%.4f,%.4f", coordinate.latitude, coordinate.longitude)
-    }
-
-    /// Returns true when two coordinates are far enough apart to justify replacing the visible profile immediately.
-    private static func isMeaningfullyDifferent(
-        _ lhs: CLLocationCoordinate2D,
-        from rhs: CLLocationCoordinate2D,
-        thresholdMeters: CLLocationDistance
-    ) -> Bool {
-        let start = CLLocation(latitude: lhs.latitude, longitude: lhs.longitude)
-        let end = CLLocation(latitude: rhs.latitude, longitude: rhs.longitude)
-        return start.distance(from: end) > thresholdMeters
+    /// Applies one authorization action to ViewModel state and Core Location requests.
+    private func perform(_ action: LocationAuthorizationAction) {
+        switch action {
+        case .showPermissionPrompt:
+            state = .needsLocationPermission
+        case .requestLocation:
+            state = .requestingLocation
+            manager.requestLocation()
+        case .showLocationUnavailable:
+            state = .locationUnavailable
+        case .keepCurrentStateAndRequestLocation:
+            manager.requestLocation()
+        case .none:
+            break
+        }
     }
 }
 

@@ -7,15 +7,15 @@
 
 import Foundation
 
-final class TIGERBoundaryClient: @unchecked Sendable {
+struct TIGERBoundaryClient: Sendable {
     private let httpClient: CensusHTTPClient
+    private let requestBuilder = TIGERRequestBuilder()
     private let incorporatedPlacesLayerId = "28"
     private let cdpLayerId = "30"
-    private let tigerwebMapServerBaseURL = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer"
     private let boundaryCache = TIGERBoundaryCache()
 
     /// Creates a TIGERweb boundary client with an injectable HTTP transport.
-    nonisolated init(httpClient: CensusHTTPClient) {
+    init(httpClient: CensusHTTPClient) {
         self.httpClient = httpClient
     }
 
@@ -37,11 +37,18 @@ final class TIGERBoundaryClient: @unchecked Sendable {
         }
 
         let layerId = place.type == .censusDesignatedPlace ? cdpLayerId : incorporatedPlacesLayerId
-        let boundary = try? await fetchBoundaryGeoJSON(
-            layerId: layerId,
-            whereClause: "STATE='\(state)' AND PLACE='\(placeFIPS)'",
-            outFields: "STATE,PLACE,GEOID,NAME"
-        )
+        let boundary: GeoJSONFeatureCollection?
+        do {
+            boundary = try await fetchBoundaryGeoJSON(
+                layerId: layerId,
+                whereClause: "STATE='\(state)' AND PLACE='\(placeFIPS)'",
+                outFields: "STATE,PLACE,GEOID,NAME"
+            )
+        } catch {
+            LociqDiagnostics.cityProfilePartialLoadFailed(error, stage: "tiger-boundary")
+            boundary = nil
+        }
+
         if let boundary {
             await boundaryCache.store(boundary, for: cacheKey)
         }
@@ -50,17 +57,7 @@ final class TIGERBoundaryClient: @unchecked Sendable {
 
     /// Executes a TIGERweb query and decodes the returned GeoJSON feature collection.
     private func fetchBoundaryGeoJSON(layerId: String, whereClause: String, outFields: String) async throws -> GeoJSONFeatureCollection {
-        var components = URLComponents(string: "\(tigerwebMapServerBaseURL)/\(layerId)/query")
-        components?.queryItems = [
-            .init(name: "where", value: whereClause),
-            .init(name: "outFields", value: outFields),
-            .init(name: "returnGeometry", value: "true"),
-            .init(name: "outSR", value: "4326"),
-            .init(name: "f", value: "geojson")
-        ]
-
-        guard let url = components?.url else { throw CensusServiceError.invalidURL }
-
+        let url = try requestBuilder.makeBoundaryURL(layerId: layerId, whereClause: whereClause, outFields: outFields)
         let data = try await httpClient.get(url)
         let featureCollection = try httpClient.decode(GeoJSONFeatureCollection.self, from: data)
 

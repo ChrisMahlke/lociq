@@ -23,4 +23,14 @@ enum LociqDiagnostics {
     static func cityProfileLoadCompleted(duration: TimeInterval) {
         logger.info("City profile load completed in \(duration, privacy: .public) seconds")
     }
+
+    /// Records an intentionally non-fatal service failure that falls back to partial UI state.
+    static func cityProfilePartialLoadFailed(_ error: Error, stage: String) {
+        logger.warning("City profile partial load failed at \(stage, privacy: .public): \(String(describing: error), privacy: .public)")
+    }
+
+    /// Records a local cache failure that should not interrupt the minimal UI.
+    static func cityProfileCacheFailed(_ error: Error, operation: String) {
+        logger.warning("City profile cache \(operation, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+    }
 }

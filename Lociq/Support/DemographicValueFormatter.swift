@@ -8,20 +8,6 @@
 import Foundation
 
 enum DemographicValueFormatter {
-    private static let integerFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.maximumFractionDigits = 0
-        return formatter
-    }()
-
-    private static let currencyFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.maximumFractionDigits = 0
-        return formatter
-    }()
-
     /// Returns the display title for a resolved city profile.
     static func title(from profile: ResolvedCityProfile) -> String {
         title(from: profile.geography)
@@ -69,13 +55,13 @@ enum DemographicValueFormatter {
     /// Formats an integer for compact display.
     static func number(_ value: Int?) -> String {
         guard let value else { return "--" }
-        return integerFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        return value.formatted(.number.precision(.fractionLength(0)))
     }
 
     /// Formats a currency value or returns the unavailable marker.
     static func currency(_ value: Int?) -> String {
         guard let value, value >= 0 else { return "--" }
-        return currencyFormatter.string(from: NSNumber(value: value)) ?? "$\(value)"
+        return value.formatted(.currency(code: "USD").precision(.fractionLength(0)))
     }
 
     /// Formats a one-decimal numeric value or returns the unavailable marker.
