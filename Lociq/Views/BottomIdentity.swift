@@ -61,6 +61,9 @@ struct BottomIdentity: View {
     /// Layout metrics for the current constrained viewport.
     let layout: MinimalLayout
 
+    /// Current app theme used to render the appearance toggle.
+    let themePreference: LociqThemePreference
+
     /// Accessibility reduced-motion flag passed from the root view.
     var reduceMotion = false
 
@@ -69,6 +72,12 @@ struct BottomIdentity: View {
 
     /// Secondary refresh handler used from the context menu.
     let onRefresh: () -> Void
+
+    /// Secondary theme handler used by the minimal appearance switch.
+    let onToggleTheme: () -> Void
+
+    /// Drives the quiet missing-location permission pulse.
+    @State private var isLocationPermissionPulsing = false
 
     /// SF Symbol name for the current primary action.
     private var iconName: String {
@@ -86,6 +95,16 @@ struct BottomIdentity: View {
         return isShowingDetails ? Constants.showHomeLabel : Constants.showDataLabel
     }
 
+    /// True when the primary action should call attention to location permission.
+    private var shouldEmphasizeLocationPermission: Bool {
+        !snapshot.hasDemographicData && needsLocationPermission && !isWaitingForInitialData && !isLoading
+    }
+
+    /// Foreground opacity for the primary action icon.
+    private var primaryIconOpacity: Double {
+        shouldEmphasizeLocationPermission ? 1 : 0.68
+    }
+
     /// Draws the brand, current action icon, and progress/loading line.
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -96,7 +115,7 @@ struct BottomIdentity: View {
                         Text(Constants.brandTrailing)
                     }
                     .font(LociqTypeScale.brand(layout))
-                    .foregroundStyle(.white.opacity(0.74))
+                    .foregroundStyle(Color.lociqText.opacity(0.74))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
                     .accessibilityElement(children: .ignore)
@@ -105,21 +124,68 @@ struct BottomIdentity: View {
 
                     Spacer(minLength: 28)
 
+                    Button(action: onToggleTheme) {
+                        Image(systemName: themePreference.toggleIconName)
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundStyle(Color.lociqText.opacity(0.58))
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(themePreference.toggleAccessibilityLabel)
+
                     if !isWaitingForInitialData && (snapshot.hasDemographicData || canRetry) {
+                        if shouldEmphasizeLocationPermission {
+                            VStack(alignment: .trailing, spacing: 3) {
+                                Text(snapshot.market)
+                                    .font(LociqTypeScale.metricLabel(layout))
+                                    .foregroundStyle(Color.lociqText.opacity(0.82))
+
+                                Text(snapshot.dateLabel)
+                                    .font(LociqTypeScale.metricDetail(layout))
+                                    .foregroundStyle(Color.lociqText.opacity(0.62))
+                            }
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+                            .multilineTextAlignment(.trailing)
+                            .accessibilityHidden(true)
+                            .transition(.opacity.combined(with: .move(edge: .trailing)))
+                        }
+
                         Button(action: onShowDetails) {
-                            Image(systemName: iconName)
-                                .font(.system(size: 17, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.68))
-                                .frame(width: 44, height: 44)
-                                .opacity(isLoading ? 0.42 : 1)
-                                .id(iconName)
-                                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                            ZStack {
+                                if shouldEmphasizeLocationPermission {
+                                    Circle()
+                                        .fill(Color.lociqLocationTint.opacity(reduceMotion ? 0.16 : 0.12))
+                                        .frame(width: 32, height: 32)
+                                        .scaleEffect(reduceMotion ? 1 : (isLocationPermissionPulsing ? 1.74 : 0.72))
+                                        .opacity(reduceMotion ? 1 : (isLocationPermissionPulsing ? 0 : 1))
+
+                                    Circle()
+                                        .stroke(Color.lociqLocationTint.opacity(reduceMotion ? 0.48 : 0.72), lineWidth: 1.4)
+                                        .frame(width: 30, height: 30)
+                                        .scaleEffect(reduceMotion ? 1 : (isLocationPermissionPulsing ? 1.36 : 0.9))
+                                        .opacity(reduceMotion ? 1 : (isLocationPermissionPulsing ? 0.22 : 1))
+                                }
+
+                                Image(systemName: iconName)
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundStyle(
+                                        shouldEmphasizeLocationPermission
+                                            ? Color.lociqLocationTint.opacity(primaryIconOpacity)
+                                            : Color.lociqText.opacity(primaryIconOpacity)
+                                    )
+                                    .id(iconName)
+                                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                            }
+                            .frame(width: 44, height: 44)
+                            .opacity(isLoading ? 0.42 : 1)
                         }
                         .buttonStyle(.plain)
                         .disabled(isLoading)
                         .accessibilityLabel(actionLabel)
                         .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: iconName)
                         .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: isLoading)
+                        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: shouldEmphasizeLocationPermission)
                         .contextMenu {
                             if canRefresh {
                                 Button("Refresh", systemImage: Constants.retryIcon, action: onRefresh)
@@ -129,6 +195,9 @@ struct BottomIdentity: View {
                                     Label("Share", systemImage: "square.and.arrow.up")
                                 }
                             }
+                        }
+                        .task(id: shouldEmphasizeLocationPermission) {
+                            await runLocationPermissionPulse()
                         }
                     }
                 }
@@ -147,5 +216,28 @@ struct BottomIdentity: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(Constants.summaryAccessibilityIdentifier)
+    }
+
+    /// Runs a restrained pulse while location permission is the primary action.
+    private func runLocationPermissionPulse() async {
+        guard shouldEmphasizeLocationPermission else {
+            isLocationPermissionPulsing = false
+            return
+        }
+        guard !reduceMotion else {
+            isLocationPermissionPulsing = false
+            return
+        }
+
+        while !Task.isCancelled {
+            isLocationPermissionPulsing = false
+            try? await Task.sleep(nanoseconds: 80_000_000)
+            guard let animation = LociqMotion.permissionPulse(reduceMotion: reduceMotion) else { return }
+            withAnimation(animation) {
+                isLocationPermissionPulsing = true
+            }
+            try? await Task.sleep(nanoseconds: UInt64(LociqMotion.permissionPulseDuration * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: LociqMotion.permissionPulsePauseNanoseconds)
+        }
     }
 }

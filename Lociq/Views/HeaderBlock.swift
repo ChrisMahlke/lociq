@@ -24,7 +24,7 @@ struct HeaderBlock: View {
         VStack(alignment: .trailing, spacing: 6) {
             Text(snapshot.market)
                 .font(LociqTypeScale.city(layout))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.lociqText)
                 .monospacedDigit()
                 .lineLimit(2)
                 .minimumScaleFactor(0.74)
@@ -38,7 +38,7 @@ struct HeaderBlock: View {
             if !snapshot.dateLabel.isEmpty {
                 Text(snapshot.dateLabel)
                     .font(LociqTypeScale.statusLabel(layout))
-                    .foregroundStyle(.white.opacity(0.68))
+                    .foregroundStyle(Color.lociqText.opacity(0.68))
             }
         }
         .multilineTextAlignment(.trailing)

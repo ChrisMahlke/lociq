@@ -41,42 +41,42 @@ struct LocationDotStyle {
     /// while avoiding false precision for very broad approximate locations.
     init(accuracy: CLLocationAccuracy?) {
         guard let accuracy, accuracy >= 0 else {
-            tintOpacity = 0.86
-            ringOpacity = 0.38
-            coreDiameter = 3.2
-            ringDiameter = 12
-            pulseScale = 2.1
+            tintOpacity = 0.96
+            ringOpacity = 0.62
+            coreDiameter = 5.2
+            ringDiameter = 16
+            pulseScale = 2.25
             isVisible = true
             return
         }
 
         if accuracy <= 100 {
-            tintOpacity = 0.95
-            ringOpacity = 0.52
-            coreDiameter = 3.8
-            ringDiameter = 10
-            pulseScale = 1.85
+            tintOpacity = 1
+            ringOpacity = 0.72
+            coreDiameter = 5.8
+            ringDiameter = 15
+            pulseScale = 2.05
             isVisible = true
         } else if accuracy <= 1_000 {
-            tintOpacity = 0.82
-            ringOpacity = 0.34
-            coreDiameter = 3.2
-            ringDiameter = 13
-            pulseScale = 2.35
+            tintOpacity = 0.92
+            ringOpacity = 0.56
+            coreDiameter = 5.2
+            ringDiameter = 17
+            pulseScale = 2.45
             isVisible = true
         } else if accuracy <= 5_000 {
-            tintOpacity = 0.64
-            ringOpacity = 0.22
-            coreDiameter = 2.8
-            ringDiameter = 15
-            pulseScale = 2.75
+            tintOpacity = 0.78
+            ringOpacity = 0.40
+            coreDiameter = 4.6
+            ringDiameter = 19
+            pulseScale = 2.9
             isVisible = true
         } else {
-            tintOpacity = 0.64
-            ringOpacity = 0.22
-            coreDiameter = 2.8
-            ringDiameter = 15
-            pulseScale = 2.75
+            tintOpacity = 0.78
+            ringOpacity = 0.40
+            coreDiameter = 4.6
+            ringDiameter = 19
+            pulseScale = 2.9
             isVisible = false
         }
     }
@@ -93,22 +93,23 @@ struct PulsingLocationDot: View {
     /// Drives the repeating ring scale and fade.
     @State private var isPulsing = false
 
-    /// Yellow location accent used consistently with the app icon.
-    private let locationTint = Color(red: 1.0, green: 0.82, blue: 0.22)
-
     /// Renders the pulsing ring and center dot.
     var body: some View {
         ZStack {
             Circle()
-                .stroke(locationTint.opacity(isPulsing ? 0.0 : style.ringOpacity), lineWidth: 0.8)
+                .fill(Color.lociqLocationTint.opacity(0.14))
+                .frame(width: style.ringDiameter + 8, height: style.ringDiameter + 8)
+
+            Circle()
+                .stroke(Color.lociqLocationTint.opacity(isPulsing ? 0.0 : style.ringOpacity), lineWidth: 1.25)
                 .frame(width: style.ringDiameter, height: style.ringDiameter)
                 .scaleEffect(isPulsing ? style.pulseScale : 0.55)
 
             Circle()
-                .fill(locationTint.opacity(style.tintOpacity))
+                .fill(Color.lociqLocationTint.opacity(style.tintOpacity))
                 .frame(width: style.coreDiameter, height: style.coreDiameter)
         }
-        .frame(width: 30, height: 30)
+        .frame(width: 42, height: 42)
         .onAppear {
             guard let animation = LociqMotion.pulse(reduceMotion: reduceMotion) else { return }
             withAnimation(animation) {

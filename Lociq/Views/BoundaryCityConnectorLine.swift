@@ -30,12 +30,21 @@ struct BoundaryCityConnectorLine: View {
 
     /// Draws and animates the connector shape.
     var body: some View {
-        BoundaryCityConnectorShape(start: start, end: end)
-            .trim(from: 0, to: progress)
-            .stroke(
-                Color.white.opacity(0.16),
-                style: StrokeStyle(lineWidth: 0.7, lineCap: .round)
-            )
+        ZStack {
+            BoundaryCityConnectorShape(start: start, end: end)
+                .trim(from: 0, to: progress)
+                .stroke(
+                    Color.lociqBoundaryConnectorHalo,
+                    style: StrokeStyle(lineWidth: 2.8, lineCap: .round)
+                )
+
+            BoundaryCityConnectorShape(start: start, end: end)
+                .trim(from: 0, to: progress)
+                .stroke(
+                    Color.lociqBoundaryConnector,
+                    style: StrokeStyle(lineWidth: 1.15, lineCap: .round)
+                )
+        }
             .onAppear {
                 traceConnector()
             }

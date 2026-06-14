@@ -50,6 +50,7 @@ flowchart TD
 More detail:
 
 - [Architecture](docs/architecture.md)
+- [Location as input architecture](docs/location-as-input-architecture.md)
 - [Data sources](docs/data-sources.md)
 - [Privacy and data flow](docs/privacy-data-flow.md)
 

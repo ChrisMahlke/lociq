@@ -56,7 +56,7 @@ struct InitialLoadingSpinner: View {
             ZStack {
                 Circle()
                     .stroke(
-                        Color.white.opacity(0.13),
+                        Color.lociqText.opacity(0.13),
                         lineWidth: Constants.lineWidth
                     )
 
@@ -65,9 +65,9 @@ struct InitialLoadingSpinner: View {
                     .stroke(
                         AngularGradient(
                             colors: [
-                                .white.opacity(0.20),
-                                .white.opacity(0.88),
-                                .white.opacity(0.20)
+                                Color.lociqText.opacity(0.20),
+                                Color.lociqText.opacity(0.88),
+                                Color.lociqText.opacity(0.20)
                             ],
                             center: .center
                         ),

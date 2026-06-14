@@ -85,11 +85,11 @@ private struct MetricBlock: View {
         VStack(alignment: .trailing, spacing: 5) {
             Text(metric.title)
                 .font(LociqTypeScale.metricLabel(layout))
-                .foregroundStyle(.white.opacity(0.78))
+                .foregroundStyle(Color.lociqText.opacity(0.78))
 
             Text(metric.primaryValue)
                 .font(LociqTypeScale.metricValue(layout))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.lociqText)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
@@ -97,7 +97,7 @@ private struct MetricBlock: View {
 
             Text(metric.detail)
                 .font(LociqTypeScale.metricDetail(layout))
-                .foregroundStyle(.white.opacity(0.54))
+                .foregroundStyle(Color.lociqText.opacity(0.54))
                 .lineLimit(2)
                 .minimumScaleFactor(0.82)
                 .multilineTextAlignment(.trailing)

@@ -25,6 +25,9 @@ struct ContentView: View {
     /// Accessibility reduced-motion setting used by all motion helpers.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Persisted explicit app theme. The app defaults to its original dark appearance.
+    @AppStorage("lociq.themePreference") private var themePreferenceRawValue = LociqThemePreference.dark.rawValue
+
     /// Location and city profile state machine.
     @StateObject private var locationProfile: LocationProfileViewModel
 
@@ -52,6 +55,11 @@ struct ContentView: View {
 
     private var activeCoordinate: CLLocationCoordinate2D? {
         locationProfile.coordinate
+    }
+
+    /// Current user-selected theme, falling back to dark for unknown stored values.
+    private var themePreference: LociqThemePreference {
+        LociqThemePreference(rawValue: themePreferenceRawValue) ?? .dark
     }
 
     /// Snapshot currently projected by the view model.
@@ -119,7 +127,7 @@ struct ContentView: View {
             }
         }
         .background(Color.lociqInk)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themePreference.colorScheme)
         .onAppear {
             locationProfile.activate()
             handleInitialDataWaitingChange(isWaitingForInitialData)
@@ -164,7 +172,9 @@ struct ContentView: View {
         if shouldShowLoadedContent {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .trailing, spacing: 34) {
-                    HeaderBlock(snapshot: displaySnapshot, layout: layout)
+                    if !locationProfile.needsLocationPermissionPrompt {
+                        HeaderBlock(snapshot: displaySnapshot, layout: layout)
+                    }
 
                     if displaySnapshot.hasDemographicData {
                         FadingContentPanel(
@@ -188,6 +198,9 @@ struct ContentView: View {
             )
             .padding(.top, layout.topInset)
             .padding(.trailing, layout.trailingInset)
+            .refreshable {
+                await refreshVisibleCity()
+            }
         }
     }
 
@@ -206,12 +219,15 @@ struct ContentView: View {
             canRefresh: locationProfile.canRefreshCurrentCity,
             shareText: locationProfile.shareText,
             layout: layout,
+            themePreference: themePreference,
             reduceMotion: reduceMotion
         ) {
             handleBottomAction()
         } onRefresh: {
             Haptics.selectionChanged()
             locationProfile.refreshCurrentCity()
+        } onToggleTheme: {
+            toggleThemePreference()
         }
         .padding(.horizontal, layout.horizontalInset)
         .padding(.bottom, layout.bottomInset)
@@ -319,6 +335,22 @@ struct ContentView: View {
                 isLoadingContent = false
             }
         }
+    }
+
+    /// Flips between the original dark appearance and the minimal light variant.
+    private func toggleThemePreference() {
+        Haptics.selectionChanged()
+        withAnimation(LociqMotion.quick(reduceMotion: reduceMotion)) {
+            themePreferenceRawValue = themePreference.toggled.rawValue
+        }
+    }
+
+    /// Refreshes the visible city from pull-to-refresh while keeping the native control active.
+    private func refreshVisibleCity() async {
+        guard locationProfile.canRefreshCurrentCity else { return }
+        Haptics.selectionChanged()
+        locationProfile.refreshCurrentCity()
+        await locationProfile.waitForPendingLoad()
     }
 
     /// Routes the single bottom action to data cycling, location permission, or retry.

@@ -29,12 +29,12 @@ struct ProgressLine: View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(Color.white.opacity(0.30))
+                    .fill(Color.lociqText.opacity(0.30))
                     .frame(height: 1)
 
                 if isLoading {
                     Rectangle()
-                        .fill(Color.white.opacity(0.78))
+                        .fill(Color.lociqText.opacity(0.78))
                         .frame(
                             width: reduceMotion ? geometry.size.width : max(68, geometry.size.width * 0.34),
                             height: 1
@@ -42,7 +42,7 @@ struct ProgressLine: View {
                         .offset(x: reduceMotion ? 0 : geometry.size.width * loadingOffset)
                 } else {
                     Rectangle()
-                        .fill(Color.white.opacity(0.72))
+                        .fill(Color.lociqText.opacity(0.72))
                         .frame(width: geometry.size.width * min(max(progress, 0), 1), height: 1)
                 }
             }

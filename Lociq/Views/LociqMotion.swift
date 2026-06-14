@@ -37,6 +37,12 @@ enum LociqMotion {
     /// Duration for one approximate-location pulse cycle.
     static let pulseDuration = 1.75
 
+    /// Duration for one missing-permission icon pulse.
+    static let permissionPulseDuration = 0.95
+
+    /// Pause between missing-permission icon pulses.
+    static let permissionPulsePauseNanoseconds: UInt64 = 260_000_000
+
     /// Duration for one loading-line sweep.
     static let loadingSweepDuration = 0.82
 
@@ -76,6 +82,8 @@ enum LociqMotion {
     static var connector: Animation { .easeOut(duration: connectorDuration).delay(connectorDelay) }
     /// Approximate-location pulse animation.
     static var pulse: Animation { .easeOut(duration: pulseDuration).repeatForever(autoreverses: false) }
+    /// Missing-permission icon pulse animation.
+    static var permissionPulse: Animation { .easeOut(duration: permissionPulseDuration) }
     /// Loading-line sweep animation.
     static var loadingSweep: Animation { .linear(duration: loadingSweepDuration) }
 
@@ -107,6 +115,11 @@ enum LociqMotion {
     /// Returns the location pulse animation unless reduced motion is enabled.
     static func pulse(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : pulse
+    }
+
+    /// Returns the missing-permission icon pulse animation unless reduced motion is enabled.
+    static func permissionPulse(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : permissionPulse
     }
 
     /// Returns the loading sweep animation unless reduced motion is enabled.

@@ -54,8 +54,15 @@ struct CityBoundaryPreview: View {
                     BoundaryPreviewShape(projection: projection)
                         .trim(from: 0, to: traceProgress)
                         .stroke(
-                            Color.white.opacity(0.28),
-                            style: StrokeStyle(lineWidth: 0.9, lineCap: .round, lineJoin: .round)
+                            Color.lociqBoundaryHalo,
+                            style: StrokeStyle(lineWidth: 2.7, lineCap: .round, lineJoin: .round)
+                        )
+
+                    BoundaryPreviewShape(projection: projection)
+                        .trim(from: 0, to: traceProgress)
+                        .stroke(
+                            Color.lociqBoundaryStroke,
+                            style: StrokeStyle(lineWidth: 1.0, lineCap: .round, lineJoin: .round)
                         )
 
                     if showsLocationDot, let coordinate, let locationPoint = projection.point(for: coordinate) {

@@ -43,7 +43,7 @@ private struct DetailSectionView: View {
         VStack(alignment: .trailing, spacing: 8) {
             Text(section.title)
                 .font(LociqTypeScale.detailSectionLabel(layout))
-                .foregroundStyle(.white.opacity(DemographicContentStyle.detailSectionTitleOpacity))
+                .foregroundStyle(Color.lociqText.opacity(DemographicContentStyle.detailSectionTitleOpacity))
 
             VStack(alignment: .trailing, spacing: layout.detailRowSpacing) {
                 ForEach(section.rows) { row in
@@ -60,7 +60,7 @@ private struct DetailSectionView: View {
 
                             Text(row.value)
                                 .font(LociqTypeScale.detailValue(layout))
-                                .foregroundStyle(.white.opacity(DemographicContentStyle.detailValueOpacity))
+                                .foregroundStyle(Color.lociqText.opacity(DemographicContentStyle.detailValueOpacity))
                                 .multilineTextAlignment(.trailing)
                                 .lineLimit(2)
                                 .minimumScaleFactor(0.82)
@@ -101,7 +101,7 @@ private struct DetailRowLabel: View {
     /// Renders the composed label text.
     var body: some View {
         labelText
-            .foregroundStyle(.white.opacity(DemographicContentStyle.detailLabelOpacity))
+            .foregroundStyle(Color.lociqText.opacity(DemographicContentStyle.detailLabelOpacity))
     }
 
     /// Returns a composed text value with special age-label typography.
