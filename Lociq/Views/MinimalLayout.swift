@@ -96,7 +96,7 @@ struct MinimalLayout {
         )
         boundaryTop = topInset + (isShortHeight ? 78 : 96)
         boundaryLeading = isCompactWidth ? 24 : 30
-        detailLabelColumnWidth = isCompactWidth ? 94 : 104
+        detailLabelColumnWidth = isCompactWidth ? 100 : 108
         detailRowSpacing = isCompactWidth ? 10 : 12
         detailSectionSpacing = isShortHeight ? 16 : 20
     }

@@ -37,6 +37,15 @@ struct ContentView: View {
     /// Temporary loading state used while cycling home and details content.
     @State private var isLoadingContent = false
 
+    /// Briefly confirms a completed manual refresh in the existing header status line.
+    @State private var isShowingRefreshConfirmation = false
+
+    /// Drives a one-time, very small pull hint after the first loaded content appears.
+    @State private var contentPullHintOffset: CGFloat = 0
+
+    /// Prevents the pull-to-refresh discovery hint from replaying in one app session.
+    @State private var hasShownPullRefreshHint = false
+
     /// Whether the first loaded boundary has been revealed.
     @State private var hasRevealedBoundary = false
 
@@ -45,6 +54,9 @@ struct ContentView: View {
 
     /// Task that sequences first boundary and content reveal.
     @State private var revealTask: Task<Void, Never>?
+
+    /// Task that clears transient refresh confirmation copy.
+    @State private var refreshConfirmationTask: Task<Void, Never>?
 
     /// Creates the root view with an optional launch-argument debug coordinate.
     init() {
@@ -64,7 +76,10 @@ struct ContentView: View {
 
     /// Snapshot currently projected by the view model.
     private var displaySnapshot: DemographicSnapshot {
-        locationProfile.snapshot
+        guard isShowingRefreshConfirmation, locationProfile.snapshot.hasDemographicData, !locationProfile.isLoading else {
+            return locationProfile.snapshot
+        }
+        return locationProfile.snapshot.replacingDateLabel("UPDATED NOW")
     }
 
     /// True while the app should show only the initial spinner.
@@ -139,6 +154,14 @@ struct ContentView: View {
         .onChange(of: isWaitingForInitialData) { waiting in
             handleInitialDataWaitingChange(waiting)
         }
+        .onChange(of: shouldShowLoadedContent) { loaded in
+            guard loaded else { return }
+            runPullRefreshHintIfNeeded()
+        }
+        .onDisappear {
+            revealTask?.cancel()
+            refreshConfirmationTask?.cancel()
+        }
     }
 
     /// Renders the geography layer when boundary geometry should be visible.
@@ -198,6 +221,7 @@ struct ContentView: View {
             )
             .padding(.top, layout.topInset)
             .padding(.trailing, layout.trailingInset)
+            .offset(y: contentPullHintOffset)
             .refreshable {
                 await refreshVisibleCity()
             }
@@ -224,8 +248,9 @@ struct ContentView: View {
         ) {
             handleBottomAction()
         } onRefresh: {
-            Haptics.selectionChanged()
-            locationProfile.refreshCurrentCity()
+            Task {
+                await refreshVisibleCity()
+            }
         } onToggleTheme: {
             toggleThemePreference()
         }
@@ -340,7 +365,7 @@ struct ContentView: View {
     /// Flips between the original dark appearance and the minimal light variant.
     private func toggleThemePreference() {
         Haptics.selectionChanged()
-        withAnimation(LociqMotion.quick(reduceMotion: reduceMotion)) {
+        withAnimation(LociqMotion.themeToggle(reduceMotion: reduceMotion)) {
             themePreferenceRawValue = themePreference.toggled.rawValue
         }
     }
@@ -348,9 +373,45 @@ struct ContentView: View {
     /// Refreshes the visible city from pull-to-refresh while keeping the native control active.
     private func refreshVisibleCity() async {
         guard locationProfile.canRefreshCurrentCity else { return }
-        Haptics.selectionChanged()
         locationProfile.refreshCurrentCity()
+        Haptics.selectionChanged()
         await locationProfile.waitForPendingLoad()
+        showRefreshConfirmationIfNeeded()
+    }
+
+    /// Briefly shows a completed-refresh status without adding another visible component.
+    private func showRefreshConfirmationIfNeeded() {
+        guard locationProfile.snapshot.hasDemographicData, !locationProfile.isLoading else { return }
+        refreshConfirmationTask?.cancel()
+        withAnimation(LociqMotion.quick(reduceMotion: reduceMotion)) {
+            isShowingRefreshConfirmation = true
+        }
+        refreshConfirmationTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(LociqMotion.quick(reduceMotion: reduceMotion)) {
+                isShowingRefreshConfirmation = false
+            }
+        }
+    }
+
+    /// Runs a restrained one-time hint that the content can be pulled down to refresh.
+    private func runPullRefreshHintIfNeeded() {
+        guard !hasShownPullRefreshHint else { return }
+        guard displaySnapshot.hasDemographicData, locationProfile.canRefreshCurrentCity else { return }
+        hasShownPullRefreshHint = true
+        guard !reduceMotion else { return }
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            withAnimation(LociqMotion.pullHint) {
+                contentPullHintOffset = 5
+            }
+            try? await Task.sleep(nanoseconds: 280_000_000)
+            withAnimation(LociqMotion.pullHint) {
+                contentPullHintOffset = 0
+            }
+        }
     }
 
     /// Routes the single bottom action to data cycling, location permission, or retry.

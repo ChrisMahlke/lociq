@@ -82,7 +82,7 @@ struct DemographicSnapshot: Codable, Sendable {
     static let placeholder = DemographicSnapshot(
         market: "LOCATION",
         dateLabel: "ENABLE ACCESS",
-        cadence: "DEMOGRAPHICS PAUSED",
+        cadence: "ALLOW LOCATION",
         mode: "LOCATION",
         confidence: 0,
         hasDemographicData: false,
@@ -90,7 +90,7 @@ struct DemographicSnapshot: Codable, Sendable {
             DemographicMetric(
                 title: "ACCESS",
                 primaryValue: "--",
-                detail: "ENABLE LOCATION"
+                detail: "ALLOW LOCATION"
             )
         ],
         detailSections: []
@@ -117,49 +117,49 @@ struct DemographicSnapshot: Codable, Sendable {
             return DemographicSnapshot.status(
                 market: market,
                 dateLabel: "CENSUS KEY",
-                cadence: "ADD API KEY",
+                cadence: "API KEY MISSING",
                 mode: "NO KEY"
             )
         case .cityUnavailable:
             return DemographicSnapshot.status(
                 market: market,
                 dateLabel: "CITY",
-                cadence: "NOT FOUND",
+                cadence: "PLACE NOT FOUND",
                 mode: "NO CITY"
             )
         case .demographicsUnavailable:
             return DemographicSnapshot.status(
                 market: market,
                 dateLabel: "ACS",
-                cadence: "NO DATA",
+                cadence: "DEMOGRAPHICS UNAVAILABLE",
                 mode: "NO DATA"
             )
         case .boundaryUnavailable:
             return DemographicSnapshot.status(
                 market: market,
                 dateLabel: "BOUNDARY",
-                cadence: "NO OUTLINE",
+                cadence: "OUTLINE UNAVAILABLE",
                 mode: "NO BOUNDARY"
             )
         case .networkUnavailable:
             return DemographicSnapshot.status(
                 market: market,
                 dateLabel: "NETWORK",
-                cadence: "TRY AGAIN",
+                cadence: "CHECK CONNECTION",
                 mode: "OFFLINE"
             )
         case .timedOut:
             return DemographicSnapshot.status(
                 market: market,
                 dateLabel: "TIMEOUT",
-                cadence: "TRY AGAIN",
+                cadence: "REQUEST TIMED OUT",
                 mode: "SLOW ACS"
             )
         case .serviceUnavailable:
             return DemographicSnapshot.status(
                 market: market,
                 dateLabel: "ACS",
-                cadence: "TRY AGAIN LATER",
+                cadence: "SERVICE UNAVAILABLE",
                 mode: "OFFLINE"
             )
         }
@@ -214,7 +214,7 @@ struct DemographicSnapshot: Codable, Sendable {
     var shareText: String? {
         guard hasDemographicData else { return nil }
         let metricLines = metrics.map { "\($0.title): \($0.primaryValue)" }
-        return ([market] + metricLines).joined(separator: "\n")
+        return (["LOC IQ", market] + metricLines).joined(separator: "\n")
     }
 }
 

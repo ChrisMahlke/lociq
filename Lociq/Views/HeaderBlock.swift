@@ -39,6 +39,10 @@ struct HeaderBlock: View {
                 Text(snapshot.dateLabel)
                     .font(LociqTypeScale.statusLabel(layout))
                     .foregroundStyle(Color.lociqText.opacity(0.68))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .allowsTightening(true)
+                    .transition(.opacity)
             }
         }
         .multilineTextAlignment(.trailing)

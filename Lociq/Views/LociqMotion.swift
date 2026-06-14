@@ -70,6 +70,12 @@ enum LociqMotion {
     /// Total duration during which the content-cycle loading line remains active.
     static let contentCycleDuration = 1.05
 
+    /// Duration for the tiny one-time pull-to-refresh affordance.
+    static let pullHintDuration = 0.28
+
+    /// Duration for appearance changes.
+    static let themeToggleDuration = 0.24
+
     /// Standard quick animation for small state changes.
     static var quick: Animation { .easeInOut(duration: quickDuration) }
     /// Standard content animation for view swaps.
@@ -86,6 +92,10 @@ enum LociqMotion {
     static var permissionPulse: Animation { .easeOut(duration: permissionPulseDuration) }
     /// Loading-line sweep animation.
     static var loadingSweep: Animation { .linear(duration: loadingSweepDuration) }
+    /// One-time content nudge that hints at pull-to-refresh.
+    static var pullHint: Animation { .easeInOut(duration: pullHintDuration) }
+    /// Quiet appearance transition.
+    static var themeToggle: Animation { .easeInOut(duration: themeToggleDuration) }
 
     /// Returns the quick animation adjusted for reduced-motion users.
     static func quick(reduceMotion: Bool) -> Animation {
@@ -125,6 +135,11 @@ enum LociqMotion {
     /// Returns the loading sweep animation unless reduced motion is enabled.
     static func loadingSweep(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : loadingSweep
+    }
+
+    /// Returns the theme transition animation adjusted for reduced-motion users.
+    static func themeToggle(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .linear(duration: 0.01) : themeToggle
     }
 
     /// Returns the total content-cycle duration adjusted for reduced-motion users.

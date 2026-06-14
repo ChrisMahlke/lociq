@@ -35,14 +35,14 @@ struct BoundaryCityConnectorLine: View {
                 .trim(from: 0, to: progress)
                 .stroke(
                     Color.lociqBoundaryConnectorHalo,
-                    style: StrokeStyle(lineWidth: 2.8, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 2.35, lineCap: .round)
                 )
 
             BoundaryCityConnectorShape(start: start, end: end)
                 .trim(from: 0, to: progress)
                 .stroke(
                     Color.lociqBoundaryConnector,
-                    style: StrokeStyle(lineWidth: 1.15, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 0.9, lineCap: .round)
                 )
         }
             .onAppear {

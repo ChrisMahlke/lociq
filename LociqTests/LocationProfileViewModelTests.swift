@@ -65,11 +65,11 @@ struct LocationProfileViewModelTests {
         }
     }
 
-    /// Verifies stale cached profiles are shown without exposing cache state to users.
+    /// Verifies stale cached profiles carry a quiet stale marker.
     ///
-    /// The UI previously showed cache wording. This test protects the current
-    /// product choice to keep stale fallback silent and minimal.
-    @Test func staleCachedProfileIsDisplayedAsCached() async throws {
+    /// The marker keeps refresh failures honest without replacing useful data
+    /// or adding another UI surface.
+    @Test func staleCachedProfileShowsStaleMarker() async throws {
         let now = Date(timeIntervalSinceReferenceDate: 200_000)
         let store = Self.makeCacheStore()
         store.save(Self.cachedProfile(cachedAt: now.addingTimeInterval(-90_000)))
@@ -86,7 +86,7 @@ struct LocationProfileViewModelTests {
             return
         }
         #expect(isStale)
-        #expect(viewModel.snapshot.dateLabel.isEmpty)
+        #expect(viewModel.snapshot.dateLabel == "STALE DATA")
     }
 
     /// Verifies successful location loads save a fresh cache entry using the injected clock.

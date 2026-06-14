@@ -101,8 +101,10 @@ enum LocationProfileViewStateMapper {
             return .loading
         case .needsLocationPermission, .locationUnavailable:
             return .placeholder
-        case .refreshing(let profile, let isStale), .loaded(let profile, let isStale):
-            return isStale ? profile.snapshot.replacingDateLabel("") : profile.snapshot
+        case .refreshing(let profile, _):
+            return profile.snapshot.replacingDateLabel("REFRESHING")
+        case .loaded(let profile, let isStale):
+            return isStale ? profile.snapshot.replacingDateLabel("STALE DATA") : profile.snapshot
         case .profileUnavailable(let snapshot, _, _, _, _):
             return snapshot
         }

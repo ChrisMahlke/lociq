@@ -26,12 +26,15 @@ struct BottomIdentity: View {
         static let summaryAccessibilityIdentifier = "demographics.summary"
         static let locationIcon = "location"
         static let retryIcon = "arrow.clockwise"
+        static let shareIcon = "square.and.arrow.up"
         static let homeIcon = "house"
         static let detailIcon = "list.bullet.rectangle"
         static let enableLocationLabel = "Enable location access"
         static let retryLabel = "Retry loading data"
         static let showHomeLabel = "Show home view"
         static let showDataLabel = "Show data view"
+        static let refreshLabel = "Refresh data"
+        static let shareLabel = "Share city snapshot"
     }
 
     /// Current demographic display snapshot.
@@ -124,81 +127,59 @@ struct BottomIdentity: View {
 
                     Spacer(minLength: 28)
 
-                    Button(action: onToggleTheme) {
-                        Image(systemName: themePreference.toggleIconName)
-                            .font(.system(size: 16, weight: .regular))
-                            .foregroundStyle(Color.lociqText.opacity(0.58))
-                            .frame(width: 44, height: 44)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(themePreference.toggleAccessibilityLabel)
-
-                    if !isWaitingForInitialData && (snapshot.hasDemographicData || canRetry) {
-                        if shouldEmphasizeLocationPermission {
-                            VStack(alignment: .trailing, spacing: 3) {
-                                Text(snapshot.market)
-                                    .font(LociqTypeScale.metricLabel(layout))
-                                    .foregroundStyle(Color.lociqText.opacity(0.82))
-
-                                Text(snapshot.dateLabel)
-                                    .font(LociqTypeScale.metricDetail(layout))
-                                    .foregroundStyle(Color.lociqText.opacity(0.62))
-                            }
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
-                            .multilineTextAlignment(.trailing)
-                            .accessibilityHidden(true)
-                            .transition(.opacity.combined(with: .move(edge: .trailing)))
-                        }
-
-                        Button(action: onShowDetails) {
-                            ZStack {
-                                if shouldEmphasizeLocationPermission {
-                                    Circle()
-                                        .fill(Color.lociqLocationTint.opacity(reduceMotion ? 0.16 : 0.12))
-                                        .frame(width: 32, height: 32)
-                                        .scaleEffect(reduceMotion ? 1 : (isLocationPermissionPulsing ? 1.74 : 0.72))
-                                        .opacity(reduceMotion ? 1 : (isLocationPermissionPulsing ? 0 : 1))
-
-                                    Circle()
-                                        .stroke(Color.lociqLocationTint.opacity(reduceMotion ? 0.48 : 0.72), lineWidth: 1.4)
-                                        .frame(width: 30, height: 30)
-                                        .scaleEffect(reduceMotion ? 1 : (isLocationPermissionPulsing ? 1.36 : 0.9))
-                                        .opacity(reduceMotion ? 1 : (isLocationPermissionPulsing ? 0.22 : 1))
-                                }
-
-                                Image(systemName: iconName)
-                                    .font(.system(size: 17, weight: .medium))
-                                    .foregroundStyle(
-                                        shouldEmphasizeLocationPermission
-                                            ? Color.lociqLocationTint.opacity(primaryIconOpacity)
-                                            : Color.lociqText.opacity(primaryIconOpacity)
-                                    )
-                                    .id(iconName)
-                                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
-                            }
-                            .frame(width: 44, height: 44)
-                            .opacity(isLoading ? 0.42 : 1)
+                    HStack(alignment: .center, spacing: 0) {
+                        Button(action: onToggleTheme) {
+                            Image(systemName: themePreference.toggleIconName)
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundStyle(Color.lociqText.opacity(0.58))
+                                .frame(width: 44, height: 44)
                         }
                         .buttonStyle(.plain)
-                        .disabled(isLoading)
-                        .accessibilityLabel(actionLabel)
-                        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: iconName)
-                        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: isLoading)
-                        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: shouldEmphasizeLocationPermission)
-                        .contextMenu {
+                        .accessibilityLabel(themePreference.toggleAccessibilityLabel)
+
+                        if !isWaitingForInitialData && (snapshot.hasDemographicData || canRetry) {
                             if canRefresh {
-                                Button("Refresh", systemImage: Constants.retryIcon, action: onRefresh)
+                                Button(action: onRefresh) {
+                                    Image(systemName: Constants.retryIcon)
+                                        .font(.system(size: 16, weight: .regular))
+                                        .foregroundStyle(Color.lociqText.opacity(0.58))
+                                        .frame(width: 44, height: 44)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(isLoading)
+                                .accessibilityLabel(Constants.refreshLabel)
                             }
+
                             if let shareText {
                                 ShareLink(item: shareText) {
-                                    Label("Share", systemImage: "square.and.arrow.up")
+                                    Image(systemName: Constants.shareIcon)
+                                        .font(.system(size: 16, weight: .regular))
+                                        .foregroundStyle(Color.lociqText.opacity(0.58))
+                                        .frame(width: 44, height: 44)
                                 }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(Constants.shareLabel)
                             }
+
+                            primaryActionButton
                         }
-                        .task(id: shouldEmphasizeLocationPermission) {
-                            await runLocationPermissionPulse()
+                    }
+
+                    if !isWaitingForInitialData && shouldEmphasizeLocationPermission {
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text(snapshot.market)
+                                .font(LociqTypeScale.metricLabel(layout))
+                                .foregroundStyle(Color.lociqText.opacity(0.82))
+
+                            Text(snapshot.dateLabel)
+                                .font(LociqTypeScale.metricDetail(layout))
+                                .foregroundStyle(Color.lociqText.opacity(0.62))
                         }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .multilineTextAlignment(.trailing)
+                        .accessibilityHidden(true)
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
                     }
                 }
 
@@ -216,6 +197,58 @@ struct BottomIdentity: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(Constants.summaryAccessibilityIdentifier)
+    }
+
+    /// Primary mode, retry, or permission button.
+    private var primaryActionButton: some View {
+        Button(action: onShowDetails) {
+            ZStack {
+                if shouldEmphasizeLocationPermission {
+                    Circle()
+                        .fill(Color.lociqLocationTint.opacity(reduceMotion ? 0.16 : 0.12))
+                        .frame(width: 32, height: 32)
+                        .scaleEffect(reduceMotion ? 1 : (isLocationPermissionPulsing ? 1.74 : 0.72))
+                        .opacity(reduceMotion ? 1 : (isLocationPermissionPulsing ? 0 : 1))
+
+                    Circle()
+                        .stroke(Color.lociqLocationTint.opacity(reduceMotion ? 0.48 : 0.72), lineWidth: 1.4)
+                        .frame(width: 30, height: 30)
+                        .scaleEffect(reduceMotion ? 1 : (isLocationPermissionPulsing ? 1.36 : 0.9))
+                        .opacity(reduceMotion ? 1 : (isLocationPermissionPulsing ? 0.22 : 1))
+                }
+
+                Image(systemName: iconName)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(
+                        shouldEmphasizeLocationPermission
+                            ? Color.lociqLocationTint.opacity(primaryIconOpacity)
+                            : Color.lociqText.opacity(primaryIconOpacity)
+                    )
+                    .id(iconName)
+                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
+            }
+            .frame(width: 44, height: 44)
+            .opacity(isLoading ? 0.42 : 1)
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoading)
+        .accessibilityLabel(actionLabel)
+        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: iconName)
+        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: isLoading)
+        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: shouldEmphasizeLocationPermission)
+        .contextMenu {
+            if canRefresh {
+                Button("Refresh", systemImage: Constants.retryIcon, action: onRefresh)
+            }
+            if let shareText {
+                ShareLink(item: shareText) {
+                    Label("Share", systemImage: Constants.shareIcon)
+                }
+            }
+        }
+        .task(id: shouldEmphasizeLocationPermission) {
+            await runLocationPermissionPulse()
+        }
     }
 
     /// Runs a restrained pulse while location permission is the primary action.
