@@ -55,9 +55,6 @@ enum LociqMotion {
     /// Duration for first loaded content reveal.
     static let firstDataRevealDuration = 0.44
 
-    /// Delay between boundary reveal and content reveal.
-    static let contentRevealAfterBoundaryDelay = 1.45
-
     /// Delay before the approximate-location dot appears.
     static let locationDotRevealDelay = 1.9
 
@@ -160,11 +157,6 @@ enum LociqMotion {
     /// Returns the first-data reveal animation adjusted for reduced-motion users.
     static func firstDataReveal(reduceMotion: Bool) -> Animation {
         reduceMotion ? .linear(duration: 0.01) : .easeOut(duration: firstDataRevealDuration)
-    }
-
-    /// Returns the delay between boundary reveal and content reveal.
-    static func contentRevealAfterBoundaryDelay(reduceMotion: Bool) -> Double {
-        reduceMotion ? 0.04 : contentRevealAfterBoundaryDelay
     }
 
     /// Returns the approximate-location reveal delay adjusted for reduced-motion users.

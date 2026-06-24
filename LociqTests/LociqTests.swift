@@ -72,6 +72,7 @@ struct LociqTests {
         let snapshot = DemographicSnapshot(profile: profile, demographics: demographics)
 
         #expect(snapshot.market == "CAMBRIDGE, MASSACHUSETTS")
+        #expect(snapshot.dateLabel == "")
         #expect(snapshot.metrics.first?.title == "POPULATION")
         #expect(snapshot.metrics.first?.primaryValue == "118,214")
         #expect(snapshot.metrics.first?.detail == "MEDIAN AGE 30.8")

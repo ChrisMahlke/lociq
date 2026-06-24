@@ -6,7 +6,7 @@
 //
 //  `ContentView` owns composition, not data loading. It observes
 //  `LocationProfileViewModel`, lays out the minimal surface, sequences first
-//  reveal animations, and routes the bottom action. Data state, formatting, and
+//  reveal timing, and routes the bottom action. Data state, formatting, and
 //  Census service behavior live outside this view.
 //
 
@@ -52,7 +52,7 @@ struct ContentView: View {
     /// Whether the first loaded content stack has been revealed.
     @State private var hasRevealedContent = false
 
-    /// Task that sequences first boundary and content reveal.
+    /// Task that sequences the first loaded frame reveal.
     @State private var revealTask: Task<Void, Never>?
 
     /// Task that clears transient refresh confirmation copy.
@@ -87,7 +87,7 @@ struct ContentView: View {
         locationProfile.isWaitingForInitialData
     }
 
-    /// True after initial data is ready and the boundary reveal phase has started.
+    /// True after initial data is ready and the loaded frame reveal has started.
     private var shouldShowBoundary: Bool {
         !isWaitingForInitialData && hasRevealedBoundary
     }
@@ -166,8 +166,8 @@ struct ContentView: View {
 
     /// Renders the geography layer when boundary geometry should be visible.
     ///
-    /// Boundary visibility is staged after initial data arrives so the outline
-    /// can trace before demographic text fades in.
+    /// Boundary visibility is tied to the loaded-content reveal so the outline
+    /// does not draw, disappear, and restart as the city text arrives.
     @ViewBuilder
     private func boundaryLayer(layout: MinimalLayout) -> some View {
         if shouldShowBoundary, locationProfile.canShowBoundary, let boundary = locationProfile.boundary {
@@ -259,11 +259,10 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
     }
 
-    /// Sequences the first loaded frame so geography appears before the demographic text.
+    /// Reveals the first loaded frame once initial data is ready.
     ///
-    /// The sequence is intentionally restrained:
-    /// boundary first, then content. If no boundary is available, content
-    /// appears immediately after the first reveal delay.
+    /// Boundary and content enter together to avoid a partial geography trace
+    /// being replaced by the fully composed city profile frame.
     private func handleInitialDataWaitingChange(_ waiting: Bool) {
         revealTask?.cancel()
 
@@ -279,19 +278,6 @@ struct ContentView: View {
             guard !Task.isCancelled else { return }
             withAnimation(LociqMotion.firstDataReveal(reduceMotion: reduceMotion)) {
                 hasRevealedBoundary = true
-            }
-
-            guard locationProfile.canShowBoundary else {
-                withAnimation(LociqMotion.firstDataReveal(reduceMotion: reduceMotion)) {
-                    hasRevealedContent = true
-                }
-                return
-            }
-
-            let contentDelay = LociqMotion.contentRevealAfterBoundaryDelay(reduceMotion: reduceMotion)
-            try? await Task.sleep(nanoseconds: UInt64(contentDelay * 1_000_000_000))
-            guard !Task.isCancelled else { return }
-            withAnimation(LociqMotion.firstDataReveal(reduceMotion: reduceMotion)) {
                 hasRevealedContent = true
             }
         }
