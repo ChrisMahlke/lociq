@@ -18,53 +18,67 @@ import Foundation
 /// Census service fails.
 struct DirectCensusCityProfileClient: Sendable {
     /// Coordinate-to-Census-geography resolver.
-    private let geocoderClient: CensusGeocoderClient
+    private let geocoderClient: any CensusGeographyFetching
 
     /// TIGERweb boundary client for the resolved place.
-    private let boundaryClient: TIGERBoundaryClient
+    private let boundaryClient: any TIGERBoundaryFetching
 
     /// ACS demographic client for the resolved place.
-    private let demographicsClient: ACSDemographicsClient
+    private let demographicsClient: any ACSDemographicsFetching
 
-    /// Creates the direct Census client by composing geocoder, ACS, and TIGERweb dependencies over one session.
+    /// Creates the direct Census client from already-built service clients.
+    ///
+    /// The clients are built once per app session (`CensusServiceGraph`) and
+    /// shared, so every path uses the same session caches.
     init(
-        censusApiKey: String,
-        acsYear: Int = 2024,
-        session: URLSession = .shared
+        geocoderClient: any CensusGeographyFetching,
+        boundaryClient: any TIGERBoundaryFetching,
+        demographicsClient: any ACSDemographicsFetching
     ) {
-        let httpClient = CensusHTTPClient(session: session)
-        geocoderClient = CensusGeocoderClient(httpClient: httpClient)
-        boundaryClient = TIGERBoundaryClient(httpClient: httpClient)
-        demographicsClient = ACSDemographicsClient(
-            censusApiKey: censusApiKey,
-            acsYear: acsYear,
-            httpClient: httpClient
-        )
+        self.geocoderClient = geocoderClient
+        self.boundaryClient = boundaryClient
+        self.demographicsClient = demographicsClient
     }
 
-    /// Resolves a coordinate into one city-level profile with place demographics and boundary geometry.
+    /// Resolves the county and place that contain a coordinate.
     ///
-    /// Boundary and demographic requests are started concurrently after
-    /// geocoding succeeds because they are independent once the place is known.
-    /// Demographic failure is captured as a partial failure rather than
-    /// throwing immediately, which allows the loader to decide whether a
-    /// location shell can still be useful.
-    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedCityProfile {
+    /// - Throws: The geocoder's failure. Nothing downstream can run without it.
+    func fetchGeography(latitude: Double, longitude: Double) async throws -> CityGeographyProfile {
         let geographies = try await geocoderClient.fetchGeographiesFromCoordinate(
             latitude: latitude,
             longitude: longitude
         )
-        let geography = CityGeographyProfile(
-            county: geographies.county,
-            place: geographies.place
-        )
+        return CityGeographyProfile(county: geographies.county, place: geographies.place)
+    }
 
-        async let cityBoundaryTask = boundaryClient.fetchPlaceBoundary(place: geography.place)
-        async let placeDemographicsTask = fetchPlaceDemographics(place: geography.place)
+    /// Loads statistics and the boundary for an already-resolved place.
+    ///
+    /// Boundary and demographic requests run concurrently because they are
+    /// independent once the place is known. A demographics failure is recorded
+    /// as a typed partial failure so the loader can explain it precisely. A
+    /// known boundary for the same place is reused instead of downloaded.
+    func fetchPlaceProfile(
+        for geography: CityGeographyProfile,
+        knownBoundary: KnownPlaceBoundary? = nil
+    ) async -> ResolvedCityProfile {
+        guard let place = geography.place else {
+            return ResolvedCityProfile(
+                geography: geography,
+                boundarySet: CityBoundarySet(city: nil),
+                demographics: CityDemographicsBundle(place: nil)
+            )
+        }
+
+        let reusableBoundary = knownBoundary.flatMap { $0.geoid == place.geoid ? $0.boundary : nil }
+        async let cityBoundaryTask = boundary(for: place, reusing: reusableBoundary)
+        async let placeDemographicsTask = demographicsClient.fetchDemographics(place: place)
+
         var partialFailures: [CityProfilePartialFailure] = []
         let placeDemographics: Demographics?
         do {
             placeDemographics = try await placeDemographicsTask
+        } catch is CancellationError {
+            placeDemographics = nil
         } catch {
             LociqDiagnostics.cityProfilePartialLoadFailed(error, stage: "acs-demographics")
             partialFailures.append(
@@ -80,22 +94,17 @@ struct DirectCensusCityProfileClient: Sendable {
         return ResolvedCityProfile(
             geography: geography,
             boundarySet: CityBoundarySet(city: cityBoundary),
-            demographics: CityDemographicsBundle(
-                place: placeDemographics
-            ),
+            demographics: CityDemographicsBundle(place: placeDemographics),
             partialFailures: partialFailures
         )
     }
 
-    /// Fetches demographics for a resolved place or throws when no place is available.
-    ///
-    /// Missing place metadata means ACS cannot be queried at the place level,
-    /// so the condition is normalized into `noDemographicsFound`.
-    private func fetchPlaceDemographics(place: PlaceInfo?) async throws -> Demographics {
-        guard let place else {
-            throw CensusServiceError.noDemographicsFound
-        }
-
-        return try await demographicsClient.fetchDemographics(place: place)
+    /// Returns a reusable boundary immediately, or fetches one for the place.
+    private func boundary(
+        for place: PlaceInfo,
+        reusing reusableBoundary: GeoJSONFeatureCollection?
+    ) async -> GeoJSONFeatureCollection? {
+        if let reusableBoundary { return reusableBoundary }
+        return await boundaryClient.fetchPlaceBoundary(place: place)
     }
 }

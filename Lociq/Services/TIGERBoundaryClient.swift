@@ -15,26 +15,36 @@ import Foundation
 ///
 /// The client supports incorporated places and census-designated places. Those
 /// geographies live in different TIGERweb layers, so `PlaceInfo.PlaceType`
-/// determines which layer is queried.
+/// determines which layer is queried. Boundaries come from the generalized,
+/// shoreline-clipped service for the configured data vintage.
 struct TIGERBoundaryClient: Sendable {
-    /// Shared Census HTTP client.
+    /// Census HTTP client, normally configured with `CensusRetryPolicy.boundary`.
     private let httpClient: CensusHTTPClient
 
     /// URL builder for TIGERweb layer queries.
-    private let requestBuilder = TIGERRequestBuilder()
+    private let requestBuilder: TIGERRequestBuilder
 
-    /// TIGERweb layer id for incorporated places.
-    private let incorporatedPlacesLayerId = "28"
+    /// Generalized layer id for incorporated places.
+    private let incorporatedPlacesLayerId: String
 
-    /// TIGERweb layer id for census-designated places.
-    private let cdpLayerId = "30"
+    /// Generalized layer id for census-designated places.
+    private let cdpLayerId: String
+
+    /// Attributes requested with each boundary.
+    ///
+    /// `AREALAND` drives density, `INTPTLAT`/`INTPTLON` anchor the connector
+    /// line inside the place, and `GEOID` identifies the place in the cache.
+    private let outFields = "STATE,PLACE,GEOID,NAME,BASENAME,AREALAND,AREAWATER,INTPTLAT,INTPTLON"
 
     /// Actor-backed in-memory cache keyed by state, place, and place type.
     private let boundaryCache = TIGERBoundaryCache()
 
     /// Creates a TIGERweb boundary client with an injectable HTTP transport.
-    init(httpClient: CensusHTTPClient) {
+    init(httpClient: CensusHTTPClient, vintage: CensusDataVintage = .current) {
         self.httpClient = httpClient
+        requestBuilder = TIGERRequestBuilder(vintage: vintage)
+        incorporatedPlacesLayerId = vintage.incorporatedPlacesBoundaryLayerId
+        cdpLayerId = vintage.censusDesignatedPlacesBoundaryLayerId
     }
 
     /// Fetches a GeoJSON boundary for the supplied incorporated place or CDP.
@@ -64,8 +74,10 @@ struct TIGERBoundaryClient: Sendable {
             boundary = try await fetchBoundaryGeoJSON(
                 layerId: layerId,
                 whereClause: "STATE='\(state)' AND PLACE='\(placeFIPS)'",
-                outFields: "STATE,PLACE,GEOID,NAME"
+                outFields: outFields
             )
+        } catch is CancellationError {
+            return nil
         } catch {
             LociqDiagnostics.cityProfilePartialLoadFailed(error, stage: "tiger-boundary")
             boundary = nil

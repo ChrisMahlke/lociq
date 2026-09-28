@@ -13,7 +13,9 @@ import Foundation
 /// values keyed by variable codes, and `ACSDemographicsMapper` is responsible for translating those
 /// codes into these semantic groups. Optional values represent unavailable, suppressed, or missing
 /// ACS estimates after normalization.
-struct Demographics: Sendable {
+///
+/// Only values the app displays are modeled. Add a field together with the feature that shows it.
+nonisolated struct Demographics: Sendable {
     let name: String
     let population: PopulationDemographics
     let income: IncomeDemographics
@@ -21,8 +23,6 @@ struct Demographics: Sendable {
     let housing: HousingDemographics
     let education: EducationDemographics
     let mobility: MobilityDemographics
-    let poverty: PovertyDemographics
-    let raceEthnicity: RaceEthnicityDemographics
 
     /// Creates a normalized ACS demographic aggregate used by the UI snapshot layer.
     init(
@@ -32,9 +32,7 @@ struct Demographics: Sendable {
         age: AgeDemographics,
         housing: HousingDemographics,
         education: EducationDemographics,
-        mobility: MobilityDemographics,
-        poverty: PovertyDemographics,
-        raceEthnicity: RaceEthnicityDemographics
+        mobility: MobilityDemographics
     ) {
         self.name = name
         self.population = population
@@ -43,13 +41,24 @@ struct Demographics: Sendable {
         self.housing = housing
         self.education = education
         self.mobility = mobility
-        self.poverty = poverty
-        self.raceEthnicity = raceEthnicity
     }
 }
 
+/// Marks a median that falls in an open-ended top or bottom interval.
+///
+/// ACS publishes such medians as the interval bound with a `+` or `-`
+/// annotation, for example `250,000+`. The value is then a bound, not an
+/// estimate, and must be displayed with its annotation.
+nonisolated enum MedianBound: Sendable, Equatable {
+    /// The median is at least the reported value (`250,000+`).
+    case atLeast
+
+    /// The median is at most the reported value (`2,500-`).
+    case atMost
+}
+
 /// Population totals for the resolved city/place.
-struct PopulationDemographics: Sendable {
+nonisolated struct PopulationDemographics: Sendable {
     let total: Int?
 
     /// Creates population totals for the resolved city/place.
@@ -59,17 +68,19 @@ struct PopulationDemographics: Sendable {
 }
 
 /// Household income estimates for the resolved city/place.
-struct IncomeDemographics: Sendable {
+nonisolated struct IncomeDemographics: Sendable {
     let medianHousehold: Int?
+    let medianHouseholdBound: MedianBound?
 
     /// Creates household income estimates for the resolved city/place.
-    init(medianHousehold: Int?) {
+    init(medianHousehold: Int?, medianHouseholdBound: MedianBound? = nil) {
         self.medianHousehold = medianHousehold
+        self.medianHouseholdBound = medianHouseholdBound
     }
 }
 
 /// Age distribution estimates for the resolved city/place.
-struct AgeDemographics: Sendable {
+nonisolated struct AgeDemographics: Sendable {
     let median: Double?
     let under18Pct: Double?
     let age18To34Pct: Double?
@@ -92,47 +103,47 @@ struct AgeDemographics: Sendable {
     }
 }
 
-/// Housing supply, tenure, vacancy, and cost estimates for the resolved city/place.
-struct HousingDemographics: Sendable {
-    let units: Int?
+/// Housing tenure, vacancy, and cost estimates for the resolved city/place.
+nonisolated struct HousingDemographics: Sendable {
     let medianHomeValue: Int?
+    let medianHomeValueBound: MedianBound?
     let medianGrossRent: Int?
-    let averageHouseholdSize: Double?
+    let medianGrossRentBound: MedianBound?
     let ownerOccupied: Int?
     let renterOccupied: Int?
     let ownerOccupiedPct: Double?
-    let renterOccupiedPct: Double?
+    let totalUnits: Int?
     let vacantUnits: Int?
     let vacancyRatePct: Double?
 
-    /// Creates housing supply, tenure, vacancy, and cost estimates for the resolved city/place.
+    /// Creates housing tenure, vacancy, and cost estimates for the resolved city/place.
     init(
-        units: Int?,
         medianHomeValue: Int?,
+        medianHomeValueBound: MedianBound? = nil,
         medianGrossRent: Int?,
-        averageHouseholdSize: Double?,
+        medianGrossRentBound: MedianBound? = nil,
         ownerOccupied: Int?,
         renterOccupied: Int?,
         ownerOccupiedPct: Double?,
-        renterOccupiedPct: Double?,
+        totalUnits: Int?,
         vacantUnits: Int?,
         vacancyRatePct: Double?
     ) {
-        self.units = units
         self.medianHomeValue = medianHomeValue
+        self.medianHomeValueBound = medianHomeValueBound
         self.medianGrossRent = medianGrossRent
-        self.averageHouseholdSize = averageHouseholdSize
+        self.medianGrossRentBound = medianGrossRentBound
         self.ownerOccupied = ownerOccupied
         self.renterOccupied = renterOccupied
         self.ownerOccupiedPct = ownerOccupiedPct
-        self.renterOccupiedPct = renterOccupiedPct
+        self.totalUnits = totalUnits
         self.vacantUnits = vacantUnits
         self.vacancyRatePct = vacancyRatePct
     }
 }
 
 /// Educational attainment estimates for the resolved city/place.
-struct EducationDemographics: Sendable {
+nonisolated struct EducationDemographics: Sendable {
     let bachelorsOrHigherPct: Double?
 
     /// Creates educational attainment estimates for the resolved city/place.
@@ -142,7 +153,7 @@ struct EducationDemographics: Sendable {
 }
 
 /// Commuting and work-location estimates for the resolved city/place.
-struct MobilityDemographics: Sendable {
+nonisolated struct MobilityDemographics: Sendable {
     let workersTotal: Int?
     let workersWfh: Int?
     let workersWfhPct: Double?
@@ -165,35 +176,5 @@ struct MobilityDemographics: Sendable {
         self.transitCommuters = transitCommuters
         self.transitCommutersPct = transitCommutersPct
         self.averageCommuteMinutes = averageCommuteMinutes
-    }
-}
-
-/// Poverty estimates for the resolved city/place.
-struct PovertyDemographics: Sendable {
-    let universe: Int?
-    let below: Int?
-    let ratePct: Double?
-
-    /// Creates poverty estimates for the resolved city/place.
-    init(universe: Int?, below: Int?, ratePct: Double?) {
-        self.universe = universe
-        self.below = below
-        self.ratePct = ratePct
-    }
-}
-
-/// Race and ethnicity estimates for the resolved city/place.
-struct RaceEthnicityDemographics: Sendable {
-    let whiteAlone: Int?
-    let blackAlone: Int?
-    let asianAlone: Int?
-    let hispanicOrLatino: Int?
-
-    /// Creates race and ethnicity estimates for the resolved city/place.
-    init(whiteAlone: Int?, blackAlone: Int?, asianAlone: Int?, hispanicOrLatino: Int?) {
-        self.whiteAlone = whiteAlone
-        self.blackAlone = blackAlone
-        self.asianAlone = asianAlone
-        self.hispanicOrLatino = hispanicOrLatino
     }
 }

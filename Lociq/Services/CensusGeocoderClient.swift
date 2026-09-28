@@ -16,7 +16,7 @@ import Foundation
 /// A coordinate can have a county without a place. LOC IQ needs the place when
 /// loading city-level ACS data, but preserving county information helps with
 /// fallback diagnostics and future expansion.
-struct CensusGeographiesBundle: Sendable {
+nonisolated struct CensusGeographiesBundle: Sendable {
     /// County that contains the coordinate, when returned.
     let county: CountyInfo?
 
@@ -36,8 +36,8 @@ struct CensusGeocoderClient: Sendable {
     /// Current public benchmark recommended by the Census geocoder.
     private let geocoderBenchmark = "Public_AR_Current"
 
-    /// Current vintage paired with the public benchmark.
-    private let geocoderVintage = "Current_Current"
+    /// Geography vintage whose place codes match the requested ACS release.
+    private let geocoderVintage: String
 
     /// Census geocoder layer id for county features.
     private let countyLayerId = "82"
@@ -52,20 +52,23 @@ struct CensusGeocoderClient: Sendable {
     private let geocoderCoordinatesURL = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
 
     /// Creates a Census geocoder client with an injectable HTTP transport.
-    init(httpClient: CensusHTTPClient) {
+    init(httpClient: CensusHTTPClient, vintage: CensusDataVintage = .current) {
         self.httpClient = httpClient
+        self.geocoderVintage = vintage.geocoderVintage
     }
 
     /// Resolves county and place geographies for a latitude/longitude coordinate.
     ///
     /// Longitude is sent as `x` and latitude as `y`, matching the Census
-    /// geocoder API. The method returns normalized domain metadata rather than
-    /// exposing the raw layer dictionary.
+    /// geocoder API. Coordinates are rounded to 4 decimal places (about 11 m),
+    /// which is finer than a typical fix's error, so the service never receives
+    /// more precision than a place lookup needs. The method returns normalized
+    /// domain metadata rather than exposing the raw layer dictionary.
     func fetchGeographiesFromCoordinate(latitude: Double, longitude: Double) async throws -> CensusGeographiesBundle {
         var components = URLComponents(string: geocoderCoordinatesURL)
         components?.queryItems = [
-            .init(name: "x", value: String(longitude)),
-            .init(name: "y", value: String(latitude)),
+            .init(name: "x", value: Self.roundedCoordinateText(longitude)),
+            .init(name: "y", value: Self.roundedCoordinateText(latitude)),
             .init(name: "benchmark", value: geocoderBenchmark),
             .init(name: "vintage", value: geocoderVintage),
             .init(
@@ -88,6 +91,11 @@ struct CensusGeocoderClient: Sendable {
             county: extractCountyInfo(from: decoded),
             place: extractPlaceInfo(from: decoded)
         )
+    }
+
+    /// Formats one coordinate component with 4 decimal places for the geocoder request.
+    nonisolated static func roundedCoordinateText(_ value: Double) -> String {
+        String(format: "%.4f", value)
     }
 
     /// Extracts the best county match from a Census geocoder response.
@@ -134,8 +142,10 @@ struct CensusGeocoderClient: Sendable {
            !name.isEmpty {
             return PlaceInfo(
                 name: name,
+                baseName: incorporated.BASENAME,
                 stateFIPS: incorporated.STATE,
                 placeFIPS: incorporated.PLACE,
+                geoid: incorporated.GEOID,
                 type: .incorporatedPlace
             )
         }
@@ -145,8 +155,10 @@ struct CensusGeocoderClient: Sendable {
            !name.isEmpty {
             return PlaceInfo(
                 name: name,
+                baseName: cdp.BASENAME,
                 stateFIPS: cdp.STATE,
                 placeFIPS: cdp.PLACE,
+                geoid: cdp.GEOID,
                 type: .censusDesignatedPlace
             )
         }
@@ -158,8 +170,10 @@ struct CensusGeocoderClient: Sendable {
                first.PLACE != nil {
                 return PlaceInfo(
                     name: name,
+                    baseName: first.BASENAME,
                     stateFIPS: first.STATE,
                     placeFIPS: first.PLACE,
+                    geoid: first.GEOID,
                     type: .unknown
                 )
             }

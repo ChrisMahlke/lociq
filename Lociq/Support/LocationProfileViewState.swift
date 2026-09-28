@@ -6,40 +6,145 @@
 //
 //  This file keeps view-state derivation out of `ContentView`. SwiftUI reads a
 //  simple immutable projection, while the view model keeps its richer internal
-//  state machine.
+//  state machine. Actions are typed, so views route taps without comparing
+//  display strings.
 //
 
 import CoreLocation
 import Foundation
+
+/// What the header says about a displayed profile.
+///
+/// A profile is presented as the user's place only while that is known to be
+/// true. Every other case is labeled, so the status line never implies the
+/// wrong place is current.
+nonisolated enum ProfileStatus: Equatable, Sendable {
+    /// The profile is for the place the latest fix is in.
+    case current
+
+    /// Shown without location access, for example after "Allow Once" expired.
+    case lastLocation
+
+    /// Shown while location access is off (denied) or restricted.
+    case locationOff(restricted: Bool)
+
+    /// The latest location fix failed; the user may have moved.
+    case lastKnownArea
+
+    /// The user left this place and the new place could not be loaded.
+    case notCurrentLocation
+
+    /// Same place, but the latest refresh failed; the saved data is shown.
+    case savedAfterFailedRefresh(CityProfileLoadFailure)
+}
+
+/// Why a loaded profile is being reloaded.
+nonisolated enum RefreshContext: Equatable, Sendable {
+    /// Same place (a user refresh, or data from an older release).
+    case sameArea
+
+    /// The user has left the displayed place; the old place stays dimmed meanwhile.
+    case newLocation
+}
+
+/// Stage of the initial wait, shown as one line under the spinner.
+nonisolated enum WaitStage: Equatable, Sendable {
+    case locating
+    case readingCensus
+
+    /// Stage line text.
+    var label: String {
+        switch self {
+        case .locating: return "LOCATING…"
+        case .readingCensus: return "READING CENSUS DATA…"
+        }
+    }
+
+    /// Stage text for VoiceOver.
+    var spokenLabel: String {
+        switch self {
+        case .locating: return "Finding your location"
+        case .readingCensus: return "Loading Census data"
+        }
+    }
+}
+
+/// The one primary action the bottom button performs.
+nonisolated enum PrimaryAction: Equatable, Sendable {
+    /// Swap between the summary and the details.
+    case toggleDetails
+
+    /// Ask for location access (first run).
+    case requestPermission
+
+    /// Open LOC IQ's page in Settings (location denied).
+    case openSettings
+
+    /// Try the failed step again (transient failures only).
+    case retry
+
+    /// No action helps (restricted, permanent failures, waiting).
+    case none
+}
+
+/// What the refresh control does for a displayed profile.
+nonisolated enum RefreshControl: Equatable, Sendable {
+    /// Find the current location, then reload.
+    case refresh
+
+    /// Ask for location access, then locate and reload.
+    case requestPermissionAndRefresh
+
+    /// Location is off: open Settings to turn it on.
+    case openSettings
+
+    /// Nothing can refresh (location restricted).
+    case hidden
+}
 
 /// Immutable display state consumed by the root SwiftUI view.
 ///
 /// The values are already reduced to exactly what the view needs. This prevents
 /// view code from switching over `LocationProfileViewModel.State` directly.
 struct LocationProfileViewState: Sendable {
-    /// Display snapshot for title, metrics, details, and share text.
+    /// Display snapshot for title, status line, metrics, details, and share text.
     let snapshot: DemographicSnapshot
 
     /// Boundary geometry available to the boundary preview.
     let boundary: GeoJSONFeatureCollection?
 
-    /// Coordinate used for the approximate-location dot.
+    /// Coordinate used for the location marker.
     let coordinate: CLLocationCoordinate2D?
 
-    /// Horizontal accuracy used to style the approximate-location dot.
+    /// Horizontal accuracy used to size or hide the marker.
     let horizontalAccuracy: CLLocationAccuracy?
 
+    /// True when the fix came from approximate location.
+    let isApproximate: Bool
+
     /// True while an active location or profile request is in flight.
-    let isLoading: Bool
+    let isBusy: Bool
 
     /// True before the initial minimal loading screen can be replaced.
     let isWaitingForInitialData: Bool
 
-    /// True when the bottom action can retry the current state.
-    let canRetry: Bool
+    /// Stage line for the initial wait.
+    let waitStage: WaitStage?
 
-    /// True when the current state should ask for location permission.
-    let needsLocationPermissionPrompt: Bool
+    /// What the primary bottom button does.
+    let primaryAction: PrimaryAction
+
+    /// What the refresh control does.
+    let refreshControl: RefreshControl
+
+    /// True when pulling down should do something useful.
+    let canPullToRefresh: Bool
+
+    /// True while the previous place stays visible, dimmed, as a new place loads.
+    let isContentDimmed: Bool
+
+    /// Stable identity of the displayed place.
+    let placeKey: String?
 
     /// Optional text payload for the share sheet.
     let shareText: String?
@@ -52,12 +157,9 @@ struct LocationProfileViewState: Sendable {
         boundary != nil && !isWaitingForInitialData && snapshot.hasDemographicData
     }
 
-    /// Returns true when the current loaded city can be refreshed without changing UI structure.
-    ///
-    /// Refresh is intentionally unavailable while loading to prevent overlapping
-    /// requests from the context menu.
-    var canRefresh: Bool {
-        snapshot.hasDemographicData && !isLoading
+    /// True in the first-run state that asks for location access.
+    var needsLocationPermissionPrompt: Bool {
+        primaryAction == .requestPermission
     }
 }
 
@@ -77,68 +179,101 @@ enum LocationProfileViewStateMapper {
         debugCoordinate: CLLocationCoordinate2D?
     ) -> LocationProfileViewState {
         let snapshot = snapshot(from: state)
+        let profile = displayedProfile(in: state)
 
         return LocationProfileViewState(
             snapshot: snapshot,
-            boundary: boundary(from: state),
+            boundary: profile?.boundary,
             coordinate: coordinate(from: state, debugCoordinate: debugCoordinate),
             horizontalAccuracy: horizontalAccuracy(from: state),
-            isLoading: isLoading(state),
-            isWaitingForInitialData: isWaitingForInitialData(state),
-            canRetry: canRetry(state),
-            needsLocationPermissionPrompt: needsLocationPermissionPrompt(state),
+            isApproximate: profile?.isApproximate ?? false,
+            isBusy: isBusy(state),
+            isWaitingForInitialData: waitStage(state) != nil,
+            waitStage: waitStage(state),
+            primaryAction: primaryAction(state),
+            refreshControl: refreshControl(state),
+            canPullToRefresh: canPullToRefresh(state),
+            isContentDimmed: isContentDimmed(state),
+            placeKey: profile.map { $0.resolvedPlaceGeoid ?? $0.snapshot.market },
             shareText: snapshot.shareText
         )
     }
 
+    /// Header status line for a displayed profile.
+    static func statusLine(for status: ProfileStatus, profile: CachedCityProfile) -> String {
+        switch status {
+        case .current:
+            if profile.isApproximate == true { return "APPROXIMATE AREA" }
+            if profile.snapshot.isSmallArea { return "SMALL-AREA ESTIMATE" }
+            return ""
+        case .lastLocation:
+            return "LAST LOCATION"
+        case .locationOff:
+            return "SAVED CITY · LOCATION OFF"
+        case .lastKnownArea:
+            return "LAST KNOWN AREA"
+        case .notCurrentLocation:
+            return "LAST KNOWN AREA · NOT YOUR CURRENT LOCATION"
+        case .savedAfterFailedRefresh(let failure):
+            switch failure {
+            case .networkUnavailable: return "SAVED · OFFLINE"
+            case .timedOut: return "SAVED · NO RESPONSE"
+            case .serviceUnavailable: return "SAVED · SERVICE UNAVAILABLE"
+            default: return "SAVED"
+            }
+        }
+    }
+
+    /// Header status line while a displayed profile reloads.
+    static func statusLine(for context: RefreshContext) -> String {
+        switch context {
+        case .sameArea: return "REFRESHING"
+        case .newLocation: return "UPDATING FOR NEW LOCATION"
+        }
+    }
+
     /// Returns the snapshot that should be displayed for a state-machine state.
-    ///
-    /// Initial request states use the loading snapshot, permission failures use
-    /// the honest placeholder, and loaded states use cached profile content.
     private static func snapshot(from state: LocationProfileViewModel.State) -> DemographicSnapshot {
         switch state {
         case .idle, .requestingLocation, .loading:
             return .loading
-        case .needsLocationPermission, .locationUnavailable:
-            return .placeholder
-        case .refreshing(let profile, _):
-            return profile.snapshot.replacingDateLabel("REFRESHING")
-        case .loaded(let profile, let isStale):
-            return isStale ? profile.snapshot.replacingDateLabel("STALE DATA") : profile.snapshot
-        case .profileUnavailable(let snapshot, _, _, _, _):
-            return snapshot
+        case .needsLocationPermission:
+            return .permissionPrompt
+        case .locationUnavailable(let reason):
+            switch reason {
+            case .denied: return .locationDenied
+            case .restricted: return .locationRestricted
+            case .noFix: return .locationNotFound
+            }
+        case .refreshing(let profile, let context):
+            return profile.snapshot.withStatus(statusLine(for: context))
+        case .loaded(let profile, let status):
+            return profile.snapshot.withStatus(statusLine(for: status, profile: profile))
+        case .profileUnavailable(let unavailable):
+            return unavailable.snapshot
         }
     }
 
-    /// Returns boundary geometry that should be visible for the current state.
-    ///
-    /// Unavailable states can carry a boundary so the app can show place context
-    /// even when demographics are missing. `canShowBoundary` later decides
-    /// whether that boundary should actually render.
-    private static func boundary(from state: LocationProfileViewModel.State) -> GeoJSONFeatureCollection? {
+    /// The profile on screen, if any.
+    private static func displayedProfile(in state: LocationProfileViewModel.State) -> CachedCityProfile? {
         switch state {
         case .refreshing(let profile, _), .loaded(let profile, _):
-            return profile.boundary
-        case .profileUnavailable(_, let boundary, _, _, _):
-            return boundary
-        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable:
+            return profile
+        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable, .profileUnavailable:
             return nil
         }
     }
 
-    /// Returns the coordinate attached to the current state, falling back to a debug coordinate for tests.
-    ///
-    /// Debug coordinates allow boundary and location-dot behavior to be tested
-    /// without Core Location.
+    /// Returns the marker coordinate, falling back to a debug coordinate for tests.
     private static func coordinate(
         from state: LocationProfileViewModel.State,
         debugCoordinate: CLLocationCoordinate2D?
     ) -> CLLocationCoordinate2D? {
         switch state {
         case .refreshing(let profile, _), .loaded(let profile, _):
-            return profile.coordinate
-        case .profileUnavailable(_, _, let coordinate, _, _):
-            return coordinate
+            return profile.markerCoordinate
+        case .profileUnavailable(let unavailable):
+            return unavailable.coordinate
         case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable:
             return debugCoordinate
         }
@@ -146,23 +281,23 @@ enum LocationProfileViewStateMapper {
 
     /// Returns the horizontal accuracy attached to the current state.
     ///
-    /// Accuracy is available only when it came from Core Location or a cached
-    /// profile. Loading and permission states do not invent accuracy values.
+    /// Loading and permission states do not invent accuracy values.
     private static func horizontalAccuracy(from state: LocationProfileViewModel.State) -> CLLocationAccuracy? {
         switch state {
         case .refreshing(let profile, _), .loaded(let profile, _):
-            return profile.horizontalAccuracy
-        case .profileUnavailable(_, _, _, let horizontalAccuracy, _):
-            return horizontalAccuracy
+            return profile.markerAccuracy
+        case .profileUnavailable(let unavailable):
+            return unavailable.horizontalAccuracy
         case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable:
             return nil
         }
     }
 
-    /// Returns true while a profile request or refresh is active.
+    /// Returns true while a location or profile request is active.
     ///
-    /// `refreshing` counts as loading even though data remains visible.
-    private static func isLoading(_ state: LocationProfileViewModel.State) -> Bool {
+    /// `refreshing` counts as busy even though data remains visible. Busy
+    /// drives the loading line only; it never locks the details toggle.
+    private static func isBusy(_ state: LocationProfileViewModel.State) -> Bool {
         switch state {
         case .idle, .requestingLocation, .loading, .refreshing:
             return true
@@ -171,39 +306,79 @@ enum LocationProfileViewStateMapper {
         }
     }
 
-    /// Returns true before any displayable data or fallback state is ready.
+    /// Returns the wait stage before any displayable data or fallback state is ready.
+    private static func waitStage(_ state: LocationProfileViewModel.State) -> WaitStage? {
+        switch state {
+        case .idle, .requestingLocation:
+            return .locating
+        case .loading:
+            return .readingCensus
+        case .needsLocationPermission, .refreshing, .loaded, .locationUnavailable, .profileUnavailable:
+            return nil
+        }
+    }
+
+    /// Returns the primary bottom action for a state.
     ///
-    /// This drives the initial spinner-only launch state.
-    private static func isWaitingForInitialData(_ state: LocationProfileViewModel.State) -> Bool {
+    /// Retry is offered only where it can help: a missing fix and transient
+    /// service failures. A denial routes to Settings; restrictions and
+    /// permanent conditions offer nothing rather than a retry loop.
+    private static func primaryAction(_ state: LocationProfileViewModel.State) -> PrimaryAction {
         switch state {
         case .idle, .requestingLocation, .loading:
-            return true
-        case .needsLocationPermission, .refreshing, .loaded, .locationUnavailable, .profileUnavailable:
-            return false
+            return .none
+        case .needsLocationPermission:
+            return .requestPermission
+        case .locationUnavailable(let reason):
+            switch reason {
+            case .denied: return .openSettings
+            case .restricted: return .none
+            case .noFix: return .retry
+            }
+        case .profileUnavailable(let unavailable):
+            return unavailable.failure.isRetryable ? .retry : .none
+        case .refreshing, .loaded:
+            return .toggleDetails
         }
     }
 
-    /// Returns true when the bottom action can retry a recoverable state.
-    ///
-    /// Loaded and in-flight states do not expose retry through the primary
-    /// action. Loaded refresh is exposed separately.
-    private static func canRetry(_ state: LocationProfileViewModel.State) -> Bool {
+    /// Returns what the refresh control does for a displayed profile.
+    private static func refreshControl(_ state: LocationProfileViewModel.State) -> RefreshControl {
         switch state {
-        case .needsLocationPermission, .locationUnavailable, .profileUnavailable:
+        case .loaded(_, let status):
+            switch status {
+            case .lastLocation: return .requestPermissionAndRefresh
+            case .locationOff(let restricted): return restricted ? .hidden : .openSettings
+            case .current, .lastKnownArea, .notCurrentLocation, .savedAfterFailedRefresh: return .refresh
+            }
+        case .refreshing:
+            return .refresh
+        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable, .profileUnavailable:
+            return .hidden
+        }
+    }
+
+    /// Returns true when a pull-down gesture should refresh or retry.
+    ///
+    /// While a profile is shown, pulling always stays available so the scroll
+    /// view keeps its identity and position when location access changes; the
+    /// view model decides what a pull can do (it never opens Settings).
+    private static func canPullToRefresh(_ state: LocationProfileViewModel.State) -> Bool {
+        switch state {
+        case .loaded, .refreshing:
             return true
-        case .idle, .requestingLocation, .loading, .refreshing, .loaded:
+        case .profileUnavailable(let unavailable):
+            return unavailable.failure.isRetryable
+        case .locationUnavailable(let reason):
+            return reason == .noFix
+        case .idle, .needsLocationPermission, .requestingLocation, .loading:
             return false
         }
     }
 
-    /// Returns true when the app should ask the user to enable location access.
-    ///
-    /// This is separate from `canRetry` because the bottom icon and
-    /// accessibility label differ for location permission.
-    private static func needsLocationPermissionPrompt(_ state: LocationProfileViewModel.State) -> Bool {
-        if case .needsLocationPermission = state {
-            return true
-        }
+    /// Returns true while the previous place stays visible as a new place loads.
+    private static func isContentDimmed(_ state: LocationProfileViewModel.State) -> Bool {
+        if case .refreshing(_, .newLocation) = state { return true }
         return false
     }
 }

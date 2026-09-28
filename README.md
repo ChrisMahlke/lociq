@@ -5,8 +5,8 @@ Lociq is a minimal SwiftUI iPhone app that shows a city-level demographic snapsh
 ## Current Scope
 
 - Uses Core Location to resolve the current area.
-- Uses U.S. Census ACS data for city-level demographics.
-- Uses TIGERweb geometry for the city boundary outline.
+- Uses U.S. Census ACS 5-year data for city-level demographics, from the release set by `CensusDataVintage.current`.
+- Uses generalized, shoreline-clipped TIGERweb geometry for the city boundary outline and its land area.
 - Does not use a map view or Google Maps SDK.
 - Does not ship localized app strings.
 
@@ -14,26 +14,28 @@ Lociq is a minimal SwiftUI iPhone app that shows a city-level demographic snapsh
 
 Lociq is intentionally small. The app has one visible product surface and a narrow service pipeline:
 
-1. `ContentView` composes the root SwiftUI shell and owns only top-level UI state such as summary/details mode.
-2. `Lociq/Views` contains the visual building blocks: layout metrics, motion timing, bottom identity, demographic content, progress line, background, debug launch override, and boundary drawing.
-3. `LocationProfileViewModel` owns app state. It decides when to ask for location access, when to request a location, when to show cached data, when to retry, and when stale network responses must be ignored.
-4. `CityProfileCacheStore` persists the last successful city profile independently from the ViewModel.
-5. `CityProfileLoading` is the service boundary between UI state and data loading. Tests inject this protocol so location and cache behavior can be verified without hitting the network.
-6. `CensusCityProfileLoader` maps service outcomes into either a cacheable `CachedCityProfile` or a minimal unavailable-state snapshot.
-7. `CensusCityProfileService` adds in-memory caching for successful demographic lookups and delegates actual network composition to `DirectCensusCityProfileClient`.
-8. `DirectCensusCityProfileClient` composes three Census-backed clients:
+1. `ContentView` composes the root SwiftUI shell, owns top-level UI state such as summary/details mode, and routes typed actions.
+2. `Lociq/Views` contains the visual building blocks: layout metrics and the Dynamic Type scale, motion timing, bottom identity, demographic content, progress line, palette, debug launch overrides, and boundary drawing.
+3. `LocationProfileViewModel` owns app state. It decides when to ask for location access, when to request a location, whether a fix needs a load, how refresh locates first, and when stale network responses must be ignored.
+4. `ProfileLoadPlanner` keeps a profile while the user is still in its place and it is from the current data vintage.
+5. `CityProfileCacheStore` persists the last successful city profile as a file in Application Support.
+6. `CityProfileLoading` is the service boundary between UI state and data loading. Tests inject this protocol so location and cache behavior can be verified without hitting the network.
+7. `CensusCityProfileLoader` maps service outcomes into either a cacheable `CachedCityProfile` or an explained unavailable state, within a 25-second budget.
+8. `CensusCityProfileService` geocodes, memoizes statistics by place for the session, and delegates network composition to `DirectCensusCityProfileClient`. `CensusServiceGraph` builds the clients once.
+9. `DirectCensusCityProfileClient` composes three Census-backed clients:
    - `CensusGeocoderClient` resolves coordinates to Census county/place geography.
    - `ACSDemographicsClient` fetches ACS 5-year city/place estimates.
    - `TIGERBoundaryClient` fetches TIGERweb GeoJSON city/place boundaries.
-9. `ACSDemographicsMapper` converts raw ACS values into app demographics, while `ACSDemographicsVariableCatalog` owns the Census variable list.
-10. `GeoJSONBoundaryPathBuilder` projects boundary coordinates into a north-up Web Mercator drawing space that visually matches Google Maps orientation without embedding a map SDK.
+10. `ACSDemographicsMapper` converts raw ACS values into app demographics, while `ACSDemographicsVariableCatalog` owns the Census variable list.
+11. `GeoJSONBoundaryPathBuilder` builds the boundary glyph off the main actor: polygons with holes, projected into north-up Web Mercator and fitted to the part that contains the user, without embedding a map SDK.
 
-The UI never talks directly to Census services. It reads a `DemographicSnapshot`, an optional boundary, and a small number of state flags through ViewModel computed properties backed by `LocationProfileViewStateMapper`. This keeps the visual layer minimal and keeps network, cache, and authorization behavior testable.
+The UI never talks directly to Census services. It reads a `LocationProfileViewState` (snapshot, boundary, typed actions, and a few flags) produced by `LocationProfileViewStateMapper`. This keeps the visual layer minimal and keeps network, cache, and authorization behavior testable.
 
 ```mermaid
 flowchart TD
     A[ContentView] --> B[LocationProfileViewModel computed display properties]
     B --> C[LocationProfileViewStateMapper]
+    B --> P[ProfileLoadPlanner]
     B --> D[CityProfileCacheStore]
     B --> E[CityProfileLoading]
     E --> F[CensusCityProfileLoader]
@@ -79,13 +81,13 @@ The ViewModel uses explicit states instead of loosely coupled booleans:
 
 Each profile load is tagged with a request identity. If the user moves, retries, or the app receives a newer coordinate before an older Census request finishes, the older response is ignored. This prevents stale data from replacing newer UI state.
 
-Successful profiles are cached in `UserDefaults` as `CachedCityProfile`. The ViewModel loads the last cached profile during initialization, before `activate()` requests fresh location data. Cache timestamps are assigned by the ViewModel's injected clock so tests can verify cache freshness deterministically. Missing legacy timestamps are treated as stale.
+Successful profiles are cached as a `CachedCityProfile` file in Application Support, excluded from backups. The ViewModel loads the last cached profile during initialization, before `activate()` requests fresh location data; profiles cached by earlier builds in `UserDefaults` are migrated once. A cached profile stays valid while the user is in its place and it is from the current data vintage. The status line labels a profile that may not be the user's current place ("LAST LOCATION", "LAST KNOWN AREA", …). The persisted types change by adding optional fields only; see `docs/architecture.md`.
 
 ## Data Source
 
 Demographic values are city/place-level ACS 5-year estimates from the U.S. Census API. The current implementation intentionally does not show tract, block group, or ZIP/ZCTA values because those would be misleading when the UI labels the area as a city.
 
-Boundary outlines come from Census TIGERweb. The boundary is decorative context only; the demographic values are keyed to the resolved Census place.
+Boundary outlines come from the generalized Census TIGERweb service for the same release. The boundary is context only; the demographic values are keyed to the resolved Census place. Density is population divided by the boundary's Census land area.
 
 ACS missing or suppressed estimate sentinel values are normalized to unavailable UI values (`--`) before they reach the snapshot layer.
 
@@ -95,11 +97,12 @@ The interface should stay sparse:
 
 - no search box
 - no map view
-- no visible technical labels unless a failure state needs one
-- one bottom action that changes meaning based on state
-- animation should be smooth, low-contrast, and respectful of Reduce Motion
+- no visible technical labels unless a failure state needs one; the source and Census API notice live in the details footer
+- one primary bottom action that changes meaning based on state, plus refresh and share when a profile is shown
+- text scales with Dynamic Type; large sizes switch to one column
+- animation should be smooth, low-contrast, brief, and respectful of Reduce Motion
 
-When location access is unavailable, the app should ask for location permission through the single bottom action and otherwise avoid adding extra controls.
+When location access is unavailable, the primary action is the one step that helps: ask for permission on first run, open Settings after a denial, or nothing when access is restricted.
 
 ## Configuration
 
@@ -126,4 +129,8 @@ DESTINATION='platform=iOS Simulator,name=iPhone 17 Pro' ./scripts/test_baseline.
 DERIVED_DATA_PATH=/tmp/lociq-derived-data ./scripts/test_baseline.sh
 ```
 
-CI runs the same baseline script on pushes to `master` and on pull requests.
+CI runs the same baseline script on pushes to `master` and on pull requests, with Xcode 26.6 on a `macos-26` runner.
+
+Debug builds accept `--lociq-ui-fixture <cambridge|longName|offline|outsideCityLimits|slow>` to replace Core Location and the Census services with canned data (add `--lociq-ui-fixture-details` to open the details view). The UI tests use it, so they need no network or location permission.
+
+Release builds fail early when `CENSUS_API_KEY` is empty.

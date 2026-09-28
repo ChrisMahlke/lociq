@@ -32,6 +32,16 @@ struct CensusRetryPolicy: Sendable {
         baseBackoffNanoseconds: 280_000_000
     )
 
+    /// Retry policy for boundary geometry.
+    ///
+    /// The outline is supporting context, so it gets fewer attempts than the
+    /// statistics and never holds the profile back for long.
+    static let boundary = CensusRetryPolicy(
+        maxAttempts: 2,
+        requestTimeoutNanoseconds: 8_000_000_000,
+        baseBackoffNanoseconds: 280_000_000
+    )
+
     /// Creates a retry policy with an attempt count, per-attempt timeout, and base backoff.
     init(maxAttempts: Int, requestTimeoutNanoseconds: UInt64, baseBackoffNanoseconds: UInt64) {
         self.maxAttempts = max(1, maxAttempts)

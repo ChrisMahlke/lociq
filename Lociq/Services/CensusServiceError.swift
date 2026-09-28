@@ -16,7 +16,7 @@ import Foundation
 /// Endpoint clients should throw this type whenever possible. That gives the
 /// loader enough information to decide whether to retry, show stale data, or
 /// present a no-data state.
-enum CensusServiceError: Error, Equatable, LocalizedError, Sendable {
+nonisolated enum CensusServiceError: Error, Equatable, LocalizedError, Sendable {
     /// URL construction failed before a network request could be made.
     case invalidURL
 
@@ -38,6 +38,9 @@ enum CensusServiceError: Error, Equatable, LocalizedError, Sendable {
     /// ACS returned no usable demographic row for the requested place.
     case noDemographicsFound
 
+    /// The request was cancelled because a newer load superseded it.
+    case cancelled
+
     /// Human-readable diagnostic text for logs and failure classification.
     var errorDescription: String? {
         switch self {
@@ -48,6 +51,7 @@ enum CensusServiceError: Error, Equatable, LocalizedError, Sendable {
         case .decodeFailed(let message): return "Decode failed: \(message)"
         case .noBoundaryFound: return "No boundary found"
         case .noDemographicsFound: return "No demographics returned"
+        case .cancelled: return "Request cancelled"
         }
     }
 
@@ -62,6 +66,8 @@ enum CensusServiceError: Error, Equatable, LocalizedError, Sendable {
         }
 
         switch urlError.code {
+        case .cancelled:
+            return .cancelled
         case .timedOut:
             return .timedOut
         case .notConnectedToInternet, .networkConnectionLost, .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
@@ -74,15 +80,15 @@ enum CensusServiceError: Error, Equatable, LocalizedError, Sendable {
     /// Returns true when retrying the request may succeed without user action.
     ///
     /// Timeouts, network failures, rate limiting, and server-side errors are
-    /// considered transient. Invalid requests, no-data responses, and decode
-    /// failures are treated as deterministic for the current request.
+    /// considered transient. Invalid requests, no-data responses, decode
+    /// failures, and cancellation are treated as final for the current request.
     var isRetryable: Bool {
         switch self {
         case .networkUnavailable, .timedOut:
             return true
         case .requestFailed(let status, _):
             return status == 408 || status == 425 || status == 429 || (500...599).contains(status)
-        case .invalidURL, .decodeFailed, .noBoundaryFound, .noDemographicsFound:
+        case .invalidURL, .decodeFailed, .noBoundaryFound, .noDemographicsFound, .cancelled:
             return false
         }
     }

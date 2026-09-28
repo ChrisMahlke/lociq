@@ -34,8 +34,17 @@ enum LociqMotion {
     /// Delay that lets the boundary finish before the connector appears.
     static let connectorDelay = 1.12
 
-    /// Duration for one approximate-location pulse cycle.
+    /// Duration for one location-marker pulse cycle.
     static let pulseDuration = 1.75
+
+    /// Number of marker pulses before the marker holds still (about 3.5 s).
+    ///
+    /// A single fix is not live tracking, so the marker stops moving well
+    /// within five seconds of appearing.
+    static let pulseCount = 2
+
+    /// Number of permission-button pulses before it holds still (about 3.6 s).
+    static let permissionPulseCount = 3
 
     /// Duration for one missing-permission icon pulse.
     static let permissionPulseDuration = 0.95
@@ -83,16 +92,14 @@ enum LociqMotion {
     static var boundaryTrace: Animation { .easeInOut(duration: boundaryTraceDuration).delay(boundaryTraceDelay) }
     /// Connector-line tracing animation.
     static var connector: Animation { .easeOut(duration: connectorDuration).delay(connectorDelay) }
-    /// Approximate-location pulse animation.
-    static var pulse: Animation { .easeOut(duration: pulseDuration).repeatForever(autoreverses: false) }
+    /// Location-marker pulse animation: a few cycles, then still.
+    static var pulse: Animation { .easeOut(duration: pulseDuration).repeatCount(pulseCount, autoreverses: false) }
     /// Missing-permission icon pulse animation.
     static var permissionPulse: Animation { .easeOut(duration: permissionPulseDuration) }
     /// Loading-line sweep animation.
     static var loadingSweep: Animation { .linear(duration: loadingSweepDuration) }
     /// One-time content nudge that hints at pull-to-refresh.
     static var pullHint: Animation { .easeInOut(duration: pullHintDuration) }
-    /// Quiet appearance transition.
-    static var themeToggle: Animation { .easeInOut(duration: themeToggleDuration) }
 
     /// Returns the quick animation adjusted for reduced-motion users.
     static func quick(reduceMotion: Bool) -> Animation {
@@ -119,7 +126,7 @@ enum LociqMotion {
         reduceMotion ? nil : connector
     }
 
-    /// Returns the location pulse animation unless reduced motion is enabled.
+    /// Returns the marker pulse animation unless reduced motion is enabled.
     static func pulse(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : pulse
     }
@@ -132,11 +139,6 @@ enum LociqMotion {
     /// Returns the loading sweep animation unless reduced motion is enabled.
     static func loadingSweep(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : loadingSweep
-    }
-
-    /// Returns the theme transition animation adjusted for reduced-motion users.
-    static func themeToggle(reduceMotion: Bool) -> Animation {
-        reduceMotion ? .linear(duration: 0.01) : themeToggle
     }
 
     /// Returns the total content-cycle duration adjusted for reduced-motion users.

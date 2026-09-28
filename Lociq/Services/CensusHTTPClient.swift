@@ -32,22 +32,28 @@ struct CensusHTTPClient: Sendable {
     ///
     /// Retryable failures are retried according to `retryPolicy`. Non-retryable
     /// failures, such as invalid URLs or decode failures, surface immediately.
+    /// Cancellation is never retried: it throws `CancellationError` before the
+    /// next attempt and during backoff, so a superseded load stops at once.
     func get(_ url: URL) async throws -> Data {
         var lastError: CensusServiceError?
 
         for attempt in 0..<retryPolicy.maxAttempts {
+            try Task.checkCancellation()
             do {
                 return try await getOnce(url)
             } catch let error as CensusServiceError {
+                if error == .cancelled || Task.isCancelled { throw CancellationError() }
                 lastError = error
                 guard error.isRetryable, attempt < retryPolicy.maxAttempts - 1 else { throw error }
-                try? await Task.sleep(nanoseconds: retryPolicy.backoffDelay(afterFailedAttempt: attempt))
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 let serviceError = CensusServiceError.transport(error)
+                if serviceError == .cancelled || Task.isCancelled { throw CancellationError() }
                 lastError = serviceError
                 guard serviceError.isRetryable, attempt < retryPolicy.maxAttempts - 1 else { throw serviceError }
-                try? await Task.sleep(nanoseconds: retryPolicy.backoffDelay(afterFailedAttempt: attempt))
             }
+            try await Task.sleep(nanoseconds: retryPolicy.backoffDelay(afterFailedAttempt: attempt))
         }
 
         throw lastError ?? CensusServiceError.networkUnavailable("Request failed")

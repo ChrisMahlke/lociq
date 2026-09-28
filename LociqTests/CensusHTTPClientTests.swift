@@ -70,6 +70,38 @@ struct CensusHTTPClientTests {
             #expect(error == .timedOut)
         }
     }
+
+    /// CODE-007: cancelling a request stops it without retrying and reports cancellation.
+    @Test func cancellationStopsWithoutRetrying() async throws {
+        CountingHangingURLProtocol.reset()
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [CountingHangingURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let client = CensusHTTPClient(
+            session: session,
+            retryPolicy: CensusRetryPolicy(
+                maxAttempts: 3,
+                requestTimeoutNanoseconds: 5_000_000_000,
+                baseBackoffNanoseconds: 1_000_000
+            )
+        )
+        let url = try #require(URL(string: "https://api.census.gov/cancel"))
+
+        let task = Task { try await client.get(url) }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("Expected cancellation")
+        } catch is CancellationError {
+            // Expected.
+        } catch {
+            Issue.record("Expected CancellationError, got \(error)")
+        }
+        #expect(CountingHangingURLProtocol.requestCount() <= 1)
+    }
 }
 
 /// URL protocol that fails twice and succeeds on the third attempt.
@@ -151,4 +183,45 @@ private final class HangingURLProtocol: URLProtocol {
 
     /// Clears protocol state; this protocol has no state but mirrors other mocks.
     static func reset() {}
+}
+
+/// URL protocol that never completes and counts started requests.
+private final class CountingHangingURLProtocol: URLProtocol {
+    private static let lock = NSLock()
+    private static var count = 0
+
+    /// Accepts mocked Census API requests for the test URL session.
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.host == "api.census.gov"
+    }
+
+    /// Returns the request unchanged because the mock does not need canonicalization.
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    /// Counts the attempt and never completes.
+    override func startLoading() {
+        Self.lock.lock()
+        Self.count += 1
+        Self.lock.unlock()
+    }
+
+    /// Stops loading after the client cancels.
+    override func stopLoading() {}
+
+    /// Clears the attempt count.
+    static func reset() {
+        lock.lock()
+        count = 0
+        lock.unlock()
+    }
+
+    /// Returns the number of started attempts.
+    static func requestCount() -> Int {
+        lock.lock()
+        let count = count
+        lock.unlock()
+        return count
+    }
 }

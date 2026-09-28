@@ -11,6 +11,33 @@
 
 import Foundation
 
+/// Options for one full profile fetch.
+nonisolated struct CityProfileFetchOptions: Sendable {
+    /// Skips the in-memory place memo so statistics are requested again.
+    var forceRefresh = false
+
+    /// Boundary already on screen for a place, reused when the place is unchanged.
+    var knownBoundary: KnownPlaceBoundary?
+
+    /// Creates fetch options.
+    init(forceRefresh: Bool = false, knownBoundary: KnownPlaceBoundary? = nil) {
+        self.forceRefresh = forceRefresh
+        self.knownBoundary = knownBoundary
+    }
+}
+
+/// A boundary the app already holds, keyed by the Census place it outlines.
+///
+/// Boundaries do not change within a data vintage, so a refresh of the same
+/// place can reuse the geometry instead of downloading it again.
+nonisolated struct KnownPlaceBoundary: Sendable {
+    /// Seven-digit place GEOID the boundary belongs to.
+    let geoid: String
+
+    /// Boundary geometry for that place.
+    let boundary: GeoJSONFeatureCollection
+}
+
 /// Loads the full resolved Census profile for a coordinate.
 ///
 /// This is the broadest service protocol. It hides the internal fan-out across
@@ -21,14 +48,17 @@ protocol CityProfileFetching: Sendable {
     /// - Parameters:
     ///   - latitude: WGS84 latitude from Core Location.
     ///   - longitude: WGS84 longitude from Core Location.
-    /// - Returns: A resolved profile with optional partial failures.
-    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedCityProfile
+    ///   - options: Memo and boundary-reuse options for this fetch.
+    /// - Returns: A resolved profile with optional partial failures. A profile
+    ///   without a place means the coordinate is outside every Census place.
+    /// - Throws: A geocoder failure, because nothing can be resolved without it.
+    func fetchPlaceProfile(latitude: Double, longitude: Double, options: CityProfileFetchOptions) async throws -> ResolvedCityProfile
 }
 
 /// Resolves device coordinates into Census geography identifiers.
 ///
-/// The geocoder is kept separate from the full profile client so fallback states
-/// can still show a city label when ACS data fails.
+/// The geocoder is kept separate from the full profile client so the loader can
+/// still name the city when no API key is configured.
 protocol CensusGeographyFetching: Sendable {
     /// Fetches Census geographies for the supplied latitude and longitude.
     func fetchGeographiesFromCoordinate(latitude: Double, longitude: Double) async throws -> CensusGeographiesBundle

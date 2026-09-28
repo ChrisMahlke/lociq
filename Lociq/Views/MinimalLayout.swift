@@ -6,16 +6,19 @@
 //
 //  Layout values are centralized so the individual SwiftUI views can stay
 //  declarative. The same layout is used on iPhone and inside the constrained
-//  iPad viewport.
+//  iPad viewport. Heights are not computed here: the bottom bar sits below the
+//  content in the view hierarchy, so content always ends above it.
 //
 
 import SwiftUI
+import UIKit
 
 /// Responsive measurements for the minimal app surface.
 ///
-/// The type intentionally computes fixed, stable dimensions for recurring UI
-/// surfaces such as boundary preview, content columns, and bottom identity. That
-/// prevents text updates and animation states from causing layout shifts.
+/// The type computes stable dimensions for recurring UI surfaces such as the
+/// boundary preview and content columns, and scales type with the user's text
+/// size. That prevents text updates and animation states from causing layout
+/// shifts.
 struct MinimalLayout {
     /// True for narrow phone-sized surfaces.
     let isCompactWidth: Bool
@@ -23,20 +26,20 @@ struct MinimalLayout {
     /// True when vertical space is limited.
     let isShortHeight: Bool
 
-    /// True when accessibility text sizes need a single-column composition.
-    let usesAccessibilityLayout: Bool
+    /// The user's text size.
+    let dynamicTypeSize: DynamicTypeSize
+
+    /// True when large text needs a single-column composition.
+    ///
+    /// The two-column layout is sized for the default text sizes, so the
+    /// single column starts at xxxL, before the accessibility sizes.
+    let usesSingleColumn: Bool
 
     /// Top inset for the city header and content stack.
     let topInset: CGFloat
 
     /// Bottom inset for the brand/action surface.
     let bottomInset: CGFloat
-
-    /// Reserved vertical space for the bottom identity area.
-    let bottomReserve: CGFloat
-
-    /// Maximum content height available for summary and details.
-    let detailHeight: CGFloat
 
     /// Width of the right-aligned content column.
     let contentWidth: CGFloat
@@ -53,14 +56,11 @@ struct MinimalLayout {
     /// Size of the geographic boundary preview.
     let boundarySize: CGSize
 
-    /// Top position for the boundary preview.
+    /// Top position for the boundary preview in the two-column layout.
     let boundaryTop: CGFloat
 
-    /// Leading position for the boundary preview.
+    /// Leading position for the boundary preview in the two-column layout.
     let boundaryLeading: CGFloat
-
-    /// Fixed label column width in the details view.
-    let detailLabelColumnWidth: CGFloat
 
     /// Vertical spacing between detail rows.
     let detailRowSpacing: CGFloat
@@ -68,55 +68,85 @@ struct MinimalLayout {
     /// Vertical spacing between detail sections.
     let detailSectionSpacing: CGFloat
 
-    /// Computes stable responsive measurements for the current rendered viewport.
-    ///
-    /// This initializer is convenient for direct use with `GeometryReader`.
-    init(geometry: GeometryProxy) {
-        self.init(viewportSize: geometry.size, safeAreaInsets: geometry.safeAreaInsets)
-    }
-
     /// Computes stable responsive measurements for a constrained app viewport.
     ///
     /// - Parameters:
     ///   - viewportSize: Size of the app surface, not necessarily the full device screen.
     ///   - safeAreaInsets: Safe area insets that should influence top and bottom padding.
+    ///   - dynamicTypeSize: The user's text size.
     init(
         viewportSize: CGSize,
         safeAreaInsets: EdgeInsets = EdgeInsets(),
-        usesAccessibilityLayout: Bool = false
+        dynamicTypeSize: DynamicTypeSize = .large
     ) {
         let width = viewportSize.width
         let height = viewportSize.height
         isCompactWidth = width < 380
         isShortHeight = height < 700
-        self.usesAccessibilityLayout = usesAccessibilityLayout
+        self.dynamicTypeSize = dynamicTypeSize
+        usesSingleColumn = dynamicTypeSize >= .xxxLarge
         topInset = max(isShortHeight ? 44 : 54, safeAreaInsets.top + (isShortHeight ? 24 : 34))
         bottomInset = max(isShortHeight ? 22 : 30, safeAreaInsets.bottom + (isShortHeight ? 14 : 20))
-        bottomReserve = height < 520 ? 168 : (isShortHeight ? 174 : 190)
-        detailHeight = max(112, height - topInset - bottomReserve)
         trailingInset = isCompactWidth ? 22 : 28
         horizontalInset = isCompactWidth ? 20 : 24
-        contentWidth = usesAccessibilityLayout
-            ? max(220, width - (isCompactWidth ? 44 : 56))
+        contentWidth = usesSingleColumn
+            ? max(220, width - trailingInset - horizontalInset)
             : min(width * (isCompactWidth ? 0.68 : 0.64), isCompactWidth ? 292 : 340)
-        detailContentWidth = usesAccessibilityLayout
+        detailContentWidth = usesSingleColumn
             ? contentWidth
             : min(width * (isCompactWidth ? 0.55 : 0.50), isCompactWidth ? 214 : 246)
         boundarySize = CGSize(
             width: min(max(width * (isCompactWidth ? 0.25 : 0.28), isCompactWidth ? 82 : 96), isCompactWidth ? 118 : 142),
             height: min(max(height * (isShortHeight ? 0.16 : 0.19), isShortHeight ? 92 : 112), isShortHeight ? 132 : 158)
         )
-        boundaryTop = usesAccessibilityLayout ? topInset : topInset + (isShortHeight ? 78 : 96)
-        boundaryLeading = usesAccessibilityLayout
-            ? max(22, (width - boundarySize.width) / 2)
-            : (isCompactWidth ? 24 : 30)
-        detailLabelColumnWidth = usesAccessibilityLayout ? min(132, contentWidth * 0.46) : (isCompactWidth ? 100 : 108)
+        boundaryTop = topInset + (isShortHeight ? 78 : 96)
+        boundaryLeading = isCompactWidth ? 24 : 30
         detailRowSpacing = isCompactWidth ? 10 : 12
         detailSectionSpacing = isShortHeight ? 16 : 20
     }
 
-    /// Top of content after the boundary in the accessibility single-column mode.
-    var contentTopInset: CGFloat {
-        usesAccessibilityLayout ? boundaryTop + boundarySize.height + 46 : topInset
+    /// Scales a default-size point value with the user's text size.
+    ///
+    /// At the default size (Large) the value is returned unchanged, so the
+    /// default composition is pixel-identical to the original fixed sizes.
+    func scaled(_ value: CGFloat, relativeTo textStyle: Font.TextStyle) -> CGFloat {
+        Self.scaledValue(value, relativeTo: textStyle, dynamicTypeSize: dynamicTypeSize)
+    }
+
+    /// Scales a point value for a text style and text size, like `@ScaledMetric`.
+    ///
+    /// The value is multiplied by the style's growth relative to the default
+    /// size (Large). `UIFontMetrics` alone snaps some sizes that are not on its
+    /// grid, such as 11.5 pt, even at Large; the ratio keeps Large exact.
+    static func scaledValue(_ value: CGFloat, relativeTo textStyle: Font.TextStyle, dynamicTypeSize: DynamicTypeSize) -> CGFloat {
+        guard dynamicTypeSize != .large else { return value }
+        let metrics = UIFontMetrics(forTextStyle: textStyle.uiTextStyle)
+        let reference: CGFloat = 100
+        let target = metrics.scaledValue(
+            for: reference,
+            compatibleWith: UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(dynamicTypeSize))
+        )
+        let base = metrics.scaledValue(for: reference, compatibleWith: UITraitCollection(preferredContentSizeCategory: .large))
+        return base > 0 ? value * target / base : value
+    }
+}
+
+private extension Font.TextStyle {
+    /// Matching UIKit text style for `UIFontMetrics`.
+    var uiTextStyle: UIFont.TextStyle {
+        switch self {
+        case .largeTitle: return .largeTitle
+        case .title: return .title1
+        case .title2: return .title2
+        case .title3: return .title3
+        case .headline: return .headline
+        case .subheadline: return .subheadline
+        case .body: return .body
+        case .callout: return .callout
+        case .footnote: return .footnote
+        case .caption: return .caption1
+        case .caption2: return .caption2
+        @unknown default: return .body
+        }
     }
 }

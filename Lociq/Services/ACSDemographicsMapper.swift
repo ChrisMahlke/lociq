@@ -18,7 +18,7 @@ import Foundation
 /// others need to be summed across age bands or divided by a universe to become
 /// percentages. This mapper performs those derivations and filters missing or
 /// suppressed ACS sentinel values through `ACSValueNormalizer`.
-struct ACSDemographicsMapper {
+nonisolated struct ACSDemographicsMapper {
     /// Raw ACS values keyed by variable code, plus `NAME`.
     private let valuesByKey: [String: String]
 
@@ -55,12 +55,17 @@ struct ACSDemographicsMapper {
             return owner + renter
         }()
 
-        // Mobility values are mostly commute mode counts. Average commute time
-        // is derived from aggregate minutes divided by the worker universe.
+        // Commute mode shares use all workers 16+ (B08301). Aggregate travel
+        // time (B08013) covers only workers who did not work from home, so the
+        // average divides by that same universe.
         let workersTotal = intValue("B08301_001E")
         let workersWfh = intValue("B08301_021E")
         let transitCommuters = intValue("B08301_010E")
         let aggregateCommuteMinutes = intValue("B08013_001E")
+        let commutingWorkers: Int? = {
+            guard let workersTotal, let workersWfh else { return nil }
+            return workersTotal - workersWfh
+        }()
         let totalHousingUnits = intValue("B25002_001E")
         let vacantHousingUnits = intValue("B25002_003E")
         let totalAgeUniverse = intValue("B01001_001E")
@@ -82,17 +87,19 @@ struct ACSDemographicsMapper {
             "B01001_020E", "B01001_021E", "B01001_022E", "B01001_023E", "B01001_024E", "B01001_025E",
             "B01001_044E", "B01001_045E", "B01001_046E", "B01001_047E", "B01001_048E", "B01001_049E"
         ])
-        // Education and poverty percentages are computed against their ACS
-        // table universes, not total population.
+        // Education percentages are computed against the table universe
+        // (population 25 years and over), not total population.
         let educationUniverse = intValue("B15003_001E")
         let bachelorsOrHigher = sum(["B15003_022E", "B15003_023E", "B15003_024E", "B15003_025E"])
-        let povertyUniverse = intValue("B17001_001E")
-        let povertyBelow = intValue("B17001_002E")
+
+        let income = median("B19013_001E")
+        let homeValue = median("B25077_001E")
+        let grossRent = median("B25064_001E")
 
         return Demographics(
             name: valuesByKey["NAME"] ?? fallbackName,
             population: PopulationDemographics(total: intValue("B01003_001E")),
-            income: IncomeDemographics(medianHousehold: intValue("B19013_001E")),
+            income: IncomeDemographics(medianHousehold: income.value, medianHouseholdBound: income.bound),
             age: AgeDemographics(
                 median: doubleValue("B01002_001E"),
                 under18Pct: percent(under18, totalAgeUniverse),
@@ -101,14 +108,14 @@ struct ACSDemographicsMapper {
                 age65PlusPct: percent(age65Plus, totalAgeUniverse)
             ),
             housing: HousingDemographics(
-                units: intValue("B25001_001E"),
-                medianHomeValue: intValue("B25077_001E"),
-                medianGrossRent: intValue("B25064_001E"),
-                averageHouseholdSize: doubleValue("B25010_001E"),
+                medianHomeValue: homeValue.value,
+                medianHomeValueBound: homeValue.bound,
+                medianGrossRent: grossRent.value,
+                medianGrossRentBound: grossRent.bound,
                 ownerOccupied: owner,
                 renterOccupied: renter,
                 ownerOccupiedPct: percent(owner, occupancyTotal),
-                renterOccupiedPct: percent(renter, occupancyTotal),
+                totalUnits: totalHousingUnits,
                 vacantUnits: vacantHousingUnits,
                 vacancyRatePct: percent(vacantHousingUnits, totalHousingUnits)
             ),
@@ -122,20 +129,9 @@ struct ACSDemographicsMapper {
                 transitCommuters: transitCommuters,
                 transitCommutersPct: percent(transitCommuters, workersTotal),
                 averageCommuteMinutes: {
-                    guard let aggregateCommuteMinutes, let workersTotal, workersTotal > 0 else { return nil }
-                    return Double(aggregateCommuteMinutes) / Double(workersTotal)
+                    guard let aggregateCommuteMinutes, let commutingWorkers, commutingWorkers > 0 else { return nil }
+                    return Double(aggregateCommuteMinutes) / Double(commutingWorkers)
                 }()
-            ),
-            poverty: PovertyDemographics(
-                universe: povertyUniverse,
-                below: povertyBelow,
-                ratePct: percent(povertyBelow, povertyUniverse)
-            ),
-            raceEthnicity: RaceEthnicityDemographics(
-                whiteAlone: intValue("B02001_002E"),
-                blackAlone: intValue("B02001_003E"),
-                asianAlone: intValue("B02001_005E"),
-                hispanicOrLatino: intValue("B03003_003E")
             )
         )
     }
@@ -150,10 +146,22 @@ struct ACSDemographicsMapper {
 
     /// Reads a non-negative decimal ACS estimate, treating sentinel values as unavailable.
     ///
-    /// Decimal parsing is used for median age, average household size, and any
-    /// future ACS variables that return fractional values.
+    /// Decimal parsing is used for median age and any future ACS variables
+    /// that return fractional values.
     private func doubleValue(_ key: String) -> Double? {
         ACSValueNormalizer.double(valuesByKey[key])
+    }
+
+    /// Reads a median estimate together with its open-interval annotation.
+    ///
+    /// When the `EA` annotation marks a top- or bottom-coded median, the bound
+    /// from the annotation (for example 250,000 from `250,000+`) replaces the
+    /// coded estimate (250,001), and the bound direction is kept for display.
+    private func median(_ key: String) -> (value: Int?, bound: MedianBound?) {
+        if let annotated = ACSValueNormalizer.medianBound(valuesByKey[key + "A"]) {
+            return (annotated.value, annotated.bound)
+        }
+        return (intValue(key), nil)
     }
 
     /// Calculates a percentage when both numerator and denominator are available.
@@ -182,7 +190,7 @@ struct ACSDemographicsMapper {
 /// applicable estimates. Many of those sentinels are negative numeric strings,
 /// which means simple numeric parsing is not enough. This helper centralizes
 /// that filtering so every demographic field behaves consistently.
-enum ACSValueNormalizer {
+nonisolated enum ACSValueNormalizer {
     /// Numeric sentinel values documented by Census tables for missing estimates.
     private static let missingValueCodes: Set<Int> = [
         -222_222_222,
@@ -219,6 +227,20 @@ enum ACSValueNormalizer {
         return doubleValue
     }
 
+    /// Parses an ACS estimate annotation that marks an open-ended median interval.
+    ///
+    /// Census annotates medians in the top interval as `250,000+` and in the
+    /// bottom interval as `2,500-`. Other annotations, such as `-` (too few
+    /// sample cases) or `(X)`, return `nil`.
+    static func medianBound(_ annotation: String?) -> (value: Int, bound: MedianBound)? {
+        guard let annotation else { return nil }
+        let trimmed = annotation.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > 1, let marker = trimmed.last, marker == "+" || marker == "-" else { return nil }
+        let digits = trimmed.dropLast().replacingOccurrences(of: ",", with: "")
+        guard !digits.isEmpty, digits.allSatisfy(\.isASCIIDigitCharacter), let value = Int(digits) else { return nil }
+        return (value, marker == "+" ? .atLeast : .atMost)
+    }
+
     /// Trims ACS text and filters string-level missing markers before numeric parsing.
     ///
     /// This keeps whitespace and case differences from leaking into every
@@ -227,5 +249,12 @@ enum ACSValueNormalizer {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return missingStrings.contains(trimmed.uppercased()) ? nil : trimmed
+    }
+}
+
+private extension Character {
+    /// True for the ASCII digits 0–9 used in ACS annotations.
+    nonisolated var isASCIIDigitCharacter: Bool {
+        ("0"..."9").contains(self)
     }
 }

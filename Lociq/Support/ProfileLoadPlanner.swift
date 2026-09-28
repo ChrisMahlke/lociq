@@ -2,96 +2,116 @@
 //  ProfileLoadPlanner.swift
 //  Lociq
 //
-//  Plans duplicate suppression and pre-load UI state for city profile requests.
+//  Decides whether a location fix needs a new city-profile load.
 //
-//  Location updates can arrive repeatedly with tiny coordinate differences. The
-//  planner centralizes the decision about whether a new profile load is needed
-//  and what state should be shown while that load is in flight.
+//  Freshness is defined by place and data vintage, not by the clock: ACS
+//  5-year estimates change once a year, so a profile stays valid for as long
+//  as the user is still in its place and the app still requests its vintage.
+//  The planner is pure and testable. It does not start tasks or mutate state.
 //
 
 import CoreLocation
 import Foundation
 
-/// Planning result for one coordinate-driven profile load.
-///
-/// A plan carries both duplicate-suppression identity and the state the view
-/// model should enter before the async request starts.
-struct ProfileLoadPlan: Sendable {
-    /// Rounded coordinate key saved as the last requested location.
-    let coordinateKey: String
+/// What to do with one location fix.
+enum ProfileLoadDecision {
+    /// A load for the same coordinate cell is already known; do nothing.
+    case suppressDuplicate
 
-    /// State to publish before the load task begins.
-    let preLoadState: LocationProfileViewModel.State
+    /// The user is still in the displayed place and its data is current: no
+    /// network request. The profile carries the marker moved to the new fix.
+    case keepProfile(CachedCityProfile)
+
+    /// Load a profile, entering `preLoadState` while it is in flight.
+    case load(coordinateKey: String, preLoadState: LocationProfileViewModel.State)
 }
 
-/// Encapsulates profile request duplicate checks and refresh/loading state selection.
-///
-/// The planner is pure and testable. It does not start tasks or mutate the view
-/// model. It only decides whether a load should happen and whether existing data
-/// should remain visible during the load.
+/// Whether a fix is still in the displayed profile's place.
+nonisolated enum PlaceRelation: Equatable, Sendable {
+    case samePlace
+    case elsewhere
+}
+
+/// Encapsulates reload decisions for location fixes.
 struct ProfileLoadPlanner: Sendable {
-    /// Maximum cache age used to mark a visible profile stale during refresh.
-    let cacheMaxAge: TimeInterval
+    /// A fix this close to the coordinate the place was looked up for is the same spot.
+    static let sameSpotRadiusMeters: CLLocationDistance = 250
 
-    /// Movement threshold before the visible profile should be replaced by a full loading state.
-    let moveThresholdMeters: CLLocationDistance
+    /// Minimum distance from the boundary edge before "inside" is trusted.
+    ///
+    /// Generalized outlines are simplified, and fixes have error, so a point
+    /// just inside the drawn edge may be in the neighboring place.
+    static let minimumEdgeClearanceMeters: CLLocationDistance = 150
 
-    /// Date provider injected for deterministic cache freshness tests.
+    /// How long a profile without its boundary waits before the next fix retries it.
+    static let missingBoundaryRetryInterval: TimeInterval = 3_600
+
+    /// Data vintage the app currently requests.
+    let vintage: CensusDataVintage
+
+    /// Date provider injected for deterministic tests.
     let now: @Sendable () -> Date
 
-    /// Returns a load plan or `nil` when the coordinate is a suppressed duplicate.
+    /// Decides what one fix requires.
     ///
-    /// If the coordinate is close to the current profile, the previous profile
-    /// remains visible in `.refreshing`. If the user has moved far enough, the
-    /// app enters `.loading` so stale city data is not shown for a different
-    /// place.
-    func plan(
-        coordinate: CLLocationCoordinate2D,
-        previousProfile: CachedCityProfile?,
-        previousStale: Bool,
+    /// - Parameters:
+    ///   - fix: The new location fix.
+    ///   - currentProfile: The profile on screen, if any.
+    ///   - lastCoordinateKey: Key of the last load started without a profile on screen.
+    ///   - force: True for a user-initiated refresh, which always loads.
+    func decide(
+        fix: LocationFix,
+        currentProfile: CachedCityProfile?,
         lastCoordinateKey: String?,
         force: Bool
-    ) -> ProfileLoadPlan? {
-        let coordinateKey = Self.coordinateKey(for: coordinate)
-        guard force || coordinateKey != lastCoordinateKey else { return nil }
+    ) -> ProfileLoadDecision {
+        let coordinateKey = Self.coordinateKey(for: fix.coordinate)
 
-        let preLoadState: LocationProfileViewModel.State
-        if let previousProfile,
-           !Self.isMeaningfullyDifferent(
-            previousProfile.coordinate,
-            from: coordinate,
-            thresholdMeters: moveThresholdMeters
-           ) {
-            preLoadState = .refreshing(
-                previousProfile,
-                isStale: previousStale || previousProfile.isExpired(at: now(), maxAge: cacheMaxAge)
-            )
-        } else {
-            preLoadState = .loading
+        guard let currentProfile else {
+            guard force || coordinateKey != lastCoordinateKey else { return .suppressDuplicate }
+            return .load(coordinateKey: coordinateKey, preLoadState: .loading)
         }
 
-        return ProfileLoadPlan(coordinateKey: coordinateKey, preLoadState: preLoadState)
+        let relation = Self.relation(of: fix, to: currentProfile)
+        if !force, relation == .samePlace, currentProfile.isCurrent(for: vintage), !needsBoundaryRetry(currentProfile) {
+            return .keepProfile(currentProfile.withMarker(at: fix))
+        }
+
+        return .load(
+            coordinateKey: coordinateKey,
+            preLoadState: .refreshing(currentProfile, context: relation == .samePlace ? .sameArea : .newLocation)
+        )
+    }
+
+    /// True when a profile lacks its boundary and has waited long enough to try again.
+    private func needsBoundaryRetry(_ profile: CachedCityProfile) -> Bool {
+        guard profile.isMissingBoundary else { return false }
+        guard let cachedAt = profile.cachedAt else { return true }
+        return now().timeIntervalSince(cachedAt) > Self.missingBoundaryRetryInterval
+    }
+
+    /// Decides whether a fix is still inside the displayed profile's place.
+    ///
+    /// A fix is in the same place when it is within 250 m of the coordinate the
+    /// place was looked up for, or clearly inside the boundary: inside, and
+    /// farther from the edge than the fix's own uncertainty.
+    static func relation(of fix: LocationFix, to profile: CachedCityProfile) -> PlaceRelation {
+        let distance = CLLocation(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
+            .distance(from: CLLocation(latitude: profile.latitude, longitude: profile.longitude))
+        if distance <= sameSpotRadiusMeters { return .samePlace }
+
+        guard let boundary = profile.boundary, let result = BoundaryContainment.test(fix.coordinate, in: boundary) else {
+            return .elsewhere
+        }
+        let clearance = max(fix.horizontalAccuracy ?? 0, minimumEdgeClearanceMeters)
+        return result.isInside && result.edgeDistanceMeters >= clearance ? .samePlace : .elsewhere
     }
 
     /// Rounds a coordinate into a stable key for suppressing duplicate loads.
     ///
-    /// Four decimal places roughly filters GPS jitter while still changing when
-    /// the user moves a meaningful distance.
+    /// Four decimal places (about 11 m) filter repeated callbacks for the
+    /// same fix while still changing when the user moves.
     static func coordinateKey(for coordinate: CLLocationCoordinate2D) -> String {
         String(format: "%.4f,%.4f", coordinate.latitude, coordinate.longitude)
-    }
-
-    /// Returns true when two coordinates are far enough apart to justify replacing the visible profile immediately.
-    ///
-    /// Core Location distance calculation is used instead of raw latitude and
-    /// longitude deltas because degree distances vary by latitude.
-    static func isMeaningfullyDifferent(
-        _ lhs: CLLocationCoordinate2D,
-        from rhs: CLLocationCoordinate2D,
-        thresholdMeters: CLLocationDistance
-    ) -> Bool {
-        let start = CLLocation(latitude: lhs.latitude, longitude: lhs.longitude)
-        let end = CLLocation(latitude: rhs.latitude, longitude: rhs.longitude)
-        return start.distance(from: end) > thresholdMeters
     }
 }

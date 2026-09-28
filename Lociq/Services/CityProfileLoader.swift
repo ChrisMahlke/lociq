@@ -6,30 +6,74 @@
 //
 //  The loader is the boundary between raw service composition and view-model
 //  state. It does not render UI, but it does decide whether the app has a full
-//  cacheable profile, a partial location shell, or an unavailable state.
+//  cacheable profile or an explained unavailable state, and it bounds how long
+//  a load can take.
 //
 
 import CoreLocation
 import Foundation
 
+/// One profile load request.
+nonisolated struct CityProfileLoadRequest: Sendable {
+    /// The user's WGS84 coordinate.
+    let coordinate: CLLocationCoordinate2D
+
+    /// Accuracy radius from Core Location, used for marker styling.
+    let horizontalAccuracy: CLLocationAccuracy?
+
+    /// True when the fix came from approximate location.
+    let isApproximate: Bool
+
+    /// True for user-initiated refreshes, which skip the in-memory memo.
+    let forceRefresh: Bool
+
+    /// Boundary already on screen, reused when the place is unchanged.
+    let knownBoundary: KnownPlaceBoundary?
+
+    /// Creates a load request.
+    init(
+        coordinate: CLLocationCoordinate2D,
+        horizontalAccuracy: CLLocationAccuracy? = nil,
+        isApproximate: Bool = false,
+        forceRefresh: Bool = false,
+        knownBoundary: KnownPlaceBoundary? = nil
+    ) {
+        self.coordinate = coordinate
+        self.horizontalAccuracy = horizontalAccuracy
+        self.isApproximate = isApproximate
+        self.forceRefresh = forceRefresh
+        self.knownBoundary = knownBoundary
+    }
+}
+
+/// An explained state for a profile that could not be loaded.
+nonisolated struct CityProfileUnavailable: Sendable {
+    /// Heading and plain-language status line.
+    let snapshot: DemographicSnapshot
+
+    /// Coordinate the load was for, kept so Retry can repeat it.
+    let coordinate: CLLocationCoordinate2D
+
+    /// Accuracy of that coordinate.
+    let horizontalAccuracy: CLLocationAccuracy?
+
+    /// True when that coordinate came from approximate location.
+    let isApproximate: Bool
+
+    /// Normalized failure category, which decides whether Retry is offered.
+    let failure: CityProfileLoadFailure
+}
+
 /// Result of loading the current city profile for one coordinate.
 ///
 /// The outcome is already display oriented. A loaded case contains the full
-/// cached profile. An unavailable case still carries enough context for the UI
-/// to render a minimal honest state, possibly including a city label and
-/// boundary even when demographics are missing.
+/// cached profile. An unavailable case carries an explained, honest state.
 enum CityProfileLoadOutcome: Sendable {
-    /// A complete or sufficiently useful profile that can be cached and shown.
+    /// A complete profile that can be cached and shown.
     case loaded(CachedCityProfile)
 
-    /// A displayable failure state with optional geographic context.
-    case unavailable(
-        snapshot: DemographicSnapshot,
-        boundary: GeoJSONFeatureCollection?,
-        coordinate: CLLocationCoordinate2D,
-        horizontalAccuracy: CLLocationAccuracy?,
-        failure: CityProfileLoadFailure
-    )
+    /// A displayable failure state.
+    case unavailable(CityProfileUnavailable)
 }
 
 /// Loads a displayable city profile for a Core Location coordinate.
@@ -37,221 +81,162 @@ enum CityProfileLoadOutcome: Sendable {
 /// The protocol is used by `LocationProfileViewModel` so tests can replace the
 /// Census pipeline with deterministic outcomes.
 protocol CityProfileLoading: Sendable {
-    /// Loads a city profile for a coordinate and returns either displayable data or a displayable unavailable state.
-    ///
-    /// - Parameters:
-    ///   - coordinate: The user's current WGS84 coordinate.
-    ///   - horizontalAccuracy: Accuracy radius from Core Location, used only for
-    ///     location-dot styling.
-    /// - Returns: A profile that can be displayed immediately by the view model.
-    func loadProfile(
-        for coordinate: CLLocationCoordinate2D,
-        horizontalAccuracy: CLLocationAccuracy?
-    ) async -> CityProfileLoadOutcome
+    /// Loads a city profile and returns either displayable data or an explained unavailable state.
+    func loadProfile(_ request: CityProfileLoadRequest) async -> CityProfileLoadOutcome
 }
 
 /// Production loader that maps Census service results into app-level outcomes.
 ///
-/// The loader prefers full demographics, but it can fall back to a city shell
-/// when ACS or the API key is unavailable. This keeps the minimalist UI from
-/// showing fake demographic placeholders.
+/// Every failure resolves to a specific, explained state: offline, no
+/// response, a Census service error, outside every place, outside U.S.
+/// coverage, or a place without estimates. The whole load is bounded by one
+/// budget, so the user always reaches a state with an action.
 struct CensusCityProfileLoader: CityProfileLoading {
-    /// Full profile service, typically backed by geocoder, ACS, and TIGER clients.
+    /// Longest a load may take before it resolves as "no response".
+    static let defaultLoadBudget: TimeInterval = 25
+
+    /// Full profile service, backed by the shared geocoder, ACS, and TIGER clients.
     private let profileService: any CityProfileFetching
 
-    /// Geocoder used to build fallback city shells when full profile loading fails.
+    /// Geocoder used only to name the city when no API key is configured.
     private let geocoderClient: any CensusGeographyFetching
-
-    /// Boundary client used for fallback geometry when the full profile lacks one.
-    private let boundaryClient: any TIGERBoundaryFetching
 
     /// Indicates whether the configured Census API key is present.
     private let hasCensusAPIKey: Bool
 
-    /// Creates a loader that maps Census service outcomes into cacheable profiles or minimal fallback states.
+    /// Data vintage recorded on loaded profiles.
+    private let vintage: CensusDataVintage
+
+    /// Load budget in nanoseconds.
+    private let loadBudgetNanoseconds: UInt64
+
+    /// Creates a loader over the shared Census service graph.
     init(
         profileService: any CityProfileFetching,
         geocoderClient: any CensusGeographyFetching,
-        boundaryClient: any TIGERBoundaryFetching,
-        hasCensusAPIKey: Bool
+        hasCensusAPIKey: Bool,
+        vintage: CensusDataVintage = .current,
+        loadBudget: TimeInterval = CensusCityProfileLoader.defaultLoadBudget
     ) {
         self.profileService = profileService
         self.geocoderClient = geocoderClient
-        self.boundaryClient = boundaryClient
         self.hasCensusAPIKey = hasCensusAPIKey
+        self.vintage = vintage
+        loadBudgetNanoseconds = UInt64(max(loadBudget, 0.01) * 1_000_000_000)
     }
 
-    /// Loads demographics and boundary data, preserving partial location context when one service fails.
+    /// Loads demographics and boundary data within the load budget.
     ///
-    /// The method intentionally returns an outcome instead of throwing. The view
-    /// model should be able to render something minimal for every expected
-    /// failure category without duplicating service error handling.
-    func loadProfile(
-        for coordinate: CLLocationCoordinate2D,
-        horizontalAccuracy: CLLocationAccuracy?
-    ) async -> CityProfileLoadOutcome {
+    /// The method returns an outcome instead of throwing, so the view model
+    /// can render every expected failure without duplicating error handling.
+    func loadProfile(_ request: CityProfileLoadRequest) async -> CityProfileLoadOutcome {
+        let budget = loadBudgetNanoseconds
+        let outcome = await withTaskGroup(of: CityProfileLoadOutcome?.self) { group -> CityProfileLoadOutcome? in
+            group.addTask { await self.loadUnbounded(request) }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: budget)
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
+        }
+        if let outcome { return outcome }
+        if !Task.isCancelled {
+            // Only a real timeout is logged; a superseded load is expected.
+            LociqDiagnostics.cityProfilePartialLoadFailed(CensusServiceError.timedOut, stage: "load-budget")
+        }
+        return unavailable(.timedOut, for: request)
+    }
+
+    /// Loads a profile without a time limit; `loadProfile` applies the budget.
+    private func loadUnbounded(_ request: CityProfileLoadRequest) async -> CityProfileLoadOutcome {
         guard hasCensusAPIKey else {
-            // Without a key, ACS requests are not reliable enough for the app's
-            // production path. Still try to resolve a location shell so the user
-            // sees an honest enable/configuration state instead of fake data.
-            return await loadLocationShell(
-                for: coordinate,
-                horizontalAccuracy: horizontalAccuracy,
-                failure: .censusKeyMissing
-            )
+            // Without a key ACS cannot be queried. Name the city if possible so
+            // the build problem shows as an explained state, never as fake data.
+            return await keyMissingState(for: request)
         }
 
+        let profile: ResolvedCityProfile
         do {
-            let profile = try await profileService.fetchPlaceProfile(
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
+            profile = try await profileService.fetchPlaceProfile(
+                latitude: request.coordinate.latitude,
+                longitude: request.coordinate.longitude,
+                options: CityProfileFetchOptions(forceRefresh: request.forceRefresh, knownBoundary: request.knownBoundary)
             )
-
-            guard let cityDemographics = profile.demographics.place else {
-                // If the geocoder and perhaps boundary succeeded but ACS did
-                // not, keep the city identity and outline if available.
-                var fallbackBoundary = profile.boundarySet.city
-                if fallbackBoundary == nil {
-                    fallbackBoundary = await boundaryClient.fetchPlaceBoundary(place: profile.geography.place)
-                }
-                return .unavailable(
-                    snapshot: DemographicSnapshot.status(
-                        for: .demographicsUnavailable,
-                        market: DemographicValueFormatter.title(from: profile).uppercased()
-                    ),
-                    boundary: fallbackBoundary,
-                    coordinate: coordinate,
-                    horizontalAccuracy: horizontalAccuracy,
-                    failure: .demographicsUnavailable
-                )
-            }
-
-            // Boundary is allowed to fail independently from demographics.
-            // When the fallback boundary fetch succeeds, remove any stale
-            // boundary partial failure from the profile.
-            var cityBoundary = profile.boundarySet.city
-            if cityBoundary == nil {
-                cityBoundary = await boundaryClient.fetchPlaceBoundary(place: profile.geography.place)
-            }
-            let partialFailures = cityBoundary == nil
-                ? profile.partialFailures
-                : profile.partialFailures.filter { $0.stage != .boundary }
-            return .loaded(
-                CachedCityProfile(
-                    snapshot: DemographicSnapshot(profile: profile, demographics: cityDemographics),
-                    boundary: cityBoundary,
-                    latitude: coordinate.latitude,
-                    longitude: coordinate.longitude,
-                    horizontalAccuracy: horizontalAccuracy,
-                    cachedAt: nil,
-                    partialFailures: partialFailures
-                )
-            )
+        } catch is CancellationError {
+            // Superseded or out of budget; the result is discarded, so do no more work.
+            return unavailable(.timedOut, for: request)
         } catch {
-            // A full profile failure may still allow a city label and boundary
-            // through the lighter geocoder path.
+            // The geocoder failed, so the place is unknown. Asking it again for
+            // a fallback shell would only repeat the failed request.
             LociqDiagnostics.cityProfilePartialLoadFailed(error, stage: "city-profile")
-            return await loadLocationShell(
-                for: coordinate,
-                horizontalAccuracy: horizontalAccuracy,
-                failure: CityProfileLoadFailure(error: error)
-            )
+            return unavailable(CityProfileLoadFailure(error: error), for: request)
         }
+
+        guard let place = profile.geography.place else {
+            if let county = profile.geography.county {
+                return unavailable(
+                    .cityUnavailable,
+                    for: request,
+                    countyTitle: DemographicValueFormatter.countyTitle(for: county)
+                )
+            }
+            return unavailable(.outsideCoverage, for: request)
+        }
+
+        let placeTitle = DemographicValueFormatter.placeTitle(for: place)
+        guard let cityDemographics = profile.demographics.place else {
+            // The client recorded why statistics are missing: a transient
+            // service problem, or a place with no ACS estimates.
+            let failure = profile.partialFailures.first { $0.stage == .demographics }?.failure ?? .demographicsUnavailable
+            return unavailable(failure, for: request, placeTitle: placeTitle)
+        }
+
+        return .loaded(
+            CachedCityProfile(
+                snapshot: DemographicSnapshot(profile: profile, demographics: cityDemographics, vintage: vintage),
+                boundary: profile.boundarySet.city,
+                latitude: request.coordinate.latitude,
+                longitude: request.coordinate.longitude,
+                horizontalAccuracy: request.horizontalAccuracy,
+                cachedAt: nil,
+                partialFailures: profile.partialFailures,
+                placeGeoid: place.geoid,
+                isApproximate: request.isApproximate
+            )
+        )
     }
 
-    /// Resolves city name and optional boundary when full demographic loading is unavailable.
-    ///
-    /// This fallback path gives the UI a truthful non-demographic state. It
-    /// avoids showing metric-shaped placeholders and still uses real Census
-    /// geocoding when possible.
-    private func loadLocationShell(
-        for coordinate: CLLocationCoordinate2D,
-        horizontalAccuracy: CLLocationAccuracy?,
-        failure: CityProfileLoadFailure
-    ) async -> CityProfileLoadOutcome {
-        do {
-            // Geocoding is much cheaper than the full profile pipeline and can
-            // still provide a meaningful city label for the unavailable state.
-            let geography = try await geocoderClient.fetchGeographiesFromCoordinate(
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-            let areaTitle = DemographicValueFormatter.cityTitle(from: geography) ?? "CITY UNAVAILABLE"
-            let resolvedBoundary = await boundaryClient.fetchPlaceBoundary(place: geography.place)
-            let status: DemographicSnapshot.LocationStatus = areaTitle == "CITY UNAVAILABLE"
-                ? .cityUnavailable
-                : DemographicSnapshot.LocationStatus(failure: failure)
+    /// Resolves the city name for the missing-key state.
+    private func keyMissingState(for request: CityProfileLoadRequest) async -> CityProfileLoadOutcome {
+        LociqDiagnostics.censusKeyMissing()
+        let geography = try? await geocoderClient.fetchGeographiesFromCoordinate(
+            latitude: request.coordinate.latitude,
+            longitude: request.coordinate.longitude
+        )
+        return unavailable(
+            .censusKeyMissing,
+            for: request,
+            placeTitle: geography?.place.map(DemographicValueFormatter.placeTitle(for:))
+        )
+    }
 
-            return .unavailable(
-                snapshot: DemographicSnapshot.status(for: status, market: areaTitle.uppercased()),
-                boundary: resolvedBoundary,
-                coordinate: coordinate,
-                horizontalAccuracy: horizontalAccuracy,
-                failure: areaTitle == "CITY UNAVAILABLE" ? .cityUnavailable : failure
-            )
-        } catch {
-            // If even the shell fails, collapse to the normalized failure label.
-            LociqDiagnostics.cityProfilePartialLoadFailed(error, stage: "location-shell")
-            return .unavailable(
-                snapshot: DemographicSnapshot.status(
-                    for: DemographicSnapshot.LocationStatus(failure: failure),
-                    market: failure.fallbackMarket
-                ),
-                boundary: nil,
-                coordinate: coordinate,
-                horizontalAccuracy: horizontalAccuracy,
+    /// Builds an unavailable outcome with its explained snapshot.
+    private func unavailable(
+        _ failure: CityProfileLoadFailure,
+        for request: CityProfileLoadRequest,
+        placeTitle: String? = nil,
+        countyTitle: String? = nil
+    ) -> CityProfileLoadOutcome {
+        .unavailable(
+            CityProfileUnavailable(
+                snapshot: .unavailable(failure, placeTitle: placeTitle, countyTitle: countyTitle),
+                coordinate: request.coordinate,
+                horizontalAccuracy: request.horizontalAccuracy,
+                isApproximate: request.isApproximate,
                 failure: failure
             )
-        }
-    }
-}
-
-private extension CityProfileLoadFailure {
-    /// Short fallback heading used when no city label is available.
-    ///
-    /// These strings are intentionally terse because the UI has very limited
-    /// text surface during failure states.
-    var fallbackMarket: String {
-        switch self {
-        case .censusKeyMissing:
-            return "CENSUS KEY"
-        case .cityUnavailable:
-            return "CITY"
-        case .demographicsUnavailable:
-            return "DEMOGRAPHICS"
-        case .boundaryUnavailable:
-            return "BOUNDARY"
-        case .networkUnavailable:
-            return "NETWORK"
-        case .timedOut:
-            return "TIMEOUT"
-        case .serviceUnavailable:
-            return "ACS"
-        }
-    }
-}
-
-private extension DemographicSnapshot.LocationStatus {
-    /// Converts a loader failure into the corresponding minimal snapshot status.
-    ///
-    /// This mapping lives with the loader because it is part of translating
-    /// service outcomes into display states.
-    init(failure: CityProfileLoadFailure) {
-        switch failure {
-        case .censusKeyMissing:
-            self = .censusKeyMissing
-        case .cityUnavailable:
-            self = .cityUnavailable
-        case .demographicsUnavailable:
-            self = .demographicsUnavailable
-        case .boundaryUnavailable:
-            self = .boundaryUnavailable
-        case .networkUnavailable:
-            self = .networkUnavailable
-        case .timedOut:
-            self = .timedOut
-        case .serviceUnavailable:
-            self = .serviceUnavailable
-        }
+        )
     }
 }

@@ -14,10 +14,9 @@ import Foundation
 
 /// Catalog of ACS estimate variables requested for a place-level profile.
 ///
-/// The list is intentionally larger than the fields displayed on the first
-/// screen because the detail view and future share/export paths need additional
-/// context. Variables are requested in chunks by `ACSDemographicsClient`.
-enum ACSDemographicsVariableCatalog {
+/// The list covers the summary metrics and the details view. Variables are
+/// requested in chunks by `ACSDemographicsClient`.
+nonisolated enum ACSDemographicsVariableCatalog {
     /// Conservative per-request variable limit used when splitting ACS calls.
     ///
     /// The API can support more in some cases, but keeping chunks smaller makes
@@ -27,25 +26,37 @@ enum ACSDemographicsVariableCatalog {
     /// ACS variables required to assemble the current city demographic profile.
     ///
     /// `NAME` is included alongside estimate variables so ACS can provide the
-    /// authoritative place label when available. All other entries are estimate
-    /// variables ending in `E`.
+    /// authoritative place label when available. Entries ending in `E` are
+    /// estimates. Entries ending in `EA` are estimate annotations, requested for
+    /// the displayed medians because ACS reports medians in an open-ended top or
+    /// bottom interval as a bound (for example `250,000+`).
+    ///
+    /// Every variable here is displayed or used to derive a displayed value.
+    /// Remove a variable together with the last feature that uses it.
     static let extendedVariables = [
         "NAME",
+        // Population and median age.
         "B01003_001E",
-        "B19013_001E",
         "B01002_001E",
-        "B25001_001E",
+        // Median household income, home value, and gross rent, with annotations.
+        "B19013_001E",
+        "B19013_001EA",
         "B25077_001E",
+        "B25077_001EA",
         "B25064_001E",
-        "B25010_001E",
+        "B25064_001EA",
+        // Tenure (occupied units by owner and renter).
         "B25003_002E",
         "B25003_003E",
+        // Occupancy status (all housing units and vacant units).
         "B25002_001E",
         "B25002_003E",
+        // Commuting: all workers, transit, worked from home, aggregate travel time.
         "B08301_001E",
         "B08301_010E",
         "B08301_021E",
         "B08013_001E",
+        // Sex by age, combined into broad age bands.
         "B01001_001E",
         "B01001_003E",
         "B01001_004E",
@@ -93,16 +104,11 @@ enum ACSDemographicsVariableCatalog {
         "B01001_047E",
         "B01001_048E",
         "B01001_049E",
+        // Educational attainment for the population 25 years and over.
         "B15003_001E",
         "B15003_022E",
         "B15003_023E",
         "B15003_024E",
-        "B15003_025E",
-        "B17001_001E",
-        "B17001_002E",
-        "B02001_002E",
-        "B02001_003E",
-        "B02001_005E",
-        "B03003_003E"
+        "B15003_025E"
     ]
 }

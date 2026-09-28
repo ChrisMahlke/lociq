@@ -17,39 +17,7 @@ import Foundation
 /// Coordinates are returned in normalized world space, where x and y are
 /// approximately in the range `0...1`. The boundary path builder later scales
 /// those normalized points into a SwiftUI frame.
-enum WebMercatorProjection {
-    /// Finds the normalized Web Mercator bounds for a collection of exterior rings.
-    ///
-    /// Invalid coordinates are skipped rather than failing the entire boundary.
-    /// Returning `nil` means no coordinate in the supplied rings could be
-    /// projected.
-    ///
-    /// - Parameter rings: Exterior rings in GeoJSON `[longitude, latitude]` order.
-    /// - Returns: Projected bounding rectangle in normalized world coordinates.
-    nonisolated static func projectedBounds(for rings: [[[Double]]]) -> CGRect? {
-        var minX = CGFloat.infinity
-        var maxX = -CGFloat.infinity
-        var minY = CGFloat.infinity
-        var maxY = -CGFloat.infinity
-        var didProjectAnyPoint = false
-
-        for ring in rings {
-            for coordinate in ring where coordinate.count >= 2 {
-                guard let projectedPoint = worldPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
-                    continue
-                }
-                minX = min(minX, projectedPoint.x)
-                maxX = max(maxX, projectedPoint.x)
-                minY = min(minY, projectedPoint.y)
-                maxY = max(maxY, projectedPoint.y)
-                didProjectAnyPoint = true
-            }
-        }
-
-        guard didProjectAnyPoint else { return nil }
-        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-    }
-
+nonisolated enum WebMercatorProjection {
     /// Converts a coordinate into normalized Web Mercator world coordinates.
     ///
     /// Latitude is clamped to the Web Mercator practical limit because the

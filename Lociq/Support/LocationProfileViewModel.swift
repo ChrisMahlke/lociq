@@ -13,6 +13,7 @@
 import Combine
 import CoreLocation
 import Foundation
+import UIKit
 
 @MainActor
 /// Main actor state machine backing the root SwiftUI interface.
@@ -26,29 +27,73 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     /// The states distinguish between initial loading, refresh over existing
     /// data, complete profile availability, permission states, and unavailable
     /// profile shells. That separation lets the UI stay sparse without lying
-    /// about whether data exists.
+    /// about whether data exists or whether it is for the user's place.
     enum State {
         case idle
         case needsLocationPermission
         case requestingLocation
         case loading
-        case refreshing(CachedCityProfile, isStale: Bool)
-        case loaded(CachedCityProfile, isStale: Bool)
-        case locationUnavailable
-        case profileUnavailable(
-            snapshot: DemographicSnapshot,
-            boundary: GeoJSONFeatureCollection?,
-            coordinate: CLLocationCoordinate2D?,
-            horizontalAccuracy: CLLocationAccuracy?,
-            failure: CityProfileLoadFailure
-        )
+        case refreshing(CachedCityProfile, context: RefreshContext)
+        case loaded(CachedCityProfile, status: ProfileStatus)
+        case locationUnavailable(LocationUnavailableReason)
+        case profileUnavailable(CityProfileUnavailable)
+    }
+
+    /// Result of a user-initiated refresh, used for the brief confirmation.
+    enum RefreshOutcome: Equatable {
+        /// A fresh fix and a real Census load succeeded.
+        case updated
+
+        /// The load failed; the saved profile stays on screen.
+        case failed(CityProfileLoadFailure)
+
+        /// No location fix arrived; the saved profile stays on screen.
+        case unableToLocate
+    }
+
+    /// One published refresh result. The id makes repeated outcomes distinct.
+    struct RefreshEvent: Equatable {
+        let id: Int
+        let outcome: RefreshOutcome
+    }
+
+    /// Where a refresh was requested.
+    enum RefreshTrigger {
+        /// The refresh button or menu item: a deliberate tap, which may open Settings.
+        case button
+
+        /// Pull-to-refresh, which never leaves the app.
+        case pull
+    }
+
+    /// Why a load started, which decides its feedback.
+    private enum LoadPurpose {
+        /// Location arrived on its own (launch, foreground). No haptic.
+        case automatic
+
+        /// The user granted permission or tapped Retry.
+        case userInitiated
+
+        /// The user asked to refresh a displayed profile.
+        case userRefresh
     }
 
     /// Current state machine value observed by SwiftUI.
-    @Published private(set) var state: State = .idle
+    @Published private(set) var state: State = .idle {
+        didSet { stateDidChange() }
+    }
 
-    /// Incrementing token used to restart one-shot boundary and connector animations.
+    /// Incrementing token that restarts the boundary trace when the displayed place changes.
     @Published private(set) var traceToken = 0
+
+    /// Boundary outline for the displayed place, built off the main actor.
+    @Published private(set) var boundaryGlyph: BoundaryGlyph?
+
+    /// Latest user-initiated refresh result.
+    @Published private(set) var refreshEvent: RefreshEvent?
+
+    /// View-facing projection of `state`, recomputed once per state change.
+    private(set) var viewState: LocationProfileViewState
 
     /// Location manager abstraction, real in production and fake in tests.
     private let manager: LocationManaging
@@ -62,38 +107,80 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     /// Local cache for the last successful profile.
     private let cacheStore: CityProfileCacheStore
 
-    /// Clock dependency for testable cache freshness and load durations.
+    /// Clock dependency for testable fix ages and load durations.
     private let now: @Sendable () -> Date
 
-    /// Haptic closure invoked once when the first real profile resolves.
+    /// Haptic closure invoked once when the first user-initiated profile resolves.
     private let playProfileResolvedHaptic: @MainActor () -> Void
 
-    /// Cache freshness policy used for restored profiles.
-    private let cachePolicy: CityProfileCachePolicy
+    /// Opens LOC IQ's page in Settings.
+    private let openSettingsAction: @MainActor () -> Void
 
     /// Pure authorization transition helper.
-    private let authorizationCoordinator = LocationAuthorizationCoordinator()
+    private let authorizationCoordinator: LocationAuthorizationCoordinator
 
-    /// Pure duplicate-suppression and pre-load-state planner.
+    /// Pure reload-decision helper.
     private let profileLoadPlanner: ProfileLoadPlanner
 
-    /// Last rounded coordinate key requested by the loader.
+    /// Total time allowed for the location attempts of one request.
+    private let locationTimeout: TimeInterval
+
+    /// Oldest fix accepted as current.
+    private let maximumFixAge: TimeInterval = 120
+
+    /// Last rounded coordinate key requested while no profile was shown.
     private var lastLoadedCoordinateKey: String?
 
     /// Identifier for the currently active async profile load.
     private var activeLoadID: UUID?
 
+    /// Coordinate of the active load, used to ignore repeats of the same fix.
+    private var inFlightCoordinate: CLLocationCoordinate2D?
+
     /// The current load task, retained so tests can await it and new loads can cancel it.
     private var loadTask: Task<Void, Never>?
 
-    /// Prevents repeated first-profile haptics during refreshes.
+    /// The latest cache write, retained so tests can await it.
+    private var saveTask: Task<Void, Never>?
+
+    /// Prevents repeated first-profile haptics.
     private var hasPlayedProfileResolvedHaptic = false
+
+    /// Consecutive failed location attempts without a profile on screen.
+    private var consecutiveLocationFailures = 0
+
+    /// Deadline for the current sequence of location attempts.
+    private var locationDeadline: Date?
+
+    /// Watchdog that ends a location request that never answers.
+    private var locationWatchdog: Task<Void, Never>?
+
+    /// Refreshes waiting for the next fix.
+    private var locationWaiters: [CheckedContinuation<LocationFix?, Never>] = []
+
+    /// True when the next load follows a user action (permission, Retry).
+    private var pendingUserInitiatedLoad = false
+
+    /// True when a refresh asked for permission and should load once located.
+    private var pendingRefreshAfterAuthorization = false
+
+    /// Counter for refresh event ids.
+    private var refreshEventCounter = 0
+
+    /// Key of the glyph currently built or being built.
+    private var glyphKey: String?
+
+    /// Place of the glyph currently built or being built.
+    private var glyphPlaceKey: String?
+
+    /// Off-main glyph build.
+    private var glyphTask: Task<Void, Never>?
 
     /// Creates the location profile state machine and wires together location, cache, and Census profile dependencies.
     ///
-    /// Production defaults construct the real Core Location manager, Census
-    /// services, cache store, and haptic behavior. Tests can inject every
-    /// side-effecting dependency.
+    /// Production defaults construct the real Core Location manager, one
+    /// shared Census client graph, the cache store, haptics, and the Settings
+    /// opener. Tests can inject every side-effecting dependency.
     init(
         debugCoordinate: CLLocationCoordinate2D? = nil,
         cacheStore: CityProfileCacheStore? = nil,
@@ -101,98 +188,91 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         profileLoader: (any CityProfileLoading)? = nil,
         now: @escaping @Sendable () -> Date = { Date() },
         profileResolvedHaptic: @escaping @MainActor () -> Void = { Haptics.profileResolved() },
-        cacheMaxAge: TimeInterval = 86_400,
-        moveThresholdMeters: CLLocationDistance = 1_000
+        openSettings: @escaping @MainActor () -> Void = { LocationProfileViewModel.openAppSettings() },
+        vintage: CensusDataVintage = .current,
+        locationTimeout: TimeInterval = 15,
+        maxLocationAttempts: Int = 2
     ) {
-        let httpClient = CensusHTTPClient(session: .shared)
-        let censusAPIKey = AppConfig.censusAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        let profileService = CensusCityProfileService(censusApiKey: censusAPIKey)
-        let geocoderClient = CensusGeocoderClient(httpClient: httpClient)
-        let boundaryClient = TIGERBoundaryClient(httpClient: httpClient)
-
-        self.manager = locationManager
-        self.profileLoader = profileLoader ?? CensusCityProfileLoader(
-            profileService: profileService,
-            geocoderClient: geocoderClient,
-            boundaryClient: boundaryClient,
-            hasCensusAPIKey: !censusAPIKey.isEmpty
-        )
+        manager = locationManager
+        self.profileLoader = profileLoader ?? Self.makeProductionLoader(vintage: vintage)
         self.debugCoordinate = debugCoordinate
         self.cacheStore = cacheStore ?? CityProfileCacheStore()
         self.now = now
-        self.playProfileResolvedHaptic = profileResolvedHaptic
-        self.cachePolicy = CityProfileCachePolicy(maxAge: cacheMaxAge)
-        self.profileLoadPlanner = ProfileLoadPlanner(
-            cacheMaxAge: cacheMaxAge,
-            moveThresholdMeters: moveThresholdMeters,
-            now: now
-        )
+        playProfileResolvedHaptic = profileResolvedHaptic
+        openSettingsAction = openSettings
+        authorizationCoordinator = LocationAuthorizationCoordinator(maxLocationAttempts: maxLocationAttempts)
+        profileLoadPlanner = ProfileLoadPlanner(vintage: vintage, now: now)
+        self.locationTimeout = locationTimeout
+        viewState = LocationProfileViewStateMapper.make(from: .idle, debugCoordinate: debugCoordinate)
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
 
-        // Restore cached content immediately so launch does not have to wait
-        // for network services before showing a known recent profile.
-        if let cached = self.cacheStore.load() {
-            state = .loaded(cached, isStale: cachePolicy.isStale(cached, at: now()))
+        // Restore cached content immediately so launch does not wait for the
+        // network. Without location access the city is labeled as the last
+        // location rather than presented as current.
+        if let cached = self.cacheStore.load()?.normalizedForDisplay() {
+            let status: ProfileStatus = debugCoordinate == nil
+                ? Self.restoredStatus(for: manager.authorizationStatus)
+                : .current
+            state = .loaded(cached, status: status)
             traceToken += 1
         }
+        stateDidChange()
     }
+
+    /// Builds the production loader over one shared Census client graph.
+    private static func makeProductionLoader(vintage: CensusDataVintage) -> any CityProfileLoading {
+        let censusAPIKey = AppConfig.censusAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let graph = CensusServiceGraph(censusAPIKey: censusAPIKey, vintage: vintage)
+        return CensusCityProfileLoader(
+            profileService: graph.profileService,
+            geocoderClient: graph.geocoderClient,
+            hasCensusAPIKey: !censusAPIKey.isEmpty,
+            vintage: vintage
+        )
+    }
+
+    /// Opens LOC IQ's own page in the Settings app.
+    static func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    /// Status for a profile restored from disk, based on location access.
+    private static func restoredStatus(for status: CLAuthorizationStatus) -> ProfileStatus {
+        switch status {
+        case .authorizedAlways, .authorizedWhenInUse:
+            return .current
+        case .notDetermined:
+            return .lastLocation
+        case .denied:
+            return .locationOff(restricted: false)
+        case .restricted:
+            return .locationOff(restricted: true)
+        @unknown default:
+            return .locationOff(restricted: true)
+        }
+    }
+
+    // MARK: - View-facing values
 
     /// Current display snapshot projected from the state machine.
     var snapshot: DemographicSnapshot {
         viewState.snapshot
     }
 
-    /// Boundary geometry that should currently be available to the view.
-    var boundary: GeoJSONFeatureCollection? {
-        viewState.boundary
-    }
-
-    /// Coordinate associated with the currently displayed state.
-    var coordinate: CLLocationCoordinate2D? {
-        viewState.coordinate
-    }
-
-    /// Horizontal accuracy associated with the displayed coordinate.
-    var horizontalAccuracy: CLLocationAccuracy? {
-        viewState.horizontalAccuracy
-    }
-
     /// True while location or profile loading is active.
-    var isLoading: Bool {
-        viewState.isLoading
+    var isBusy: Bool {
+        viewState.isBusy
     }
 
-    /// True before the app has any displayable data or fallback state.
-    var isWaitingForInitialData: Bool {
-        viewState.isWaitingForInitialData
-    }
-
-    /// True when the boundary preview should draw.
-    var canShowBoundary: Bool {
-        viewState.canShowBoundary
-    }
-
-    /// True when the bottom action can retry a recoverable state.
+    /// True when the primary action retries a failed step.
     var canRetry: Bool {
-        viewState.canRetry
+        viewState.primaryAction == .retry
     }
 
-    /// True when the UI should ask the user to enable location access.
-    var needsLocationPermissionPrompt: Bool {
-        viewState.needsLocationPermissionPrompt
-    }
-
-    /// True when a visible profile can be refreshed in place.
-    var canRefreshCurrentCity: Bool {
-        viewState.canRefresh
-    }
-
-    /// Optional share text for the visible profile.
-    var shareText: String? {
-        viewState.shareText
-    }
+    // MARK: - Actions
 
     /// Starts or resumes the location/profile workflow based on the current authorization state.
     ///
@@ -200,7 +280,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     /// can load a known city deterministically.
     func activate() {
         if let debugCoordinate {
-            load(for: debugCoordinate)
+            handleFix(LocationFix(coordinate: debugCoordinate, horizontalAccuracy: nil, isApproximate: false))
             return
         }
 
@@ -212,71 +292,140 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         )
     }
 
-    /// Prompts for location access when possible or falls back to the normal retry path.
+    /// Asks for location access from the first-run prompt.
     ///
-    /// If authorization has already been decided, the bottom action behaves as a
-    /// retry instead of repeatedly asking for permission.
+    /// Once access has been decided, the system prompt cannot appear again, so
+    /// a denial routes to Settings and an authorized state simply locates.
     func requestLocationAccess() {
-        if manager.authorizationStatus == .notDetermined {
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            pendingUserInitiatedLoad = true
             state = .requestingLocation
             manager.requestWhenInUseAuthorization()
-        } else {
+        case .denied:
+            openLocationSettings()
+        case .restricted:
+            break
+        case .authorizedAlways, .authorizedWhenInUse:
             retry()
+        @unknown default:
+            break
         }
+    }
+
+    /// Opens LOC IQ's page in Settings so the user can allow location access.
+    ///
+    /// When the user returns with access enabled, the authorization callback
+    /// locates and loads the city without a relaunch.
+    func openLocationSettings() {
+        openSettingsAction()
     }
 
     /// Retries the last recoverable failure without requiring the user to restart the app.
     ///
-    /// Retry clears the duplicate coordinate key so the same coordinate can be
-    /// requested again after a transient network or service failure.
+    /// Retry clears the duplicate coordinate key and the failure count, so the
+    /// same coordinate can be requested again after a transient failure.
     func retry() {
         lastLoadedCoordinateKey = nil
+        consecutiveLocationFailures = 0
+        locationDeadline = nil
+        pendingUserInitiatedLoad = true
 
         switch state {
-        case .needsLocationPermission:
-            requestLocationAccess()
-        case .profileUnavailable(_, _, let coordinate, let horizontalAccuracy, _):
-            if let coordinate {
-                load(for: coordinate, horizontalAccuracy: horizontalAccuracy, force: true)
-            } else {
-                activate()
-            }
-        case .locationUnavailable:
-            activate()
-        case .idle, .requestingLocation, .loading, .refreshing, .loaded:
-            activate()
-        }
-    }
-
-    /// Refreshes the currently visible city while keeping cached data on screen if the refresh fails.
-    ///
-    /// The refresh path forces a new request even when the coordinate has not
-    /// changed, but it keeps current data visible through the `.refreshing`
-    /// pre-load state.
-    func refreshCurrentCity() {
-        lastLoadedCoordinateKey = nil
-
-        if let profile = currentLoadedProfile {
-            load(
-                for: profile.coordinate,
-                horizontalAccuracy: profile.horizontalAccuracy,
-                force: true
+        case .profileUnavailable(let unavailable):
+            let request = CityProfileLoadRequest(
+                coordinate: unavailable.coordinate,
+                horizontalAccuracy: unavailable.horizontalAccuracy,
+                isApproximate: unavailable.isApproximate,
+                forceRefresh: true
             )
-        } else {
+            startLoad(
+                request,
+                coordinateKey: ProfileLoadPlanner.coordinateKey(for: unavailable.coordinate),
+                preLoadState: .loading,
+                purpose: .userInitiated
+            )
+        case .needsLocationPermission, .locationUnavailable, .idle, .requestingLocation, .loading, .refreshing, .loaded:
             activate()
         }
     }
 
-    /// Waits for the active profile load to finish; used by tests to observe async state transitions deterministically.
+    /// Refreshes the displayed city: locates first, then reloads Census data.
+    ///
+    /// The route depends on location access. Without a decision, the system
+    /// prompt appears and the city loads once access is granted. With location
+    /// off, Settings opens. With access, a fresh fix is loaded with the current
+    /// city kept on screen; "UPDATED NOW" is reported only after a real load.
+    /// In a failure state, a transient failure is retried instead.
+    func refresh(trigger: RefreshTrigger = .button) async {
+        if activeLoadID != nil {
+            await waitForPendingLoad()
+            return
+        }
+        // A refresh is already waiting for its fix; a second one adds nothing.
+        guard locationWaiters.isEmpty else { return }
+        guard let profile = currentLoadedProfile else {
+            if viewState.canPullToRefresh {
+                retry()
+                await waitForPendingLoad()
+            }
+            return
+        }
+
+        if let debugCoordinate {
+            await refreshLoad(
+                fix: LocationFix(coordinate: debugCoordinate, horizontalAccuracy: nil, isApproximate: false),
+                previous: profile
+            )
+            return
+        }
+
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            pendingRefreshAfterAuthorization = true
+            manager.requestWhenInUseAuthorization()
+        case .denied:
+            if trigger == .button {
+                openLocationSettings()
+            }
+        case .restricted:
+            break
+        case .authorizedAlways, .authorizedWhenInUse:
+            pendingRefreshAfterAuthorization = false
+            state = .refreshing(profile, context: .sameArea)
+            guard let fix = await requestFreshFix() else {
+                if case .refreshing(let visible, _) = state {
+                    state = .loaded(visible, status: labeledStatus(.lastKnownArea))
+                }
+                publishRefreshEvent(.unableToLocate)
+                return
+            }
+            await refreshLoad(fix: fix, previous: currentLoadedProfile ?? profile)
+        @unknown default:
+            break
+        }
+    }
+
+    /// Waits for the active profile load and cache write to finish.
     func waitForPendingLoad() async {
         await loadTask?.value
+        await saveTask?.value
     }
+
+    // MARK: - Core Location input
 
     /// Applies a Core Location authorization transition to the state machine.
     ///
     /// The coordinator decides the action. The view model performs the action so
     /// all mutations remain centralized.
     func handleAuthorizationChange(_ authorizationStatus: CLAuthorizationStatus) {
+        guard debugCoordinate == nil else { return }
+        switch authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse, .notDetermined:
+            break
+        default:
+            pendingRefreshAfterAuthorization = false
+        }
         perform(
             authorizationCoordinator.changeAction(
                 for: authorizationStatus,
@@ -285,125 +434,357 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         )
     }
 
-    /// Starts a profile refresh for the newest location update.
+    /// Handles the newest location update.
     ///
-    /// Core Location may deliver multiple locations. The delegate passes only
-    /// the newest one here.
+    /// Invalid fixes (negative accuracy) and fixes older than two minutes are
+    /// treated as failed attempts rather than shown as the current location.
     func handleLocationUpdate(_ location: CLLocation) {
-        load(for: location.coordinate, horizontalAccuracy: location.horizontalAccuracy)
+        guard location.horizontalAccuracy >= 0, now().timeIntervalSince(location.timestamp) <= maximumFixAge else {
+            handleLocationFailure(authorizationStatus: manager.authorizationStatus)
+            return
+        }
+        handleFix(
+            LocationFix(
+                coordinate: location.coordinate,
+                horizontalAccuracy: location.horizontalAccuracy,
+                isApproximate: manager.accuracyAuthorization == .reducedAccuracy
+            )
+        )
     }
 
-    /// Converts a location failure into the least noisy user-visible state.
+    /// Converts a location failure into the least noisy honest state.
     ///
-    /// If a profile is already visible, location errors do not replace it. This
-    /// preserves useful stale context instead of flashing an error.
+    /// With a profile on screen, the profile stays and is labeled as the last
+    /// known area. Without one, the attempt is retried once, then the explained
+    /// no-fix state offers Retry, so the spinner can never run unbounded.
     func handleLocationFailure(authorizationStatus: CLAuthorizationStatus) {
-        guard currentLoadedProfile == nil else { return }
-        perform(authorizationCoordinator.failureAction(for: authorizationStatus))
+        cancelLocationWatchdog()
+        if !locationWaiters.isEmpty {
+            resumeLocationWaiters(with: nil)
+            return
+        }
+        if currentLoadedProfile != nil {
+            locationDeadline = nil
+            markDisplayedProfileAsLastKnownArea()
+            return
+        }
+        consecutiveLocationFailures += 1
+        perform(
+            authorizationCoordinator.failureAction(
+                for: authorizationStatus,
+                consecutiveFailures: consecutiveLocationFailures
+            )
+        )
     }
 
-    /// Starts a guarded city-profile request for a coordinate.
-    ///
-    /// The load planner suppresses duplicate requests and chooses whether to
-    /// show loading or refreshing state. Each actual request receives a UUID so
-    /// late responses from cancelled tasks cannot overwrite newer data.
-    private func load(
-        for coordinate: CLLocationCoordinate2D,
-        horizontalAccuracy: CLLocationAccuracy? = nil,
-        force: Bool = false
-    ) {
-        guard let plan = profileLoadPlanner.plan(
-            coordinate: coordinate,
-            previousProfile: currentLoadedProfile,
-            previousStale: currentLoadedProfileIsStale,
-            lastCoordinateKey: lastLoadedCoordinateKey,
-            force: force
-        ) else { return }
+    // MARK: - Location plumbing
 
-        lastLoadedCoordinateKey = plan.coordinateKey
-        state = plan.preLoadState
+    /// Routes one usable fix: to a waiting refresh, or through the planner.
+    private func handleFix(_ fix: LocationFix) {
+        cancelLocationWatchdog()
+        consecutiveLocationFailures = 0
+        locationDeadline = nil
+
+        if !locationWaiters.isEmpty {
+            // The waiting refresh force-loads this fix itself.
+            pendingRefreshAfterAuthorization = false
+            resumeLocationWaiters(with: fix)
+            return
+        }
+
+        if pendingRefreshAfterAuthorization, let profile = currentLoadedProfile {
+            pendingRefreshAfterAuthorization = false
+            Task { await self.refreshLoad(fix: fix, previous: profile) }
+            return
+        }
+
+        // A load is already on its way. A repeat of the same spot adds nothing;
+        // a fix somewhere else supersedes it, as the newest location wins.
+        if activeLoadID != nil {
+            guard
+                let inFlightCoordinate,
+                Self.distance(inFlightCoordinate, fix.coordinate) > ProfileLoadPlanner.sameSpotRadiusMeters
+            else { return }
+        }
+
+        let decision = profileLoadPlanner.decide(
+            fix: fix,
+            currentProfile: currentLoadedProfile,
+            lastCoordinateKey: lastLoadedCoordinateKey,
+            force: false
+        )
+        switch decision {
+        case .suppressDuplicate:
+            return
+        case .keepProfile(let profile):
+            // Still in the displayed place, with current data: no network.
+            // Any load for a place the user already left is abandoned.
+            cancelActiveLoad()
+            pendingUserInitiatedLoad = false
+            let previousMarker = currentLoadedProfile?.markerCoordinate
+            state = .loaded(profile, status: .current)
+            if let previousMarker, Self.distance(previousMarker, profile.markerCoordinate) > 50 {
+                persist(profile)
+            }
+        case .load(let coordinateKey, let preLoadState):
+            startLoad(
+                request(for: fix, force: false, previous: currentLoadedProfile),
+                coordinateKey: coordinateKey,
+                preLoadState: preLoadState,
+                purpose: pendingUserInitiatedLoad ? .userInitiated : .automatic
+            )
+        }
+    }
+
+    /// Asks Core Location for one fix, bounded by the location timeout.
+    ///
+    /// A request already in progress is not duplicated. The deadline covers
+    /// the whole sequence of attempts, not each attempt.
+    private func requestLocationFix() {
+        guard debugCoordinate == nil else { return }
+        let deadline = locationDeadline ?? now().addingTimeInterval(locationTimeout)
+        locationDeadline = deadline
+        guard locationWatchdog == nil else { return }
+        manager.requestLocation()
+
+        let remaining = min(max(deadline.timeIntervalSince(now()), 0.01), locationTimeout)
+        locationWatchdog = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.handleLocationTimeout()
+        }
+    }
+
+    /// Ends a location request that produced no callback in time.
+    private func handleLocationTimeout() {
+        locationWatchdog = nil
+        locationDeadline = nil
+        if !locationWaiters.isEmpty {
+            resumeLocationWaiters(with: nil)
+            return
+        }
+        if currentLoadedProfile != nil {
+            markDisplayedProfileAsLastKnownArea()
+            return
+        }
+        guard case .requestingLocation = state else { return }
+        perform(.showLocationUnavailable(.noFix))
+    }
+
+    /// Waits for the next fix on behalf of a refresh.
+    private func requestFreshFix() async -> LocationFix? {
+        await withCheckedContinuation { continuation in
+            locationWaiters.append(continuation)
+            requestLocationFix()
+        }
+    }
+
+    /// Resumes every waiting refresh exactly once.
+    ///
+    /// Resuming ends the refresh's attempt sequence, so its deadline is
+    /// cleared; the next refresh gets a full timeout of its own.
+    private func resumeLocationWaiters(with fix: LocationFix?) {
+        locationDeadline = nil
+        let waiters = locationWaiters
+        locationWaiters = []
+        for waiter in waiters {
+            waiter.resume(returning: fix)
+        }
+    }
+
+    /// Labels the displayed profile after a failed fix.
+    ///
+    /// Any label is replaced except "not your current location", which is
+    /// more specific. A refresh that asked for access and then got no fix
+    /// reports that it could not locate.
+    private func markDisplayedProfileAsLastKnownArea() {
+        if pendingRefreshAfterAuthorization {
+            pendingRefreshAfterAuthorization = false
+            publishRefreshEvent(.unableToLocate)
+        }
+        guard case .loaded(let profile, let status) = state, status != .notCurrentLocation else { return }
+        state = .loaded(profile, status: labeledStatus(.lastKnownArea))
+    }
+
+    /// Returns a status that respects current location access.
+    ///
+    /// Work that finishes after access changed, such as a load that was
+    /// already running, must not present the city as current without access,
+    /// and a location-off label must not outlive access being restored.
+    private func labeledStatus(_ status: ProfileStatus) -> ProfileStatus {
+        guard debugCoordinate == nil else { return status }
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            return status
+        default:
+            return Self.restoredStatus(for: manager.authorizationStatus)
+        }
+    }
+
+    /// Cancels the location watchdog.
+    private func cancelLocationWatchdog() {
+        locationWatchdog?.cancel()
+        locationWatchdog = nil
+    }
+
+    /// Stops waiting for a fix, for example when access was just revoked.
+    private func cancelLocationRequest() {
+        cancelLocationWatchdog()
+        locationDeadline = nil
+        resumeLocationWaiters(with: nil)
+    }
+
+    // MARK: - Loading
+
+    /// Force-loads a fresh fix for a refresh, keeping the displayed city visible.
+    private func refreshLoad(fix: LocationFix, previous: CachedCityProfile) async {
+        guard case .load(let coordinateKey, let preLoadState) = profileLoadPlanner.decide(
+            fix: fix,
+            currentProfile: previous,
+            lastCoordinateKey: nil,
+            force: true
+        ) else { return }
+        startLoad(
+            request(for: fix, force: true, previous: previous),
+            coordinateKey: coordinateKey,
+            preLoadState: preLoadState,
+            purpose: .userRefresh
+        )
+        await waitForPendingLoad()
+    }
+
+    /// Builds a load request, offering the displayed boundary for reuse.
+    ///
+    /// The boundary is reused only for the same place and data vintage; the
+    /// service checks the place after geocoding.
+    private func request(for fix: LocationFix, force: Bool, previous: CachedCityProfile?) -> CityProfileLoadRequest {
+        let knownBoundary: KnownPlaceBoundary? = previous.flatMap { profile in
+            guard
+                profile.isCurrent(for: profileLoadPlanner.vintage),
+                let geoid = profile.resolvedPlaceGeoid,
+                let boundary = profile.boundary
+            else { return nil }
+            return KnownPlaceBoundary(geoid: geoid, boundary: boundary)
+        }
+        return CityProfileLoadRequest(
+            coordinate: fix.coordinate,
+            horizontalAccuracy: fix.horizontalAccuracy,
+            isApproximate: fix.isApproximate,
+            forceRefresh: force,
+            knownBoundary: knownBoundary
+        )
+    }
+
+    /// Starts one profile load with a unique identity.
+    ///
+    /// Each load receives a UUID so late responses from cancelled tasks cannot
+    /// overwrite newer data. The cache write runs off the main actor as part of
+    /// the load task, so awaiting the load also awaits the write.
+    private func startLoad(
+        _ request: CityProfileLoadRequest,
+        coordinateKey: String,
+        preLoadState: State,
+        purpose: LoadPurpose
+    ) {
+        lastLoadedCoordinateKey = coordinateKey
+        pendingUserInitiatedLoad = false
+        let previous = currentLoadedProfile
+        let context: RefreshContext? = {
+            if case .refreshing(_, let context) = preLoadState { return context }
+            return nil
+        }()
+        state = preLoadState
 
         let loadID = UUID()
         activeLoadID = loadID
-
+        inFlightCoordinate = request.coordinate
         let startedAt = now()
         loadTask?.cancel()
-        loadTask = Task { [weak self, profileLoader] in
-            let outcome = await profileLoader.loadProfile(
-                for: coordinate,
-                horizontalAccuracy: horizontalAccuracy
-            )
-            self?.apply(outcome, loadID: loadID, startedAt: startedAt)
+        loadTask = Task { [weak self, profileLoader, cacheStore] in
+            let outcome = await profileLoader.loadProfile(request)
+            guard
+                let profile = self?.apply(
+                    outcome,
+                    loadID: loadID,
+                    startedAt: startedAt,
+                    previous: previous,
+                    context: context,
+                    purpose: purpose
+                )
+            else { return }
+            await cacheStore.save(profile)
         }
     }
 
     /// Applies the result for the currently active request and ignores stale responses.
     ///
-    /// `loadID` protects against out-of-order async completion. If a newer load
-    /// has started, older outcomes are ignored.
-    private func apply(_ outcome: CityProfileLoadOutcome, loadID: UUID, startedAt: Date) {
-        guard loadID == activeLoadID else { return }
+    /// - Returns: The profile to persist, if the outcome produced one.
+    private func apply(
+        _ outcome: CityProfileLoadOutcome,
+        loadID: UUID,
+        startedAt: Date,
+        previous: CachedCityProfile?,
+        context: RefreshContext?,
+        purpose: LoadPurpose
+    ) -> CachedCityProfile? {
+        guard loadID == activeLoadID else { return nil }
+        activeLoadID = nil
+        inFlightCoordinate = nil
 
         switch outcome {
-        case .loaded(let profile):
-            let timestampedProfile = profile.withCachedAt(now())
-            cacheStore.save(timestampedProfile)
-            state = .loaded(timestampedProfile, isStale: false)
-            playProfileResolvedHapticIfNeeded()
-            traceToken += 1
-            LociqDiagnostics.cityProfileLoadCompleted(duration: now().timeIntervalSince(startedAt))
-        case .unavailable(let snapshot, let boundary, let coordinate, let horizontalAccuracy, let failure):
-            if let cached = currentLoadedProfile {
-                state = .loaded(cached, isStale: true)
-            } else {
-                state = .profileUnavailable(
-                    snapshot: snapshot,
-                    boundary: boundary,
-                    coordinate: coordinate,
-                    horizontalAccuracy: horizontalAccuracy,
-                    failure: failure
-                )
-            }
-            if boundary != nil || currentLoadedProfile?.boundary != nil {
+        case .loaded(let loaded):
+            let profile = loaded.withCachedAt(now()).normalizedForDisplay()
+            let placeChanged = previous?.resolvedPlaceGeoid == nil
+                || previous?.resolvedPlaceGeoid != profile.resolvedPlaceGeoid
+            state = .loaded(profile, status: labeledStatus(.current))
+            if placeChanged {
+                // Replay the outline only for a new place, never for a reload.
                 traceToken += 1
             }
-            LociqDiagnostics.cityProfileLoadFailed(
-                failure,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
-        }
-    }
-
-    /// Current view-facing projection of the internal state machine.
-    private var viewState: LocationProfileViewState {
-        LocationProfileViewStateMapper.make(from: state, debugCoordinate: debugCoordinate)
-    }
-
-    /// Emits the first successful profile haptic once per app session.
-    private func playProfileResolvedHapticIfNeeded() {
-        guard !hasPlayedProfileResolvedHaptic else { return }
-        hasPlayedProfileResolvedHaptic = true
-        playProfileResolvedHaptic()
-    }
-
-    /// Currently visible loaded profile, including stale profiles shown during refresh.
-    private var currentLoadedProfile: CachedCityProfile? {
-        switch state {
-        case .refreshing(let profile, _), .loaded(let profile, _):
+            switch purpose {
+            case .userInitiated:
+                playProfileResolvedHapticIfNeeded()
+            case .userRefresh:
+                publishRefreshEvent(.updated)
+            case .automatic:
+                break
+            }
+            LociqDiagnostics.cityProfileLoadCompleted(duration: now().timeIntervalSince(startedAt))
             return profile
-        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable, .profileUnavailable:
+        case .unavailable(let unavailable):
+            if let previous {
+                if context == .newLocation, !unavailable.failure.isRetryable {
+                    // The new location has no city data (for example outside
+                    // city limits). Show that, not the place the user left.
+                    state = .profileUnavailable(unavailable)
+                } else if context == .newLocation {
+                    state = .loaded(previous, status: labeledStatus(.notCurrentLocation))
+                } else {
+                    state = .loaded(previous, status: labeledStatus(.savedAfterFailedRefresh(unavailable.failure)))
+                }
+            } else {
+                state = .profileUnavailable(unavailable)
+            }
+            if purpose == .userRefresh {
+                publishRefreshEvent(.failed(unavailable.failure))
+            }
+            LociqDiagnostics.cityProfileLoadFailed(unavailable.failure)
             return nil
         }
     }
 
-    /// Staleness flag attached to the currently visible loaded profile.
-    private var currentLoadedProfileIsStale: Bool {
-        switch state {
-        case .refreshing(_, let isStale), .loaded(_, let isStale):
-            return isStale
-        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable, .profileUnavailable:
-            return false
+    /// Abandons the active load so its result is ignored.
+    private func cancelActiveLoad() {
+        guard activeLoadID != nil else { return }
+        loadTask?.cancel()
+        activeLoadID = nil
+        inFlightCoordinate = nil
+    }
+
+    /// Writes a profile to the cache without blocking the main actor.
+    private func persist(_ profile: CachedCityProfile) {
+        saveTask = Task { [cacheStore] in
+            await cacheStore.save(profile)
         }
     }
 
@@ -414,17 +795,113 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     private func perform(_ action: LocationAuthorizationAction) {
         switch action {
         case .showPermissionPrompt:
+            cancelLocationRequest()
+            pendingUserInitiatedLoad = false
+            consecutiveLocationFailures = 0
             state = .needsLocationPermission
         case .requestLocation:
+            // A load already under way keeps its "reading Census data" state.
+            guard activeLoadID == nil else { return }
+            // A fix arriving now must load even if it repeats the coordinate
+            // that last failed; otherwise the spinner could wait forever.
+            lastLoadedCoordinateKey = nil
             state = .requestingLocation
-            manager.requestLocation()
-        case .showLocationUnavailable:
-            state = .locationUnavailable
-        case .keepCurrentStateAndRequestLocation:
-            manager.requestLocation()
-        case .none:
-            break
+            requestLocationFix()
+        case .showLocationUnavailable(let reason):
+            cancelLocationRequest()
+            pendingUserInitiatedLoad = false
+            consecutiveLocationFailures = 0
+            state = .locationUnavailable(reason)
+        case .keepProfileAndRequestLocation:
+            guard activeLoadID == nil else { return }
+            requestLocationFix()
+        case .markProfile(let status):
+            if case .loaded(let profile, _) = state {
+                state = .loaded(profile, status: status)
+            }
         }
+    }
+
+    // MARK: - Derived state
+
+    /// Recomputes the view projection and the boundary glyph after a state change.
+    private func stateDidChange() {
+        viewState = LocationProfileViewStateMapper.make(from: state, debugCoordinate: debugCoordinate)
+        updateBoundaryGlyph()
+    }
+
+    /// Builds the boundary glyph off the main actor when the place or focus changes.
+    private func updateBoundaryGlyph() {
+        guard let boundary = viewState.boundary else {
+            glyphTask?.cancel()
+            glyphKey = nil
+            glyphPlaceKey = nil
+            if boundaryGlyph != nil { boundaryGlyph = nil }
+            return
+        }
+
+        let focus = viewState.coordinate
+        let placeKey = "\(viewState.placeKey ?? "")|\(viewState.snapshot.dataVintage ?? "-")|\(Self.vertexCount(of: boundary))"
+        let focusKey = focus.map { String(format: "%.3f,%.3f", $0.latitude, $0.longitude) } ?? "-"
+        let key = "\(placeKey)|\(focusKey)"
+        guard key != glyphKey else { return }
+        if placeKey != glyphPlaceKey {
+            // Never show one place's outline with another place's numbers.
+            boundaryGlyph = nil
+        }
+        glyphKey = key
+        glyphPlaceKey = placeKey
+        glyphTask?.cancel()
+        glyphTask = Task { [weak self] in
+            let glyph = await Task.detached(priority: .userInitiated) {
+                GeoJSONBoundaryPathBuilder.glyph(for: boundary, focus: focus)
+            }.value
+            guard !Task.isCancelled, let self, self.glyphKey == key else { return }
+            self.boundaryGlyph = glyph
+        }
+    }
+
+    /// Counts a boundary's coordinates, which tells two versions of one place apart cheaply.
+    private static func vertexCount(of boundary: GeoJSONFeatureCollection) -> Int {
+        boundary.features.reduce(0) { total, feature in
+            switch feature.geometry {
+            case .polygon(let rings):
+                return total + rings.reduce(0) { $0 + $1.count }
+            case .multiPolygon(let polygons):
+                return total + polygons.reduce(0) { sum, rings in sum + rings.reduce(0) { $0 + $1.count } }
+            case .other, nil:
+                return total
+            }
+        }
+    }
+
+    /// Records a refresh result for the confirmation line and VoiceOver.
+    private func publishRefreshEvent(_ outcome: RefreshOutcome) {
+        refreshEventCounter += 1
+        refreshEvent = RefreshEvent(id: refreshEventCounter, outcome: outcome)
+    }
+
+    /// Emits the first user-initiated profile haptic once per app session.
+    private func playProfileResolvedHapticIfNeeded() {
+        guard !hasPlayedProfileResolvedHaptic else { return }
+        hasPlayedProfileResolvedHaptic = true
+        playProfileResolvedHaptic()
+    }
+
+    /// Currently visible profile, including one shown during a refresh.
+    private var currentLoadedProfile: CachedCityProfile? {
+        switch state {
+        case .refreshing(let profile, _), .loaded(let profile, _):
+            return profile
+        case .idle, .needsLocationPermission, .requestingLocation, .loading, .locationUnavailable, .profileUnavailable:
+            return nil
+        }
+    }
+
+    /// Ground distance in meters between two coordinates.
+    private static func distance(_ lhs: CLLocationCoordinate2D, _ rhs: CLLocationCoordinate2D) -> CLLocationDistance {
+        CLLocation(latitude: lhs.latitude, longitude: lhs.longitude)
+            .distance(from: CLLocation(latitude: rhs.latitude, longitude: rhs.longitude))
     }
 }
 

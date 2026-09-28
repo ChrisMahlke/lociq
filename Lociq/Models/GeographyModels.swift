@@ -16,7 +16,7 @@ import Foundation
 /// A coordinate can resolve to a county even when no incorporated place or CDP
 /// is available. The app currently displays city-level data, so `place` is the
 /// critical value for downstream profile loading.
-struct CityGeographyProfile: Sendable {
+nonisolated struct CityGeographyProfile: Sendable {
     /// County containing the coordinate, used as contextual fallback metadata.
     let county: CountyInfo?
 
@@ -28,7 +28,7 @@ struct CityGeographyProfile: Sendable {
 ///
 /// The wrapper keeps geometry separate from demographic values. That separation
 /// lets the loader represent ACS success with TIGER failure as a partial load.
-struct CityBoundarySet: Sendable {
+nonisolated struct CityBoundarySet: Sendable {
     /// City or CDP boundary geometry returned by TIGERweb.
     let city: GeoJSONFeatureCollection?
 }
@@ -37,7 +37,7 @@ struct CityBoundarySet: Sendable {
 ///
 /// The app is intentionally city-only today, but the wrapper leaves room for
 /// future demographic scopes without changing `ResolvedCityProfile`.
-struct CityDemographicsBundle: Sendable {
+nonisolated struct CityDemographicsBundle: Sendable {
     /// Place-level ACS demographics for the resolved city or CDP.
     let place: Demographics?
 }
@@ -47,7 +47,7 @@ struct CityDemographicsBundle: Sendable {
 /// This is the service-domain aggregate. It is richer than the UI snapshot and
 /// preserves partial-failure information so cache and display logic can make
 /// accurate decisions about incomplete data.
-struct ResolvedCityProfile: Sendable {
+nonisolated struct ResolvedCityProfile: Sendable {
     let geography: CityGeographyProfile
     let boundarySet: CityBoundarySet
     let demographics: CityDemographicsBundle
@@ -78,7 +78,7 @@ struct ResolvedCityProfile: Sendable {
 /// County data is mainly fallback context. City-level ACS and TIGER requests use
 /// `PlaceInfo`, but county metadata helps the app preserve a useful location
 /// shell when place-level resolution fails.
-struct CountyInfo: Sendable {
+nonisolated struct CountyInfo: Sendable {
     /// Display name returned by the geocoder.
     let name: String
 
@@ -104,7 +104,7 @@ struct CountyInfo: Sendable {
 ///
 /// This is the key record for downstream ACS and TIGER calls. State FIPS plus
 /// place FIPS uniquely identify the place in the Census APIs used by LOC IQ.
-struct PlaceInfo: Sendable {
+nonisolated struct PlaceInfo: Sendable {
     /// Distinguishes incorporated places from census-designated places when querying downstream services.
     ///
     /// TIGERweb exposes incorporated places and CDPs as different layers, so
@@ -115,8 +115,11 @@ struct PlaceInfo: Sendable {
         case unknown
     }
 
-    /// Display name returned by the Census geocoder.
+    /// Legal name returned by the Census geocoder, such as `Juneau city and borough`.
     let name: String
+
+    /// Census base name without the legal descriptor, such as `Juneau`.
+    let baseName: String?
 
     /// Two-digit Census state FIPS code.
     let stateFIPS: String?
@@ -124,14 +127,29 @@ struct PlaceInfo: Sendable {
     /// Five-digit Census place FIPS code.
     let placeFIPS: String?
 
+    /// Seven-digit Census place GEOID (state FIPS + place FIPS).
+    let geoid: String?
+
     /// Census place category used for TIGER layer selection.
     let type: PlaceType
 
     /// Creates place metadata for an incorporated place or census-designated place.
-    init(name: String, stateFIPS: String?, placeFIPS: String?, type: PlaceType) {
+    init(
+        name: String,
+        baseName: String? = nil,
+        stateFIPS: String?,
+        placeFIPS: String?,
+        geoid: String? = nil,
+        type: PlaceType
+    ) {
         self.name = name
+        self.baseName = baseName
         self.stateFIPS = stateFIPS
         self.placeFIPS = placeFIPS
+        self.geoid = geoid ?? {
+            guard let stateFIPS, let placeFIPS else { return nil }
+            return stateFIPS + placeFIPS
+        }()
         self.type = type
     }
 }

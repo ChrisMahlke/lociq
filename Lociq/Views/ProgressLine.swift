@@ -2,19 +2,18 @@
 //  ProgressLine.swift
 //  Lociq
 //
-//  Renders the minimal one-pixel loading and progress indicator.
+//  Renders the minimal one-pixel loading line.
 //
-//  The line serves two purposes: static confidence/progress for loaded content
-//  and a quiet sweeping indicator while services are loading.
+//  At rest the line is a neutral, uniform rule. While work is in progress a
+//  short segment sweeps across it. The line never shows a partial fill, which
+//  would read as progress that stopped.
 //
 
 import SwiftUI
 
-/// One-pixel progress and loading line used by the bottom identity and details.
+/// One-pixel rule with a sweeping segment while loading.
 struct ProgressLine: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    /// Normalized progress value used when not loading.
-    let progress: Double
 
     /// Whether to show a sweeping loading segment.
     var isLoading = false
@@ -25,7 +24,7 @@ struct ProgressLine: View {
     /// Horizontal loading segment offset expressed as a fraction of width.
     @State private var loadingOffset: CGFloat = -0.28
 
-    /// Draws the track plus either a static progress fill or animated sweep.
+    /// Draws the rule plus the sweep while loading.
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -41,10 +40,7 @@ struct ProgressLine: View {
                             height: 1
                         )
                         .offset(x: reduceMotion ? 0 : geometry.size.width * loadingOffset)
-                } else {
-                    Rectangle()
-                        .fill(Color.lociqText.opacity(reduceTransparency ? 0.88 : 0.72))
-                        .frame(width: geometry.size.width * min(max(progress, 0), 1), height: 1)
+                        .transition(.opacity)
                 }
             }
             .clipped()

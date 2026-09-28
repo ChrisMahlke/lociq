@@ -24,13 +24,23 @@ struct FadingContentPanel: View {
     /// Accessibility reduced-motion flag.
     let reduceMotion: Bool
 
+    /// Current appearance, shown in the details footer.
+    var themePreference: LociqThemePreference = .dark
+
+    /// Changes the appearance from the details footer.
+    var onSelectTheme: (LociqThemePreference) -> Void = { _ in }
+
     /// Renders the active content mode.
     var body: some View {
         ZStack(alignment: .topTrailing) {
             if isShowingDetails {
-                DetailContent(snapshot: snapshot, layout: layout)
-                    .opacity(DemographicContentStyle.detailPanelOpacity)
-                    .transition(contentTransition)
+                DetailContent(
+                    snapshot: snapshot,
+                    layout: layout,
+                    themePreference: themePreference,
+                    onSelectTheme: onSelectTheme
+                )
+                .transition(contentTransition)
             } else {
                 MetricContent(metrics: snapshot.metrics, layout: layout)
                     .transition(contentTransition)
@@ -73,6 +83,10 @@ private struct MetricContent: View {
 }
 
 /// One summary metric block.
+///
+/// Percentage metrics add a thin bar directly under the value, drawn from the
+/// same rounded number the text shows. The detail line then names what the
+/// bar and the remainder mean, so color is never the only cue.
 private struct MetricBlock: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -82,62 +96,67 @@ private struct MetricBlock: View {
     /// Layout metrics for typography.
     let layout: MinimalLayout
 
-    /// Renders title, primary value, and secondary detail.
+    /// Renders title, primary value, optional bar, and secondary detail.
     var body: some View {
         VStack(alignment: .trailing, spacing: 5) {
             Text(metric.title)
                 .font(LociqTypeScale.metricLabel(layout))
-                .foregroundStyle(Color.lociqText.opacity(0.78))
+                .foregroundStyle(Color.lociq(.metricLabel))
 
             Text(metric.primaryValue)
-                .font(LociqTypeScale.metricValue(layout))
-                .foregroundStyle(Color.lociqText)
+                .font(isPrimaryMetric ? LociqTypeScale.primaryMetricValue(layout) : LociqTypeScale.metricValue(layout))
+                .foregroundStyle(Color.lociq(.primary))
                 .monospacedDigit()
-                .lineLimit(layout.usesAccessibilityLayout ? 2 : 1)
-                .minimumScaleFactor(layout.usesAccessibilityLayout ? 1 : 0.78)
+                .lineLimit(layout.usesSingleColumn ? 2 : 1)
+                .minimumScaleFactor(layout.usesSingleColumn ? 1 : 0.78)
                 .allowsTightening(true)
+
+            if let fraction = metric.barFraction {
+                MetricBar(fraction: fraction, isEmphasized: reduceTransparency)
+                    .frame(width: min(layout.contentWidth, layout.scaled(164, relativeTo: .body)), height: 3)
+                    .padding(.vertical, 2)
+            }
 
             if !metric.detail.isEmpty {
                 Text(metric.detail)
                     .font(LociqTypeScale.metricDetail(layout))
-                    .foregroundStyle(Color.lociqText.opacity(0.54))
-                    .lineLimit(layout.usesAccessibilityLayout ? nil : 2)
-                    .minimumScaleFactor(layout.usesAccessibilityLayout ? 1 : 0.82)
+                    .foregroundStyle(Color.lociq(.secondary))
+                    .lineLimit(layout.usesSingleColumn ? nil : 2)
+                    .minimumScaleFactor(layout.usesSingleColumn ? 1 : 0.82)
                     .multilineTextAlignment(.trailing)
-            }
-
-            if let progress = barProgress {
-                metricBar(progress: progress)
-                    .frame(width: min(layout.contentWidth, 164), height: 3)
-                    .padding(.top, 2)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(metric.title == "OWNER OCCUPIED" ? "Housing tenure" : "Education attainment")
-                    .accessibilityValue(metric.accessibilitySummary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(metric.accessibilitySummary)
+        .accessibilityIdentifier("metric.\(metric.id)")
     }
 
-    /// Both bars represent their visible primary percentage.
-    private var barProgress: Double? {
-        metric.progress
+    /// Population is the main figure and gets one size step more.
+    private var isPrimaryMetric: Bool {
+        metric.resolvedKind == .population
     }
+}
 
-    @ViewBuilder
-    private func metricBar(progress: Double) -> some View {
+/// Thin horizontal bar: a faint full-width track and a quiet fill.
+private struct MetricBar: View {
+    /// Filled share in `0...1`.
+    let fraction: Double
+
+    /// Uses stronger contrast (Reduce Transparency).
+    let isEmphasized: Bool
+
+    var body: some View {
         GeometryReader { geometry in
-            let width = geometry.size.width
-            if metric.title == "OWNER OCCUPIED" || metric.title == "EDUCATION" {
-                ZStack(alignment: .leading) {
-                    Rectangle().fill(Color.lociqText.opacity(reduceTransparency ? 0.26 : 0.13))
-                    Rectangle()
-                        .fill(Color.lociqText.opacity(reduceTransparency ? 0.72 : 0.48))
-                        .frame(width: width * progress)
-                }
-                .accessibilityHidden(true)
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(Color.lociqBarTrack(emphasized: isEmphasized))
+                Rectangle()
+                    .fill(Color.lociqBarFill(emphasized: isEmphasized))
+                    .frame(width: geometry.size.width * fraction)
             }
         }
+        .accessibilityHidden(true)
     }
 }

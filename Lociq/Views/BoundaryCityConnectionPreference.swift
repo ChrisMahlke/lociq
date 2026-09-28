@@ -16,7 +16,7 @@ struct BoundaryCityConnectionAnchors: Equatable {
     /// Boundary view bounds anchor.
     var boundary: Anchor<CGRect>?
 
-    /// Projected center of the actual boundary path inside the boundary view.
+    /// Interior point of the fitted boundary part, where the connector starts.
     var boundaryCenter: CGPoint?
 
     /// City label bounds anchor.
@@ -26,7 +26,7 @@ struct BoundaryCityConnectionAnchors: Equatable {
 /// Preference key that merges boundary and city anchors emitted by different views.
 struct BoundaryCityConnectionPreferenceKey: PreferenceKey {
     /// Empty anchor payload used before child views publish geometry.
-    static var defaultValue = BoundaryCityConnectionAnchors()
+    static let defaultValue = BoundaryCityConnectionAnchors()
 
     /// Merges boundary and city anchors emitted by separate views.
     ///

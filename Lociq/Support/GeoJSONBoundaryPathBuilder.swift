@@ -2,7 +2,7 @@
 //  GeoJSONBoundaryPathBuilder.swift
 //  Lociq
 //
-//  Projects GeoJSON boundaries into north-up Web Mercator SwiftUI paths.
+//  Projects GeoJSON boundaries into north-up Web Mercator SwiftUI glyphs.
 //
 //  The boundary preview is intentionally not a map. It does not render tiles,
 //  labels, roads, or any interactive map layers. It only needs a correctly
@@ -10,11 +10,13 @@
 //
 //  The conversion pipeline is:
 //
-//  1. Extract exterior GeoJSON rings.
+//  1. Extract polygons, with their holes.
 //  2. Project longitude and latitude into Web Mercator world coordinates.
-//  3. Compute projected bounds for the geometry that should control fitting.
-//  4. Scale those bounds into the available SwiftUI rectangle.
-//  5. Build a `Path` from the projected rings.
+//  3. Choose the part to fit: the one containing the user, else the largest.
+//     Other parts are drawn only when they sit close to it, so a distant
+//     island does not shrink the city to a dot.
+//  4. Normalize the fitted parts into unit space, once, off the main actor.
+//  5. Scale the unit path into the view's frame with one affine transform.
 //
 //  Web Mercator is used so the preview has the same north-up orientation users
 //  expect from common web maps. The app still avoids map UI. Projection is only
@@ -24,317 +26,200 @@
 import CoreLocation
 import SwiftUI
 
-/// Stores a projected boundary path and the transform needed to project related coordinates.
+/// A boundary outline normalized into unit space, ready to scale into any frame.
 ///
-/// `GeoJSONBoundaryProjection` is the reusable result produced by
-/// `GeoJSONBoundaryPathBuilder`. The `path` is what SwiftUI strokes on screen.
-/// The remaining private values preserve the same projection transform so other
-/// geographic values, such as the user's approximate coordinate, can be placed
-/// into the exact same drawing space.
-///
-/// This is important because the boundary outline and the location dot must use
-/// one shared coordinate system. If they were projected independently, the dot
-/// could drift away from its real position inside the outline.
-nonisolated struct GeoJSONBoundaryProjection {
-    /// The final SwiftUI path fitted into the requested drawing rectangle.
-    let path: Path
+/// Building a glyph walks every vertex and runs the projection math, so it is
+/// done once per boundary and location, off the main actor. Drawing only
+/// applies an affine transform to `unitPath`.
+nonisolated struct BoundaryGlyph: Sendable {
+    /// Outline of the drawn parts, holes included, in unit space.
+    let unitPath: Path
 
-    /// The center of the actually drawn projected path inside the drawing rectangle.
-    ///
-    /// This is based on the projected path bounds, not simply the center of the
-    /// full view rectangle. The connector animation uses this point so the line
-    /// starts at the visual center of the boundary shape.
-    let center: CGPoint
+    /// Size of the unit-space drawing. The longer side is 1.
+    let unitSize: CGSize
 
-    /// The rectangle that defines the output drawing coordinate space.
-    private let rect: CGRect
+    /// Connector start in unit space: an interior point of the fitted part.
+    let unitAnchor: CGPoint
 
-    /// The minimum projected Web Mercator x value used as the transform origin.
-    private let minProjectedX: CGFloat
+    /// Web Mercator origin of the fitted bounds.
+    let projectedOrigin: CGPoint
 
-    /// The minimum projected Web Mercator y value used as the transform origin.
-    private let minProjectedY: CGFloat
+    /// Multiplier from Web Mercator units to unit space.
+    let unitScale: CGFloat
 
-    /// Horizontal offset that centers the scaled projection inside `rect`.
-    private let xOffset: CGFloat
+    /// Breathing-room multiplier applied when fitting into a frame.
+    let drawingScale: CGFloat
 
-    /// Vertical offset that centers the scaled projection inside `rect`.
-    private let yOffset: CGFloat
-
-    /// Scale factor from projected Web Mercator units into view points.
-    private let scale: CGFloat
-
-    /// Creates a reusable projected boundary value for one boundary and drawing rectangle.
-    ///
-    /// - Parameters:
-    ///   - path: The fitted SwiftUI path created from all drawable rings.
-    ///   - bounds: The bounds of the actual fitted path after projection.
-    ///   - rect: The drawing rectangle used by the SwiftUI boundary view.
-    ///   - minProjectedX: The projected x origin used during path construction.
-    ///   - minProjectedY: The projected y origin used during path construction.
-    ///   - xOffset: Horizontal centering offset applied to projected points.
-    ///   - yOffset: Vertical centering offset applied to projected points.
-    ///   - scale: The projected-unit to view-point scale factor.
-    init(
-        path: Path,
-        bounds: CGRect,
-        rect: CGRect,
-        minProjectedX: CGFloat,
-        minProjectedY: CGFloat,
-        xOffset: CGFloat,
-        yOffset: CGFloat,
-        scale: CGFloat
-    ) {
-        self.path = path
-        self.center = CGPoint(x: bounds.midX, y: bounds.midY)
-        self.rect = rect
-        self.minProjectedX = minProjectedX
-        self.minProjectedY = minProjectedY
-        self.xOffset = xOffset
-        self.yOffset = yOffset
-        self.scale = scale
-    }
-
-    /// Projects a geographic coordinate into this projection's drawing space.
-    ///
-    /// This is used for the approximate location dot. It applies the same
-    /// transform that was used to build the boundary path:
-    ///
-    /// 1. Convert longitude and latitude to Web Mercator world coordinates.
-    /// 2. Subtract the projected fitting origin.
-    /// 3. Apply the stored scale.
-    /// 4. Apply the centering offsets.
-    ///
-    /// The final containment check allows a tiny tolerance around the drawing
-    /// rectangle. That tolerance avoids hiding a dot because of fractional
-    /// projection or stroke-width differences near an edge, while still
-    /// preventing obviously out-of-frame coordinates from rendering.
-    ///
-    /// - Parameter coordinate: A geographic coordinate in WGS84 longitude and latitude.
-    /// - Returns: The point in SwiftUI drawing coordinates, or `nil` when the
-    ///   coordinate cannot be projected or falls outside the drawable area.
-    func point(for coordinate: CLLocationCoordinate2D) -> CGPoint? {
-        guard
-            let projectedPoint = WebMercatorProjection.worldPoint(
-                longitude: coordinate.longitude,
-                latitude: coordinate.latitude
-            )
-        else {
-            return nil
-        }
-
-        let point = CGPoint(
-            x: xOffset + (projectedPoint.x - minProjectedX) * scale,
-            y: yOffset + (projectedPoint.y - minProjectedY) * scale
+    /// Places the glyph, centered and aspect-fit, inside a drawing rectangle.
+    func placement(in rect: CGRect) -> BoundaryGlyphPlacement {
+        let fitScale = min(rect.width / unitSize.width, rect.height / unitSize.height) * drawingScale
+        let transform = CGAffineTransform(
+            a: fitScale,
+            b: 0,
+            c: 0,
+            d: fitScale,
+            tx: rect.midX - unitSize.width * fitScale / 2,
+            ty: rect.midY - unitSize.height * fitScale / 2
         )
-        return rect.insetBy(dx: -2, dy: -2).contains(point) ? point : nil
+        return BoundaryGlyphPlacement(glyph: self, rect: rect, transform: transform, fitScale: fitScale)
     }
 }
 
-/// Builds SwiftUI drawing primitives from GeoJSON place boundaries.
+/// A glyph placed in one drawing rectangle, with helpers to place related points.
 ///
-/// This type keeps geographic conversion out of SwiftUI views. Views ask for a
-/// projected path or a projected point. They do not know how GeoJSON nesting,
-/// Web Mercator bounds, fitting, or small-place scaling work.
-enum GeoJSONBoundaryPathBuilder {
-    /// Builds a reusable projection for the supplied boundary and drawing rectangle.
-    ///
-    /// The returned projection includes both the SwiftUI `Path` and the
-    /// transform needed to place related coordinates in the same space. The
-    /// method can optionally fit one boundary using another boundary's bounds.
-    /// That is useful when a smaller geography needs to be drawn inside a
-    /// larger geography without rescaling independently.
-    ///
-    /// - Parameters:
-    ///   - boundary: The GeoJSON boundary that should be drawn.
-    ///   - rect: The SwiftUI drawing rectangle.
-    ///   - fittingBoundary: Optional geometry whose bounds should control the
-    ///     scale and centering. When `nil`, `boundary` controls its own fitting.
-    /// - Returns: A projected path and transform, or `nil` when no drawable
-    ///   geometry can be produced.
-    nonisolated static func projection(
-        for boundary: GeoJSONFeatureCollection,
-        in rect: CGRect,
-        fittingTo fittingBoundary: GeoJSONFeatureCollection? = nil
-    ) -> GeoJSONBoundaryProjection? {
-        // Extract only exterior rings. Interior holes are intentionally ignored
-        // by `GeoJSONBoundaryRings` because this preview is stroked and tiny.
-        let rings = GeoJSONBoundaryRings.exteriorRings(from: boundary)
-        guard !rings.isEmpty else { return nil }
+/// The outline and the location marker use this one transform, so the marker
+/// can never drift from its position inside the outline.
+nonisolated struct BoundaryGlyphPlacement {
+    /// The glyph being placed.
+    let glyph: BoundaryGlyph
 
-        // If a separate fitting boundary is supplied, use its exterior rings to
-        // compute scale and offsets. The drawn rings still come from `boundary`.
-        let fittingRings = fittingBoundary.map(GeoJSONBoundaryRings.exteriorRings(from:))
-        let boundsRings = fittingRings?.isEmpty == false ? fittingRings ?? rings : rings
+    /// Drawing rectangle.
+    let rect: CGRect
 
-        // Bounds are computed in projected space. Longitude and latitude degrees
-        // are not uniform distances, so fitting in raw geographic coordinates
-        // would distort the outline and can rotate the perceived geography.
-        guard let projectedBounds = WebMercatorProjection.projectedBounds(for: boundsRings) else { return nil }
-        let projectedWidth = projectedBounds.width
-        let projectedHeight = projectedBounds.height
-        guard projectedWidth > 0, projectedHeight > 0 else { return nil }
+    /// Transform from unit space into the drawing rectangle.
+    let transform: CGAffineTransform
 
-        // Fit the projected boundary into the available rectangle while keeping
-        // its aspect ratio. `drawingScale` intentionally leaves breathing room
-        // so very small or very elongated places do not touch the preview edges.
-        let scale = min(rect.width / projectedWidth, rect.height / projectedHeight) * drawingScale(for: projectedBounds)
-        let drawingWidth = projectedWidth * scale
-        let drawingHeight = projectedHeight * scale
+    /// Points per unit-space unit.
+    let fitScale: CGFloat
 
-        // Center the scaled projected bounds inside the target rectangle.
-        let xOffset = rect.midX - drawingWidth / 2
-        let yOffset = rect.midY - drawingHeight / 2
-
-        var path = Path()
-        var minX = CGFloat.infinity
-        var maxX = -CGFloat.infinity
-        var minY = CGFloat.infinity
-        var maxY = -CGFloat.infinity
-        var didProjectAnyRing = false
-
-        for ring in rings {
-            // Build an intermediate array for the ring so invalid coordinates
-            // can be skipped before the path is mutated.
-            var projectedRing: [CGPoint] = []
-            projectedRing.reserveCapacity(ring.count)
-
-            for coordinate in ring where coordinate.count >= 2 {
-                // GeoJSON coordinate order is longitude, latitude.
-                guard let projectedPoint = WebMercatorProjection.worldPoint(longitude: coordinate[0], latitude: coordinate[1]) else {
-                    continue
-                }
-
-                // Convert projected world coordinates into the local SwiftUI
-                // drawing space using the same origin, scale, and offset used
-                // by the final projection object.
-                let point = CGPoint(
-                    x: xOffset + (projectedPoint.x - projectedBounds.minX) * scale,
-                    y: yOffset + (projectedPoint.y - projectedBounds.minY) * scale
-                )
-
-                // Track the actual drawn bounds. These can differ from the
-                // fitting bounds when `fittingBoundary` is supplied.
-                minX = min(minX, point.x)
-                maxX = max(maxX, point.x)
-                minY = min(minY, point.y)
-                maxY = max(maxY, point.y)
-                projectedRing.append(point)
-            }
-
-            if projectedRing.count > 2 {
-                // The preview strokes each exterior ring as a closed outline.
-                // Closing the subpath makes the shape robust even if the source
-                // ring does not repeat the first coordinate as its final point.
-                path.move(to: projectedRing[0])
-                for point in projectedRing.dropFirst() {
-                    path.addLine(to: point)
-                }
-                path.closeSubpath()
-                didProjectAnyRing = true
-            }
-        }
-
-        guard didProjectAnyRing else { return nil }
-
-        // Preserve the transform values so caller code can project the user's
-        // coordinate into the same view space without recomputing or diverging.
-        return GeoJSONBoundaryProjection(
-            path: path,
-            bounds: CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY),
-            rect: rect,
-            minProjectedX: projectedBounds.minX,
-            minProjectedY: projectedBounds.minY,
-            xOffset: xOffset,
-            yOffset: yOffset,
-            scale: scale
-        )
+    /// The fitted outline in drawing coordinates.
+    var path: Path {
+        glyph.unitPath.applying(transform)
     }
 
-    /// Builds a SwiftUI path for the supplied GeoJSON boundary using Web Mercator orientation.
+    /// Connector start in drawing coordinates.
+    var anchor: CGPoint {
+        glyph.unitAnchor.applying(transform)
+    }
+
+    /// Projects a geographic coordinate into drawing coordinates.
     ///
-    /// This convenience method is useful when callers only need to stroke the
-    /// boundary and do not need the reusable coordinate projection.
+    /// Returns `nil` when the coordinate cannot be projected or falls outside
+    /// the drawing rectangle (with a 2-pt tolerance for fractional edges).
+    func point(for coordinate: CLLocationCoordinate2D) -> CGPoint? {
+        guard let world = WebMercatorProjection.worldPoint(longitude: coordinate.longitude, latitude: coordinate.latitude) else {
+            return nil
+        }
+        let unit = CGPoint(
+            x: (world.x - glyph.projectedOrigin.x) * glyph.unitScale,
+            y: (world.y - glyph.projectedOrigin.y) * glyph.unitScale
+        )
+        let point = unit.applying(transform)
+        return rect.insetBy(dx: -2, dy: -2).contains(point) ? point : nil
+    }
+
+    /// Converts a ground distance at a latitude into drawing points.
+    ///
+    /// One meter on the ground spans `1 / (2π · 6,378,137 · cos φ)` of the
+    /// normalized Web Mercator world, which is then scaled like the outline.
+    func points(forMeters meters: Double, atLatitude latitude: Double) -> CGFloat {
+        let cosine = cos(min(max(latitude, -85), 85) * .pi / 180)
+        let worldUnits = meters / (2 * .pi * 6_378_137 * cosine)
+        return CGFloat(worldUnits) * glyph.unitScale * fitScale
+    }
+}
+
+/// Builds boundary glyphs from GeoJSON place boundaries.
+///
+/// This type keeps geographic conversion out of SwiftUI views. Views ask for a
+/// placed glyph. They do not know how GeoJSON nesting, Web Mercator bounds,
+/// fitting, or small-place scaling work.
+nonisolated enum GeoJSONBoundaryPathBuilder {
+    /// Typical glyph size used to decide which holes are too small to see.
+    static let nominalGlyphSize: CGFloat = 140
+
+    /// Holes smaller than this many points at the nominal size are not drawn.
+    static let minimumVisibleHoleSize: CGFloat = 1.5
+
+    /// Other parts are drawn only if they fit within this multiple of the fitted part's frame.
+    static let nearbyPartWindow: CGFloat = 1.5
+
+    /// Builds a glyph for a boundary, fitted to the part that matters.
     ///
     /// - Parameters:
     ///   - boundary: The GeoJSON boundary to draw.
-    ///   - rect: The SwiftUI drawing rectangle.
-    ///   - fittingBoundary: Optional geometry whose bounds should control scale
-    ///     and centering.
-    /// - Returns: A fitted path, or `nil` when projection fails.
-    nonisolated static func path(
-        for boundary: GeoJSONFeatureCollection,
-        in rect: CGRect,
-        fittingTo fittingBoundary: GeoJSONFeatureCollection? = nil
-    ) -> Path? {
-        projection(for: boundary, in: rect, fittingTo: fittingBoundary)?.path
-    }
+    ///   - focus: The user's coordinate. The part containing it is fitted;
+    ///     without one, or when it is outside every part, the largest part is.
+    /// - Returns: A unit-space glyph, or `nil` when no drawable geometry exists.
+    static func glyph(for boundary: GeoJSONFeatureCollection, focus: CLLocationCoordinate2D?) -> BoundaryGlyph? {
+        let parts = GeoJSONBoundaryRings.polygons(from: boundary).compactMap(ProjectedPolygon.init)
+        guard let largestIndex = parts.indices.max(by: { parts[$0].area < parts[$1].area }) else { return nil }
 
-    /// Returns the projected center of a boundary path, falling back to the provided rectangle center.
-    ///
-    /// The connector line should start from the visual center of the geography,
-    /// not from the center of the whole app screen. This method projects the
-    /// boundary and returns that geometry center. When no boundary is available,
-    /// the rectangle center is the safest neutral fallback.
-    ///
-    /// - Parameters:
-    ///   - boundary: Optional GeoJSON boundary.
-    ///   - fallbackRect: The rectangle whose center should be used if the
-    ///     boundary cannot be projected.
-    /// - Returns: A point in local drawing coordinates.
-    nonisolated static func center(for boundary: GeoJSONFeatureCollection?, fallbackRect: CGRect) -> CGPoint {
-        guard
-            let boundary,
-            let projection = projection(
-                for: boundary,
-                in: CGRect(origin: .zero, size: fallbackRect.size)
-            )
-        else {
-            return CGPoint(x: fallbackRect.width / 2, y: fallbackRect.height / 2)
+        let focusPoint = focus.flatMap {
+            WebMercatorProjection.worldPoint(longitude: $0.longitude, latitude: $0.latitude)
+        }
+        let focusIndex = focusPoint.flatMap { point in parts.firstIndex { $0.contains(point) } } ?? largestIndex
+        let focusPart = parts[focusIndex]
+
+        // Keep parts that sit close to the fitted part; drop distant ones.
+        let window = focusPart.bounds.insetBy(
+            dx: -focusPart.bounds.width * (nearbyPartWindow - 1) / 2,
+            dy: -focusPart.bounds.height * (nearbyPartWindow - 1) / 2
+        )
+        let drawnParts = parts.indices
+            .filter { $0 == focusIndex || window.contains(parts[$0].bounds) }
+            .map { parts[$0] }
+        let fitBounds = drawnParts.map(\.bounds).reduce(CGRect.null) { $0.union($1) }
+        guard fitBounds.width > 0, fitBounds.height > 0 else { return nil }
+
+        let unitScale = 1 / max(fitBounds.width, fitBounds.height)
+        func unitPoint(_ point: CGPoint) -> CGPoint {
+            CGPoint(x: (point.x - fitBounds.minX) * unitScale, y: (point.y - fitBounds.minY) * unitScale)
         }
 
-        return projection.center
-    }
-
-    /// Projects a geographic coordinate into the same drawing space as the fitted boundary.
-    ///
-    /// This convenience method is used when a caller has a boundary and wants
-    /// to place one coordinate, such as the user's approximate location, within
-    /// that boundary's drawing frame.
-    ///
-    /// - Parameters:
-    ///   - coordinate: A WGS84 geographic coordinate.
-    ///   - rect: The SwiftUI drawing rectangle.
-    ///   - boundary: The boundary that controls projection and fitting.
-    /// - Returns: A point in local drawing coordinates, or `nil` when either
-    ///   the boundary or coordinate cannot be projected.
-    nonisolated static func point(
-        for coordinate: CLLocationCoordinate2D,
-        in rect: CGRect,
-        fittingTo boundary: GeoJSONFeatureCollection
-    ) -> CGPoint? {
-        guard
-            let projection = projection(for: boundary, in: rect)
-        else {
-            return nil
+        var path = Path()
+        for part in drawnParts {
+            add(part.exterior.points, to: &path, mapping: unitPoint)
+            for hole in part.holes {
+                let visibleSize = max(hole.bounds.width, hole.bounds.height) * unitScale * nominalGlyphSize
+                guard visibleSize >= minimumVisibleHoleSize else { continue }
+                add(hole.points, to: &path, mapping: unitPoint)
+            }
         }
 
-        return projection.point(for: coordinate)
+        return BoundaryGlyph(
+            unitPath: path,
+            unitSize: CGSize(width: fitBounds.width * unitScale, height: fitBounds.height * unitScale),
+            unitAnchor: unitPoint(interiorAnchor(for: focusPart, boundary: boundary)),
+            projectedOrigin: fitBounds.origin,
+            unitScale: unitScale,
+            drawingScale: drawingScale(for: fitBounds)
+        )
+    }
+
+    /// Appends one closed ring to a path.
+    private static func add(_ points: [CGPoint], to path: inout Path, mapping: (CGPoint) -> CGPoint) {
+        guard let first = points.first else { return }
+        path.move(to: mapping(first))
+        for point in points.dropFirst() {
+            path.addLine(to: mapping(point))
+        }
+        path.closeSubpath()
+    }
+
+    /// Chooses the connector start: a point inside the fitted part.
+    ///
+    /// Prefers the Census internal point (`INTPTLAT`/`INTPTLON`), which is
+    /// guaranteed to be inside the place, when it falls in the fitted part.
+    /// Otherwise uses the part's centroid if inside, else its bounds center.
+    private static func interiorAnchor(for part: ProjectedPolygon, boundary: GeoJSONFeatureCollection) -> CGPoint {
+        if let internalPoint = boundary.internalPoint,
+           let projected = WebMercatorProjection.worldPoint(longitude: internalPoint.longitude, latitude: internalPoint.latitude),
+           part.contains(projected) {
+            return projected
+        }
+        let centroid = part.exterior.centroid
+        if part.contains(centroid) { return centroid }
+        return CGPoint(x: part.bounds.midX, y: part.bounds.midY)
     }
 
     /// Chooses a restrained drawing scale so very small or elongated places keep breathing room.
     ///
     /// Fitting every boundary to the absolute maximum rectangle can look harsh
     /// in a minimalist UI. Very elongated cities can become edge-to-edge lines,
-    /// while very small places can look artificially oversized. This heuristic
-    /// keeps the preview visually quiet by reducing scale for those cases.
-    ///
-    /// The inputs are projected Web Mercator bounds, not screen-space bounds.
-    /// The returned value is a multiplier applied after aspect-fit scaling.
-    ///
-    /// - Parameter projectedBounds: The Web Mercator bounds used for fitting.
-    /// - Returns: A scale multiplier in the range used by the boundary preview.
-    nonisolated private static func drawingScale(for projectedBounds: CGRect) -> CGFloat {
+    /// while very small places can look artificially oversized. The inputs are
+    /// projected Web Mercator bounds; the result multiplies the aspect-fit scale.
+    private static func drawingScale(for projectedBounds: CGRect) -> CGFloat {
         let width = max(projectedBounds.width, 0.000_001)
         let height = max(projectedBounds.height, 0.000_001)
         let aspectRatio = max(width / height, height / width)
@@ -346,8 +231,8 @@ enum GeoJSONBoundaryPathBuilder {
             return 0.78
         }
         if area < 0.000_000_4 {
-            // Tiny projected areas often look better with extra quiet space
-            // around them instead of filling the entire boundary frame.
+            // Tiny projected areas look better with extra quiet space around
+            // them instead of filling the entire boundary frame.
             return 0.80
         }
         if aspectRatio > 2.4 {
@@ -356,5 +241,175 @@ enum GeoJSONBoundaryPathBuilder {
         }
         return 0.90
     }
+}
 
+// MARK: - Projected geometry
+
+/// A polygon projected into Web Mercator world coordinates.
+nonisolated private struct ProjectedPolygon {
+    let exterior: ProjectedRing
+    let holes: [ProjectedRing]
+
+    init?(_ polygon: BoundaryPolygon) {
+        guard let exterior = ProjectedRing(polygon.exterior) else { return nil }
+        self.exterior = exterior
+        holes = polygon.holes.compactMap(ProjectedRing.init)
+    }
+
+    var bounds: CGRect { exterior.bounds }
+
+    /// Land-and-water area of the part in projected units, holes excluded.
+    var area: CGFloat {
+        abs(exterior.signedArea) - holes.reduce(0) { $0 + abs($1.signedArea) }
+    }
+
+    /// Even-odd containment: inside the exterior and outside every hole.
+    func contains(_ point: CGPoint) -> Bool {
+        exterior.contains(point) && !holes.contains { $0.contains(point) }
+    }
+}
+
+/// One ring projected into Web Mercator world coordinates.
+nonisolated private struct ProjectedRing {
+    let points: [CGPoint]
+    let bounds: CGRect
+
+    init?(_ coordinates: [[Double]]) {
+        var points: [CGPoint] = []
+        points.reserveCapacity(coordinates.count)
+        for coordinate in coordinates where coordinate.count >= 2 {
+            // GeoJSON coordinate order is longitude, latitude.
+            if let point = WebMercatorProjection.worldPoint(longitude: coordinate[0], latitude: coordinate[1]) {
+                points.append(point)
+            }
+        }
+        guard points.count > 2 else { return nil }
+        self.points = points
+        var bounds = CGRect.null
+        for point in points {
+            bounds = bounds.union(CGRect(origin: point, size: .zero))
+        }
+        self.bounds = bounds
+    }
+
+    /// Shoelace area; the sign depends on winding order.
+    var signedArea: CGFloat {
+        var sum: CGFloat = 0
+        for index in points.indices {
+            let current = points[index]
+            let next = points[(index + 1) % points.count]
+            sum += current.x * next.y - next.x * current.y
+        }
+        return sum / 2
+    }
+
+    /// Area-weighted centroid, falling back to the bounds center for degenerate rings.
+    var centroid: CGPoint {
+        let area = signedArea
+        guard abs(area) > .ulpOfOne else { return CGPoint(x: bounds.midX, y: bounds.midY) }
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        for index in points.indices {
+            let current = points[index]
+            let next = points[(index + 1) % points.count]
+            let cross = current.x * next.y - next.x * current.y
+            x += (current.x + next.x) * cross
+            y += (current.y + next.y) * cross
+        }
+        return CGPoint(x: x / (6 * area), y: y / (6 * area))
+    }
+
+    /// Ray-casting point-in-ring test.
+    func contains(_ point: CGPoint) -> Bool {
+        guard bounds.contains(point) else { return false }
+        var inside = false
+        var previous = points[points.count - 1]
+        for current in points {
+            if (current.y > point.y) != (previous.y > point.y) {
+                let crossingX = (previous.x - current.x) * (point.y - current.y) / (previous.y - current.y) + current.x
+                if point.x < crossingX { inside.toggle() }
+            }
+            previous = current
+        }
+        return inside
+    }
+}
+
+// MARK: - Containment in meters
+
+/// Answers whether a location fix is still inside a place's boundary.
+///
+/// Used to skip reloading when the user has not left the place shown. Math is
+/// done in a local equirectangular frame around the fix, which is accurate to
+/// well under a meter at city scale.
+nonisolated enum BoundaryContainment {
+    /// Result of testing one coordinate against a boundary.
+    struct Result: Equatable, Sendable {
+        /// True when the coordinate is inside the boundary (holes excluded).
+        let isInside: Bool
+
+        /// Distance in meters to the nearest boundary edge, holes included.
+        let edgeDistanceMeters: Double
+    }
+
+    /// Tests a coordinate against every polygon of a boundary.
+    ///
+    /// - Returns: `nil` when the boundary has no usable polygons.
+    static func test(_ coordinate: CLLocationCoordinate2D, in boundary: GeoJSONFeatureCollection) -> Result? {
+        let polygons = GeoJSONBoundaryRings.polygons(from: boundary)
+        guard !polygons.isEmpty else { return nil }
+
+        let metersPerDegreeLongitude = 111_320 * cos(coordinate.latitude * .pi / 180)
+        let metersPerDegreeLatitude = 110_574.0
+        func local(_ pair: [Double]) -> (x: Double, y: Double) {
+            ((pair[0] - coordinate.longitude) * metersPerDegreeLongitude, (pair[1] - coordinate.latitude) * metersPerDegreeLatitude)
+        }
+
+        var isInside = false
+        var nearest = Double.infinity
+        for polygon in polygons {
+            let exterior = polygon.exterior.filter { $0.count >= 2 }.map(local)
+            let holes = polygon.holes.map { $0.filter { $0.count >= 2 }.map(local) }
+            if ringContainsOrigin(exterior) && !holes.contains(where: ringContainsOrigin) {
+                isInside = true
+            }
+            for ring in [exterior] + holes {
+                nearest = min(nearest, distanceFromOrigin(toRing: ring))
+            }
+        }
+        return Result(isInside: isInside, edgeDistanceMeters: nearest)
+    }
+
+    /// Ray-casting test for the origin of the local frame.
+    private static func ringContainsOrigin(_ ring: [(x: Double, y: Double)]) -> Bool {
+        guard ring.count > 2 else { return false }
+        var inside = false
+        var previous = ring[ring.count - 1]
+        for current in ring {
+            if (current.y > 0) != (previous.y > 0) {
+                let crossingX = (previous.x - current.x) * (0 - current.y) / (previous.y - current.y) + current.x
+                if 0 < crossingX { inside.toggle() }
+            }
+            previous = current
+        }
+        return inside
+    }
+
+    /// Shortest distance from the origin to any segment of a closed ring.
+    private static func distanceFromOrigin(toRing ring: [(x: Double, y: Double)]) -> Double {
+        guard ring.count > 1 else { return .infinity }
+        var nearest = Double.infinity
+        var previous = ring[ring.count - 1]
+        for current in ring {
+            let dx = current.x - previous.x
+            let dy = current.y - previous.y
+            let lengthSquared = dx * dx + dy * dy
+            let t = lengthSquared > 0 ? min(max(-(previous.x * dx + previous.y * dy) / lengthSquared, 0), 1) : 0
+            let px = previous.x + t * dx
+            let py = previous.y + t * dy
+            nearest = min(nearest, (px * px + py * py).squareRoot())
+            previous = current
+        }
+        return nearest
+    }
 }

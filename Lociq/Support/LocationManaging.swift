@@ -25,6 +25,9 @@ protocol LocationManaging: AnyObject {
     /// Current Core Location authorization status.
     var authorizationStatus: CLAuthorizationStatus { get }
 
+    /// Whether the user granted precise or approximate ("Precise Location: Off") location.
+    var accuracyAuthorization: CLAccuracyAuthorization { get }
+
     /// Requests foreground location authorization from the user.
     func requestWhenInUseAuthorization()
 
@@ -34,3 +37,15 @@ protocol LocationManaging: AnyObject {
 
 /// Allows the real Core Location manager to satisfy the app's narrow abstraction.
 extension CLLocationManager: LocationManaging {}
+
+/// One location fix as the app uses it.
+nonisolated struct LocationFix: Sendable {
+    /// Fix coordinate.
+    let coordinate: CLLocationCoordinate2D
+
+    /// Radius of uncertainty in meters, when known.
+    let horizontalAccuracy: CLLocationAccuracy?
+
+    /// True when the user allows only approximate location.
+    let isApproximate: Bool
+}

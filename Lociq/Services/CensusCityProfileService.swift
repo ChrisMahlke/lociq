@@ -5,17 +5,18 @@
 //  Coordinator for Census-backed city lookup and normalization.
 //
 //  This service wraps the direct Census client with a small in-memory lookup
-//  cache. The cache is intentionally session-scoped and coordinate-keyed. The
-//  persistent cache lives elsewhere and stores display-ready profiles.
+//  cache. The cache is session-scoped and keyed by Census place, so a new fix
+//  anywhere in the same place reuses statistics. The persistent cache lives
+//  elsewhere and stores display-ready profiles.
 //
 
 import Foundation
 
-/// Fetches resolved city profiles and memoizes successful coordinate lookups.
+/// Fetches resolved city profiles and memoizes successful lookups by place.
 ///
-/// Nearby location updates often report the same city multiple times. A short
-/// lived in-memory cache avoids repeating geocoder, ACS, and TIGER requests for
-/// the same rounded coordinate during one app session.
+/// Every fetch geocodes, because the place is what decides whether cached
+/// statistics apply. ACS and TIGER requests are skipped when the place already
+/// loaded this session, unless the caller forces a refresh.
 struct CensusCityProfileService: Sendable {
     /// Uncached client that performs the actual Census service composition.
     private let directClient: DirectCensusCityProfileClient
@@ -23,44 +24,36 @@ struct CensusCityProfileService: Sendable {
     /// Actor-protected memoization store for successful profile lookups.
     private let lookupCache = CityLookupCache()
 
-    /// Creates a cached city-profile service for the supplied ACS dataset year.
-    init(
-        censusApiKey: String,
-        acsYear: Int = 2024,
-        session: URLSession = .shared
-    ) {
-        directClient = DirectCensusCityProfileClient(
-            censusApiKey: censusApiKey,
-            acsYear: acsYear,
-            session: session
-        )
+    /// Creates a cached city-profile service around a direct client.
+    init(directClient: DirectCensusCityProfileClient) {
+        self.directClient = directClient
     }
 
-    /// Fetches or returns a cached city profile for a rounded coordinate key.
+    /// Resolves the place for a coordinate, then returns memoized or fresh statistics.
     ///
-    /// Only profiles with place-level demographics are cached. Unavailable and
-    /// partial shell states are intentionally not memoized here because a later
-    /// retry may succeed.
-    func fetchPlaceProfile(latitude: Double, longitude: Double) async throws -> ResolvedCityProfile {
-        let cacheKey = Self.coordinateCacheKey(latitude: latitude, longitude: longitude)
+    /// Only complete profiles are memoized: demographics and boundary both
+    /// loaded, from a fetch that was not cancelled. Unavailable and partial
+    /// results are never memoized, so a later load can still heal them.
+    func fetchPlaceProfile(
+        latitude: Double,
+        longitude: Double,
+        options: CityProfileFetchOptions = CityProfileFetchOptions()
+    ) async throws -> ResolvedCityProfile {
+        let geography = try await directClient.fetchGeography(latitude: latitude, longitude: longitude)
 
-        if let cached = await lookupCache.placeProfile(for: cacheKey) {
+        guard let placeKey = geography.place?.geoid else {
+            return await directClient.fetchPlaceProfile(for: geography)
+        }
+
+        if !options.forceRefresh, let cached = await lookupCache.placeProfile(for: placeKey) {
             return cached
         }
 
-        let profile = try await directClient.fetchPlaceProfile(latitude: latitude, longitude: longitude)
-        if profile.demographics.place != nil {
-            await lookupCache.store(placeProfile: profile, for: cacheKey)
+        let profile = await directClient.fetchPlaceProfile(for: geography, knownBoundary: options.knownBoundary)
+        if profile.demographics.place != nil, profile.partialFailures.isEmpty, !Task.isCancelled {
+            await lookupCache.store(placeProfile: profile, for: placeKey)
         }
         return profile
-    }
-
-    /// Rounds coordinates for in-memory profile caching.
-    ///
-    /// Five decimal places is precise enough to distinguish nearby blocks while
-    /// still absorbing minor GPS jitter inside the same local area.
-    private static func coordinateCacheKey(latitude: Double, longitude: Double) -> String {
-        String(format: "%.5f,%.5f", latitude, longitude)
     }
 }
 
@@ -72,7 +65,7 @@ struct CensusCityProfileService: Sendable {
 private actor CityLookupCache {
     private var placeProfiles: [String: ResolvedCityProfile] = [:]
 
-    /// Returns the profile cached for the supplied key.
+    /// Returns the profile cached for the supplied place GEOID.
     func placeProfile(for key: String) -> ResolvedCityProfile? {
         placeProfiles[key]
     }
@@ -80,5 +73,36 @@ private actor CityLookupCache {
     /// Stores a profile for subsequent lookups within the same app session.
     func store(placeProfile: ResolvedCityProfile, for key: String) {
         placeProfiles[key] = placeProfile
+    }
+}
+
+/// The Census clients the app uses, built once and shared by every path.
+///
+/// One graph means one set of session caches: a boundary downloaded by one
+/// load is reused by the next, and no path builds duplicate clients.
+struct CensusServiceGraph: Sendable {
+    let geocoderClient: CensusGeocoderClient
+    let boundaryClient: TIGERBoundaryClient
+    let demographicsClient: ACSDemographicsClient
+    let profileService: CensusCityProfileService
+
+    /// Builds the production client graph over one URL session.
+    init(censusAPIKey: String, vintage: CensusDataVintage = .current, session: URLSession = .shared) {
+        let httpClient = CensusHTTPClient(session: session)
+        let boundaryHTTPClient = CensusHTTPClient(session: session, retryPolicy: .boundary)
+        geocoderClient = CensusGeocoderClient(httpClient: httpClient, vintage: vintage)
+        boundaryClient = TIGERBoundaryClient(httpClient: boundaryHTTPClient, vintage: vintage)
+        demographicsClient = ACSDemographicsClient(
+            censusApiKey: censusAPIKey,
+            acsYear: vintage.acsYear,
+            httpClient: httpClient
+        )
+        profileService = CensusCityProfileService(
+            directClient: DirectCensusCityProfileClient(
+                geocoderClient: geocoderClient,
+                boundaryClient: boundaryClient,
+                demographicsClient: demographicsClient
+            )
+        )
     }
 }

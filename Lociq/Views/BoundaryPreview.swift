@@ -2,11 +2,11 @@
 //  BoundaryPreview.swift
 //  Lociq
 //
-//  Draws the city boundary and coordinates the approximate location pulse.
+//  Draws the city boundary and coordinates the location marker.
 //
 //  The boundary is a geography glyph, not a map. It traces the projected city
-//  outline, then reveals a small approximate-location marker after the outline
-//  has had time to establish place context.
+//  outline, then reveals a small location marker after the outline has had
+//  time to establish place context.
 //
 
 import CoreLocation
@@ -14,89 +14,94 @@ import SwiftUI
 
 /// Minimal projected boundary preview for the currently resolved city.
 ///
-/// The view projects GeoJSON into its local frame, animates the outline once,
-/// and publishes anchor data so `ContentView` can draw the connector to the
-/// city label.
+/// The view places a precomputed glyph into its frame, animates the outline
+/// once per place, and publishes anchor data so `ContentView` can draw the
+/// connector to the city label.
 struct CityBoundaryPreview: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
-    /// GeoJSON city or CDP boundary to draw.
-    let boundary: GeoJSONFeatureCollection
+    /// Outline built off the main actor for the displayed place.
+    let glyph: BoundaryGlyph
 
-    /// Optional user coordinate for the approximate-location dot.
+    /// Optional user coordinate for the location marker.
     let coordinate: CLLocationCoordinate2D?
 
-    /// Core Location accuracy used to style or hide the dot.
+    /// Core Location accuracy used to size or hide the marker.
     let horizontalAccuracy: CLLocationAccuracy?
 
-    /// Token that restarts the boundary trace when profile data changes.
+    /// True when the fix came from approximate location.
+    let isApproximate: Bool
+
+    /// City-wide density, which sets the dot texture's spacing.
+    let densityPerSquareMile: Double?
+
+    /// Token that restarts the boundary trace when the place changes.
     let traceToken: Int
 
     /// Accessibility reduced-motion flag.
     let reduceMotion: Bool
 
-    /// Optional real city-wide density used only for the accessibility description.
-    var densityLabel: String?
-
     /// Current trim progress for the boundary outline.
     @State private var traceProgress: CGFloat = 0
 
-    /// Whether the approximate-location dot should be visible.
+    /// Whether the location marker should be visible.
     @State private var showsLocationDot = false
 
-    /// Delayed reveal task for the location dot.
+    /// Delayed reveal task for the location marker.
     @State private var locationDotTask: Task<Void, Never>?
 
-    /// Projects and renders the boundary inside the available frame.
+    /// Places and renders the boundary inside the available frame.
     var body: some View {
         GeometryReader { proxy in
-            let rect = CGRect(origin: .zero, size: proxy.size)
+            let placement = glyph.placement(in: CGRect(origin: .zero, size: proxy.size))
+            let marker = markerStyle(for: placement)
+            let markerPoint = coordinate.flatMap(placement.point(for:))
 
-            if let projection = GeoJSONBoundaryPathBuilder.projection(for: boundary, in: rect) {
-                ZStack {
-                    // One uniform fill gives the city shape informational weight
-                    // without suggesting unsupported sub-city variation.
-                    BoundaryPreviewShape(projection: projection)
-                        .fill(Color.lociqText.opacity(reduceTransparency ? 0.16 : 0.075))
+            ZStack {
+                // One uniform fill gives the city shape informational weight
+                // without suggesting unsupported sub-city variation. The
+                // even-odd rule leaves enclaves (other places) unfilled.
+                BoundaryGlyphShape(glyph: glyph)
+                    .fill(Color.lociqText.opacity(isEmphasized ? 0.16 : 0.075), style: FillStyle(eoFill: true))
 
-                    BoundaryDotTexture()
-                        .foregroundStyle(Color.lociqText.opacity(reduceTransparency ? 0.16 : 0.09))
-                        .mask(BoundaryPreviewShape(projection: projection))
-
-                    // The path is trimmed from zero to one so the outline feels
-                    // drawn rather than abruptly appearing.
-                    BoundaryPreviewShape(projection: projection)
-                        .trim(from: 0, to: traceProgress)
-                        .stroke(
-                            Color.lociqBoundaryHalo,
-                            style: StrokeStyle(lineWidth: 2.7, lineCap: .round, lineJoin: .round)
-                        )
-
-                    BoundaryPreviewShape(projection: projection)
-                        .trim(from: 0, to: traceProgress)
-                        .stroke(
-                            Color.lociqBoundaryStroke,
-                            style: StrokeStyle(lineWidth: 1.0, lineCap: .round, lineJoin: .round)
-                        )
-
-                    if showsLocationDot, let coordinate, let locationPoint = projection.point(for: coordinate) {
-                        // The dot uses the same projection object as the path,
-                        // so it remains spatially aligned with the outline.
-                        let dotStyle = LocationDotStyle(accuracy: horizontalAccuracy)
-                        if dotStyle.isVisible {
-                            PulsingLocationDot(style: dotStyle, reduceMotion: reduceMotion)
-                                .position(locationPoint)
-                                .transition(.opacity)
-                        }
+                BoundaryDotTexture(spacing: BoundaryDotTexture.spacing(forDensity: densityPerSquareMile))
+                    .foregroundStyle(Color.lociqText.opacity(isEmphasized ? 0.16 : 0.09))
+                    .mask {
+                        BoundaryGlyphShape(glyph: glyph)
+                            .fill(style: FillStyle(eoFill: true))
                     }
+
+                // The path is trimmed from zero to one so the outline feels
+                // drawn rather than abruptly appearing.
+                BoundaryGlyphShape(glyph: glyph)
+                    .trim(from: 0, to: traceProgress)
+                    .stroke(
+                        Color.lociqBoundaryHalo,
+                        style: StrokeStyle(lineWidth: 2.7, lineCap: .round, lineJoin: .round)
+                    )
+
+                BoundaryGlyphShape(glyph: glyph)
+                    .trim(from: 0, to: traceProgress)
+                    .stroke(
+                        Color.lociqBoundaryStroke,
+                        style: StrokeStyle(lineWidth: 1.0, lineCap: .round, lineJoin: .round)
+                    )
+
+                if showsLocationDot, marker != .hidden, let markerPoint {
+                    // The marker uses the same placement as the outline, so it
+                    // stays spatially aligned with it.
+                    PulsingLocationDot(style: marker, reduceMotion: reduceMotion)
+                        .position(markerPoint)
+                        .transition(.opacity)
                 }
-                .anchorPreference(key: BoundaryCityConnectionPreferenceKey.self, value: .bounds) {
-                    BoundaryCityConnectionAnchors(boundary: $0, boundaryCenter: projection.center)
-                }
-                .background(Color.clear)
-            } else {
-                Color.clear
             }
+            .anchorPreference(key: BoundaryCityConnectionPreferenceKey.self, value: .bounds) {
+                BoundaryCityConnectionAnchors(boundary: $0, boundaryCenter: placement.anchor)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityDescription(marker: markerPoint == nil ? .hidden : marker))
+            .accessibilityIdentifier("boundary.glyph")
         }
         .onAppear {
             traceBoundary()
@@ -107,14 +112,29 @@ struct CityBoundaryPreview: View {
         .onDisappear {
             locationDotTask?.cancel()
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityDescription)
     }
 
-    /// Restarts the boundary trace and delays the approximate-location dot until the shape is established.
+    /// True when fills should use their higher-contrast values.
+    private var isEmphasized: Bool {
+        reduceTransparency || colorSchemeContrast == .increased
+    }
+
+    /// Chooses the marker for the current fix and glyph scale.
+    private func markerStyle(for placement: BoundaryGlyphPlacement) -> LocationMarkerStyle {
+        guard let coordinate else { return .hidden }
+        return LocationMarkerStyle.make(
+            accuracyMeters: horizontalAccuracy,
+            isApproximate: isApproximate,
+            glyphSize: placement.rect.size
+        ) { meters in
+            placement.points(forMeters: meters, atLatitude: coordinate.latitude)
+        }
+    }
+
+    /// Restarts the boundary trace and delays the marker until the shape is established.
     ///
-    /// The dot reveal is delayed so the user first perceives the place boundary,
-    /// then the approximate location within it. The task is cancelled whenever
+    /// The marker reveal is delayed so the user first perceives the place
+    /// boundary, then the location within it. The task is cancelled whenever
     /// the view disappears or a new trace starts.
     private func traceBoundary() {
         locationDotTask?.cancel()
@@ -139,19 +159,35 @@ struct CityBoundaryPreview: View {
         }
     }
 
-    private var accessibilityDescription: String {
-        let location = coordinate == nil ? "" : ", with approximate location marked"
-        let density = densityLabel.map { ", density \($0)" } ?? ""
-        return "City boundary\(location)\(density)"
+    /// Describes the glyph, mentioning the marker only when it is drawn.
+    private func accessibilityDescription(marker: LocationMarkerStyle) -> String {
+        switch marker {
+        case .precise: return "City boundary, with your location marked"
+        case .area: return "City boundary, with your approximate area marked"
+        case .hidden: return "City boundary"
+        }
     }
 }
 
 /// A faint, even micro-dot field. Uniform spacing communicates city-wide
 /// density without resembling a neighborhood choropleth.
 private struct BoundaryDotTexture: View {
+    /// Distance between dot centers.
+    let spacing: CGFloat
+
+    /// Dot spacing for a city-wide density: denser places get a finer field.
+    ///
+    /// The spacing is uniform within a city, so it implies the city's overall
+    /// density without suggesting variation inside it. Unknown density keeps
+    /// the neutral spacing.
+    static func spacing(forDensity density: Double?) -> CGFloat {
+        guard let density, density > 0 else { return 9 }
+        let spacing = 14 - 1.6 * log10(max(density, 1))
+        return CGFloat(min(max(spacing, 7), 12))
+    }
+
     var body: some View {
         Canvas { context, size in
-            let spacing: CGFloat = 9
             for y in stride(from: spacing / 2, through: size.height, by: spacing) {
                 for x in stride(from: spacing / 2, through: size.width, by: spacing) {
                     context.fill(
@@ -165,13 +201,14 @@ private struct BoundaryDotTexture: View {
     }
 }
 
-/// SwiftUI shape wrapper around a precomputed projected GeoJSON path.
-private struct BoundaryPreviewShape: Shape {
-    /// Projection that already contains the fitted path.
-    let projection: GeoJSONBoundaryProjection
+/// SwiftUI shape that scales a unit-space glyph into its rect.
+///
+/// Only an affine transform runs per frame; projection math ran once, off the
+/// main actor, when the glyph was built.
+private struct BoundaryGlyphShape: Shape {
+    let glyph: BoundaryGlyph
 
-    /// Draws the projected GeoJSON boundary inside the provided rect.
     func path(in rect: CGRect) -> Path {
-        projection.path
+        glyph.placement(in: rect).path
     }
 }

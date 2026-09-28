@@ -16,12 +16,16 @@ import Foundation
 /// This type validates the shape before the mapper sees the data. That keeps
 /// parsing errors close to transport concerns and lets the mapper assume it has
 /// a consistent key-value dictionary.
-struct ACSTableResponse: Sendable {
+nonisolated struct ACSTableResponse: Sendable {
     /// Header row containing ACS variable names and geography columns.
     let header: [String]
 
-    /// First result row containing raw string values for the requested place.
-    let row: [String]
+    /// First result row containing raw values for the requested place.
+    ///
+    /// Census documents `null` cells ("no data available for the requested
+    /// geography"), and annotation columns are `null` for ordinary estimates,
+    /// so a missing cell is kept as `nil` instead of failing the whole table.
+    let row: [String?]
 
     /// Decodes and validates the first ACS result row from raw response data.
     ///
@@ -29,12 +33,17 @@ struct ACSTableResponse: Sendable {
     /// - Throws: `CensusServiceError.decodeFailed` when the table is missing a
     ///   data row or when header and row lengths differ.
     init(data: Data) throws {
-        let rows = try JSONDecoder().decode([[String]].self, from: data)
+        let rows: [[String?]]
+        do {
+            rows = try JSONDecoder().decode([[String?]].self, from: data)
+        } catch {
+            throw CensusServiceError.decodeFailed("Unexpected ACS response shape")
+        }
         guard rows.count >= 2 else {
             throw CensusServiceError.decodeFailed("Unexpected ACS response shape")
         }
 
-        header = rows[0]
+        header = rows[0].map { $0 ?? "" }
         row = rows[1]
 
         guard header.count == row.count else {
@@ -44,10 +53,12 @@ struct ACSTableResponse: Sendable {
 
     /// Returns the first ACS result row keyed by ACS variable code.
     ///
-    /// Geography columns such as `state` and `place` are preserved in the
-    /// dictionary, although the demographic mapper mostly consumes ACS variables
-    /// plus `NAME`.
+    /// Null cells are omitted, which the mapper treats as unavailable. A
+    /// repeated column keeps its first value rather than trapping.
     func valuesByKey() -> [String: String] {
-        Dictionary(uniqueKeysWithValues: zip(header, row))
+        let pairs = zip(header, row).compactMap { key, value in
+            value.map { (key, $0) }
+        }
+        return Dictionary(pairs, uniquingKeysWith: { first, _ in first })
     }
 }

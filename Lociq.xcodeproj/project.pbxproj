@@ -119,6 +119,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F9F07C222F567A45009C7121 /* Build configuration list for PBXNativeTarget "Lociq" */;
 			buildPhases = (
+				F9A1C0DE2F80C0DE00000001 /* Check Census API key (Release) */,
 				F9F07BFB2F567A44009C7121 /* Sources */,
 				F9F07BFC2F567A44009C7121 /* Frameworks */,
 				F9F07BFD2F567A44009C7121 /* Resources */,
@@ -253,6 +254,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		F9A1C0DE2F80C0DE00000001 /* Check Census API key (Release) */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check Census API key (Release)";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Fails Release builds that would ship without Census data access.\n# Environment logging stays off so the key never appears in build logs.\nif [ \"${CONFIGURATION}\" = \"Release\" ] && [ -z \"${CENSUS_API_KEY}\" ]; then\n  echo \"error: CENSUS_API_KEY is empty. Set it in Config/Secrets.xcconfig before building Release.\"\n  exit 1\nfi\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		F9F07BFB2F567A44009C7121 /* Sources */ = {
@@ -428,8 +452,6 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/AppInfo.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "LOC IQ";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -462,8 +484,6 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/AppInfo.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "LOC IQ";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
