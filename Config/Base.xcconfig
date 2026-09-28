@@ -1,11 +1,6 @@
 // Shared app configuration.
 
-// App version and build, shared by the iPhone and iPad app, the Apple Watch
-// app, and its complications. App Store Connect rejects an upload whose
-// watch app or extension version differs from the iPhone app's, so change
-// them here rather than per target.
-MARKETING_VERSION = 1.4.0
-CURRENT_PROJECT_VERSION = 1.4.0
+#include "Version.xcconfig"
 
 CENSUS_API_KEY =
 

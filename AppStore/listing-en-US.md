@@ -66,7 +66,7 @@ City data covers the 50 states, the District of Columbia, and Puerto Rico.
 This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau.
 ```
 
-## What’s New (next version)
+## What’s New (1.4.0)
 
 ```text
 • New Apple Watch app. It finds your city on its own, and a watch face complication shows your city at a glance.

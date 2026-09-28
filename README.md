@@ -171,7 +171,7 @@ CENSUS_API_KEY = YOUR_CENSUS_API_KEY
 
 The Apple Watch app and its complications share the App Group `group.io.chrismahlke.lociq`. With automatic signing, Xcode registers it for your team the first time you build the watch app for a device.
 
-The version and build number live in `Config/Base.xcconfig` and are shared by the iPhone and iPad app, the watch app, and the complications, because App Store Connect rejects an upload whose versions differ.
+The version and build number live in `Config/Version.xcconfig`, which every target reads: the iPhone and iPad app, the watch app, the complications, and the tests. App Store Connect rejects an upload whose versions differ.
 
 ## Testing
 

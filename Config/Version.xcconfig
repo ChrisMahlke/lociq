@@ -1,0 +1,9 @@
+// App version and build, shared by every target. App Store Connect rejects
+// an upload whose watch app or extension version differs from the iPhone
+// app's, so change them here rather than per target.
+//
+// The app, the watch app, and the complications read this through
+// Base.xcconfig. The test targets read it directly, so they don't also pick
+// up the API keys that Base.xcconfig includes.
+MARKETING_VERSION = 1.4.0
+CURRENT_PROJECT_VERSION = 1.4.0
