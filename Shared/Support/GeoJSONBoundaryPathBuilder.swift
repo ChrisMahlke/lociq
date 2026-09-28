@@ -50,6 +50,15 @@ nonisolated struct BoundaryGlyph: Sendable {
     /// Breathing-room multiplier applied when fitting into a frame.
     let drawingScale: CGFloat
 
+    /// The largest size with the glyph's proportions that fits within `size`.
+    ///
+    /// A glyph placed in a frame of this size fills it, less its breathing
+    /// room, so a label under the frame sits right under the outline.
+    func fittedSize(within size: CGSize) -> CGSize {
+        let scale = min(size.width / unitSize.width, size.height / unitSize.height)
+        return CGSize(width: unitSize.width * scale, height: unitSize.height * scale)
+    }
+
     /// Places the glyph, centered and aspect-fit, inside a drawing rectangle.
     func placement(in rect: CGRect) -> BoundaryGlyphPlacement {
         let fitScale = min(rect.width / unitSize.width, rect.height / unitSize.height) * drawingScale
@@ -97,6 +106,15 @@ nonisolated struct BoundaryGlyphPlacement {
     /// Returns `nil` when the coordinate cannot be projected or falls outside
     /// the drawing rectangle (with a 2-pt tolerance for fractional edges).
     func point(for coordinate: CLLocationCoordinate2D) -> CGPoint? {
+        point(for: coordinate, within: rect)
+    }
+
+    /// Projects a geographic coordinate, keeping it only inside `bounds`
+    /// (with a 2-pt tolerance for fractional edges).
+    ///
+    /// Frames that hug the outline pass the larger frame they replace, so a
+    /// marker just outside the outline is drawn as it would be there.
+    func point(for coordinate: CLLocationCoordinate2D, within bounds: CGRect) -> CGPoint? {
         guard let world = WebMercatorProjection.worldPoint(longitude: coordinate.longitude, latitude: coordinate.latitude) else {
             return nil
         }
@@ -105,7 +123,7 @@ nonisolated struct BoundaryGlyphPlacement {
             y: (world.y - glyph.projectedOrigin.y) * glyph.unitScale
         )
         let point = unit.applying(transform)
-        return rect.insetBy(dx: -2, dy: -2).contains(point) ? point : nil
+        return bounds.insetBy(dx: -2, dy: -2).contains(point) ? point : nil
     }
 
     /// Converts a ground distance at a latitude into drawing points.

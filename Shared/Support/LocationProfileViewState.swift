@@ -102,6 +102,22 @@ nonisolated enum RefreshControl: Equatable, Sendable {
     case hidden
 }
 
+/// What the screen says about where the user is.
+///
+/// Surfaces that cannot check the location themselves, such as the watch
+/// complications, repeat only a definite answer.
+nonisolated enum PlaceAnswer: Equatable, Sendable {
+    /// The displayed city is the user's current place.
+    case city
+
+    /// The user's location has no city data, such as outside city limits.
+    case noCity
+
+    /// Nothing definite: waiting, refreshing, a saved city that may not be
+    /// current, location off, or a failure that says nothing about the place.
+    case unknown
+}
+
 /// Immutable display state consumed by the root SwiftUI view.
 ///
 /// The values are already reduced to exactly what the view needs. This prevents
@@ -149,6 +165,9 @@ struct LocationProfileViewState: Sendable {
     /// Optional text payload for the share sheet.
     let shareText: String?
 
+    /// What the screen says about where the user is.
+    let placeAnswer: PlaceAnswer
+
     /// Returns true when boundary geometry is available for a complete demographic profile.
     ///
     /// Boundaries are hidden during initial loading and non-demographic states
@@ -195,7 +214,8 @@ enum LocationProfileViewStateMapper {
             canPullToRefresh: canPullToRefresh(state),
             isContentDimmed: isContentDimmed(state),
             placeKey: profile.map { $0.resolvedPlaceGeoid ?? $0.snapshot.market },
-            shareText: snapshot.shareText
+            shareText: snapshot.shareText,
+            placeAnswer: placeAnswer(state)
         )
     }
 
@@ -373,6 +393,26 @@ enum LocationProfileViewStateMapper {
             return reason == .noFix
         case .idle, .needsLocationPermission, .requestingLocation, .loading:
             return false
+        }
+    }
+
+    /// Returns what the state says about where the user is.
+    ///
+    /// Only a current city, or a located place without city data, is a
+    /// definite answer.
+    private static func placeAnswer(_ state: LocationProfileViewModel.State) -> PlaceAnswer {
+        switch state {
+        case .loaded(_, .current):
+            return .city
+        case .profileUnavailable(let unavailable):
+            switch unavailable.failure {
+            case .cityUnavailable, .outsideCoverage, .demographicsUnavailable:
+                return .noCity
+            case .networkUnavailable, .timedOut, .serviceUnavailable, .censusKeyMissing, .boundaryUnavailable:
+                return .unknown
+            }
+        case .idle, .needsLocationPermission, .requestingLocation, .loading, .refreshing, .loaded, .locationUnavailable:
+            return .unknown
         }
     }
 

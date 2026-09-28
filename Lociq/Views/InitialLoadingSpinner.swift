@@ -53,17 +53,18 @@ struct InitialLoadingSpinner: View {
     /// Drives the slow fade used instead of rotation under Reduce Motion.
     @State private var isDimmed = false
 
-    /// Diameter derived from the smaller canvas dimension and clamped to a quiet range.
+    /// Diameter derived from the smaller canvas dimension and clamped to a
+    /// quiet range, which grows with large iPad canvases.
     private var spinnerSize: CGFloat {
         min(
-            Constants.maximumSize,
-            max(Constants.minimumSize, min(canvasSize.width, canvasSize.height) * 0.22)
+            Constants.maximumSize * layout.canvasScale,
+            max(Constants.minimumSize * layout.canvasScale, min(canvasSize.width, canvasSize.height) * 0.22)
         )
     }
 
     /// Renders the spinner and stage line.
     var body: some View {
-        VStack(spacing: 28) {
+        VStack(spacing: layout.space(28)) {
             // The timeline pauses under Reduce Motion, so the arc stops
             // redrawing; a slow fade keeps the wait visibly in progress.
             TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: reduceMotion)) { timeline in

@@ -34,6 +34,20 @@ struct LociqTests {
         #expect(DemographicValueFormatter.percent(nil) == "--")
     }
 
+    /// Watch complications: titles drop the state, and counts abbreviate from 10,000.
+    @Test func compactFormatsForComplications() async throws {
+        #expect(DemographicValueFormatter.titleWithoutState("SAN FRANCISCO, CA") == "SAN FRANCISCO")
+        #expect(DemographicValueFormatter.titleWithoutState("SAN BUENAVENTURA (VENTURA), CA") == "SAN BUENAVENTURA (VENTURA)")
+        #expect(DemographicValueFormatter.titleWithoutState("OUTSIDE CITY LIMITS") == "OUTSIDE CITY LIMITS")
+        #expect(DemographicValueFormatter.titleWithoutState("SAN JUAN, 72") == "SAN JUAN, 72")
+
+        #expect(DemographicValueFormatter.compactCount(2_482, locale: Self.enUS) == "2,482")
+        #expect(DemographicValueFormatter.compactCount(118_796, locale: Self.enUS) == "119K")
+        #expect(DemographicValueFormatter.compactCount(830_235, locale: Self.enUS) == "830K")
+        #expect(DemographicValueFormatter.compactCount(8_336_817, locale: Self.enUS) == "8.3M")
+        #expect(DemographicValueFormatter.compactCount(nil) == "--")
+    }
+
     /// Percent and minute values are rounded to keep the UI compact.
     @Test func formatsPercentAndMinutes() async throws {
         #expect(DemographicValueFormatter.percent(64.7) == "65%")

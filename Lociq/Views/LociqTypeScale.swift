@@ -6,7 +6,7 @@
 //
 //  Minimal interfaces expose typography inconsistencies quickly. Centralizing
 //  type choices keeps the city label, brand, metrics, and detail rows visually
-//  related across iPhone and the constrained iPad viewport.
+//  related across iPhone and iPad.
 //
 
 import SwiftUI
@@ -15,9 +15,9 @@ import SwiftUI
 ///
 /// Each style keeps its original point size at the default text size and
 /// grows with the user's text size setting, relative to a matching system text
-/// style. Sizes are selected from `MinimalLayout` rather than raw screen width
-/// so iPad can use the same phone-style composition without a separate type
-/// system.
+/// style. Sizes are selected from `MinimalLayout` rather than raw screen width,
+/// so on iPad the same scale grows with the window instead of needing a
+/// separate type system.
 enum LociqTypeScale {
     /// Returns the city label font for the current viewport.
     ///
@@ -33,7 +33,7 @@ enum LociqTypeScale {
     /// its growth is capped so the wordmark never crowds the controls.
     static func brand(_ layout: MinimalLayout) -> Font {
         .system(
-            size: min(layout.scaled(layout.isCompactWidth ? 20 : 22, relativeTo: .title3), 30),
+            size: layout.scaled(layout.isCompactWidth ? 20 : 22, relativeTo: .title3, limit: 30),
             weight: .ultraLight,
             design: .rounded
         )
@@ -69,12 +69,12 @@ enum LociqTypeScale {
     /// Growth stops at twice the default size so the label stays secondary to
     /// the city name and population, as the design brief requires.
     static func densityLabel(_ layout: MinimalLayout) -> Font {
-        .system(size: min(layout.scaled(11, relativeTo: .caption2), 22), weight: .medium, design: .rounded)
+        .system(size: layout.scaled(11, relativeTo: .caption2, limit: 22), weight: .medium, design: .rounded)
     }
 
     /// Returns the "DATA" hint font beside the bottom controls, capped so it never crowds them.
     static func dataHint(_ layout: MinimalLayout) -> Font {
-        .system(size: min(layout.scaled(layout.isCompactWidth ? 11.5 : 12, relativeTo: .caption), 17), weight: .regular, design: .rounded)
+        .system(size: layout.scaled(layout.isCompactWidth ? 11.5 : 12, relativeTo: .caption, limit: 17), weight: .regular, design: .rounded)
     }
 
     /// Returns the detail section label font.
@@ -83,8 +83,12 @@ enum LociqTypeScale {
     }
 
     /// Returns the detail row value font.
-    static func detailValue(_ layout: MinimalLayout) -> Font {
-        .system(size: layout.scaled(layout.isCompactWidth ? 16 : 17, relativeTo: .body), weight: .light, design: .rounded)
+    ///
+    /// - Parameter secondary: True when the details sit beside the summary,
+    ///   where their values step down so Population and Income stay louder.
+    static func detailValue(_ layout: MinimalLayout, secondary: Bool = false) -> Font {
+        let size = layout.scaled(layout.isCompactWidth ? 16 : 17, relativeTo: .body)
+        return .system(size: secondary ? size * 0.88 : size, weight: .light, design: .rounded)
     }
 
     /// Returns the word portion of compound age labels.
@@ -114,6 +118,6 @@ enum LociqTypeScale {
 
     /// Returns the glyph size for bottom-bar icons.
     static func iconSize(_ layout: MinimalLayout, base: CGFloat = 16) -> CGFloat {
-        min(layout.scaled(base, relativeTo: .body), base * 1.6)
+        layout.scaled(base, relativeTo: .body, limit: base * 1.6)
     }
 }

@@ -25,6 +25,9 @@ struct BoundaryCityConnectorLine: View {
     /// Accessibility reduced-motion flag.
     let reduceMotion: Bool
 
+    /// Growth of the hairline on large iPad canvases. 1 on iPhone.
+    var lineScale: CGFloat = 1
+
     /// Current trim progress for the line.
     @State private var progress: CGFloat = 0
 
@@ -35,14 +38,14 @@ struct BoundaryCityConnectorLine: View {
                 .trim(from: 0, to: progress)
                 .stroke(
                     Color.lociqBoundaryConnectorHalo.opacity(0.58),
-                    style: StrokeStyle(lineWidth: 1.7, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 1.7 * lineScale, lineCap: .round)
                 )
 
             BoundaryCityConnectorShape(start: start, end: end)
                 .trim(from: 0, to: progress)
                 .stroke(
                     Color.lociqBoundaryConnector.opacity(0.62),
-                    style: StrokeStyle(lineWidth: 0.65, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 0.65 * lineScale, lineCap: .round)
                 )
         }
             .onAppear {

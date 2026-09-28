@@ -24,7 +24,7 @@ struct HeaderBlock: View {
 
     /// Renders the city title and status line.
     var body: some View {
-        VStack(alignment: .trailing, spacing: 6) {
+        VStack(alignment: .trailing, spacing: layout.space(6)) {
             Text(snapshot.market)
                 .font(LociqTypeScale.city(layout))
                 .foregroundStyle(Color.lociq(.primary))

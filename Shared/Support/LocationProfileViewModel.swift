@@ -13,7 +13,9 @@
 import Combine
 import CoreLocation
 import Foundation
+#if os(iOS)
 import UIKit
+#endif
 
 @MainActor
 /// Main actor state machine backing the root SwiftUI interface.
@@ -62,7 +64,7 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
         /// The refresh button or menu item: a deliberate tap, which may open Settings.
         case button
 
-        /// Pull-to-refresh, which never leaves the app.
+        /// Pull-to-refresh and the Refresh command, which never leave the app.
         case pull
     }
 
@@ -234,9 +236,14 @@ final class LocationProfileViewModel: NSObject, ObservableObject {
     }
 
     /// Opens LOC IQ's own page in the Settings app.
+    ///
+    /// watchOS offers no way to open Settings from an app, so the watch app
+    /// says where to allow location instead, and this does nothing there.
     static func openAppSettings() {
+        #if os(iOS)
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url)
+        #endif
     }
 
     /// Status for a profile restored from disk, based on location access.

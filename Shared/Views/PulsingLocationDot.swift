@@ -62,6 +62,10 @@ struct PulsingLocationDot: View {
     /// Accessibility reduced-motion flag.
     let reduceMotion: Bool
 
+    /// Growth of the precise dot on larger glyphs. An area marker is already
+    /// sized in glyph points, so it is not scaled.
+    var scale: CGFloat = 1
+
     /// Drives the brief ring pulse.
     @State private var isPulsing = false
 
@@ -72,29 +76,31 @@ struct PulsingLocationDot: View {
     var body: some View {
         switch style {
         case .precise:
+            // Sizes multiply by `scale` rather than using a scale effect, so
+            // the marker renders exactly as designed at scale 1.
             ZStack {
                 Circle()
                     .fill(Color.lociqLocationTint.opacity(0.14))
-                    .frame(width: 23, height: 23)
+                    .frame(width: 23 * scale, height: 23 * scale)
 
                 if !isSettled, !reduceMotion {
                     Circle()
-                        .stroke(Color.lociqLocationTint.opacity(isPulsing ? 0 : 0.72), lineWidth: 1.25)
-                        .frame(width: 15, height: 15)
+                        .stroke(Color.lociqLocationTint.opacity(isPulsing ? 0 : 0.72), lineWidth: 1.25 * scale)
+                        .frame(width: 15 * scale, height: 15 * scale)
                         .scaleEffect(isPulsing ? 2.05 : 0.55)
                 }
 
                 // Resting ring, shown once the marker holds still.
                 Circle()
-                    .stroke(Color.lociqLocationTint.opacity(0.72), lineWidth: 1.25)
-                    .frame(width: 8.25, height: 8.25)
+                    .stroke(Color.lociqLocationTint.opacity(0.72), lineWidth: 1.25 * scale)
+                    .frame(width: 8.25 * scale, height: 8.25 * scale)
                     .opacity(isSettled || reduceMotion ? 1 : 0)
 
                 Circle()
                     .fill(Color.lociqLocationTint)
-                    .frame(width: 5.8, height: 5.8)
+                    .frame(width: 5.8 * scale, height: 5.8 * scale)
             }
-            .frame(width: 42, height: 42)
+            .frame(width: 42 * scale, height: 42 * scale)
             .task {
                 guard let animation = LociqMotion.pulse(reduceMotion: reduceMotion) else { return }
                 withAnimation(animation) {

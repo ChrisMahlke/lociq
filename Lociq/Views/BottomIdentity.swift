@@ -45,7 +45,11 @@ struct BottomIdentity: View {
     /// Optional share payload.
     let shareText: String?
 
-    /// Layout metrics for the current constrained viewport.
+    /// Whether the summary/details toggle shows. It is hidden when the
+    /// details are already beside the summary, on a wide iPad window.
+    let showsDetailsToggle: Bool
+
+    /// Layout metrics for the window.
     let layout: MinimalLayout
 
     /// Current appearance choice.
@@ -68,12 +72,12 @@ struct BottomIdentity: View {
 
     /// Draws the brand, current actions, and loading line.
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 18) {
+        VStack(alignment: .leading, spacing: layout.space(12)) {
+            HStack(alignment: .center, spacing: layout.space(18)) {
                 brand
                     .fixedSize()
 
-                Spacer(minLength: 20)
+                Spacer(minLength: layout.space(20))
 
                 if !isWaitingForInitialData {
                     controls
@@ -85,7 +89,7 @@ struct BottomIdentity: View {
 
             ProgressLine(isLoading: isBusy, reduceMotion: reduceMotion)
         }
-        .frame(maxWidth: 520)
+        .frame(maxWidth: layout.bottomBarMaxWidth)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("demographics.summary")
     }
@@ -129,18 +133,20 @@ struct BottomIdentity: View {
                 // The hint teaches the toggle at typical text sizes. In the
                 // single-column layout there is no room for it beside the
                 // controls; the toggle's label and hint still say "details".
-                if !hasDiscoveredDataView && !isShowingDetails && !layout.usesSingleColumn {
+                if showsDetailsToggle && !hasDiscoveredDataView && !isShowingDetails && !layout.usesSingleColumn {
                     Text("DATA")
                         .font(LociqTypeScale.dataHint(layout))
                         .foregroundStyle(Color.lociq(.hint))
                         .lineLimit(1)
                         .fixedSize()
-                        .padding(.leading, 8)
+                        .padding(.leading, layout.space(8))
                         .transition(.opacity)
                         .accessibilityHidden(true)
                 }
 
-                detailsToggle
+                if showsDetailsToggle {
+                    detailsToggle
+                }
             }
         } else {
             switch primaryAction {
@@ -280,8 +286,8 @@ struct BottomIdentity: View {
         identifier: String
     ) -> some View {
         Button(action: onPrimaryAction) {
-            HStack(alignment: .center, spacing: 10) {
-                VStack(alignment: .trailing, spacing: 3) {
+            HStack(alignment: .center, spacing: layout.space(10)) {
+                VStack(alignment: .trailing, spacing: layout.space(3)) {
                     Text(title)
                         .font(LociqTypeScale.metricLabel(layout))
                         .foregroundStyle(Color.lociq(.metricLabel))
@@ -383,7 +389,8 @@ private struct AppearanceActions: ViewModifier {
 
 /// Immediate one-pixel feedback for the otherwise chromeless icon controls.
 ///
-/// With Button Shapes on, a faint rounded outline marks every button.
+/// With Button Shapes on, a faint rounded outline marks every button. With a
+/// pointer on iPad, hovering highlights the button's rounded target.
 private struct QuietIconButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
@@ -405,6 +412,8 @@ private struct QuietIconButtonStyle: ButtonStyle {
                         .padding(4)
                 }
             }
+            .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .hoverEffect(.highlight)
             .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
     }
 }

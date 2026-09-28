@@ -8,9 +8,26 @@
 
 /* Begin PBXBuildFile section */
 		F96708A02F758CFC006D11C2 /* lociq.icon in Resources */ = {isa = PBXBuildFile; fileRef = F967089F2F758CFC006D11C2 /* lociq.icon */; };
+		F9A1C0DE2F80C0DE0000000C /* lociq.icon in Resources */ = {isa = PBXBuildFile; fileRef = F967089F2F758CFC006D11C2 /* lociq.icon */; };
+		F9A1C0DE2F80C0DE0000000E /* LociqWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = F9A1C0DE2F80C0DE00000003 /* LociqWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F9A1C0DE2F80C0DE0000001D /* LociqWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F9A1C0DE2F80C0DE00000012 /* LociqWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		F9A1C0DE2F80C0DE0000000F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F9F07BF72F567A44009C7121 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F9A1C0DE2F80C0DE00000005;
+			remoteInfo = LociqWatch;
+		};
+		F9A1C0DE2F80C0DE0000001E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F9F07BF72F567A44009C7121 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F9A1C0DE2F80C0DE00000015;
+			remoteInfo = LociqWatchWidgets;
+		};
 		F9F07C0F2F567A45009C7121 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F9F07BF72F567A44009C7121 /* Project object */;
@@ -27,17 +44,78 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		F9A1C0DE2F80C0DE0000000D /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				F9A1C0DE2F80C0DE0000000E /* LociqWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F9A1C0DE2F80C0DE0000001C /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				F9A1C0DE2F80C0DE0000001D /* LociqWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		F2A1B300A0B14EAA9D700001 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		F2A1B300A0B14EAA9D700002 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		F2A1B300A0B14EAA9D700003 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		F967089F2F758CFC006D11C2 /* lociq.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = lociq.icon; sourceTree = "<group>"; };
+		F9A1C0DE2F80C0DE00000003 /* LociqWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LociqWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F9A1C0DE2F80C0DE00000012 /* LociqWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LociqWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9F07BFF2F567A44009C7121 /* Lociq.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lociq.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9F07C0E2F567A45009C7121 /* LociqTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LociqTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9F07C182F567A45009C7121 /* LociqUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LociqUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		F9A1C0DE2F80C0DE00000020 /* Exceptions for "Shared" folder in "LociqWatchWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Support/ComplicationSnapshot.swift,
+				Support/SpokenText.swift,
+			);
+			target = F9A1C0DE2F80C0DE00000015 /* LociqWatchWidgets */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		F9A1C0DE2F80C0DE00000002 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				F9A1C0DE2F80C0DE00000020 /* Exceptions for "Shared" folder in "LociqWatchWidgets" target */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		F9A1C0DE2F80C0DE00000004 /* LociqWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LociqWatch;
+			sourceTree = "<group>";
+		};
+		F9A1C0DE2F80C0DE00000013 /* LociqWatchWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LociqWatchWidgets;
+			sourceTree = "<group>";
+		};
+		F9A1C0DE2F80C0DE00000014 /* WatchComplications */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = WatchComplications;
+			sourceTree = "<group>";
+		};
 		F9F07C012F567A44009C7121 /* Lociq */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Lociq;
@@ -56,6 +134,20 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		F9A1C0DE2F80C0DE00000007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F9A1C0DE2F80C0DE00000017 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F9F07BFC2F567A44009C7121 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -96,6 +188,10 @@
 				F967089F2F758CFC006D11C2 /* lociq.icon */,
 				F2A1B300A0B14EAA9D700010 /* Config */,
 				F9F07C012F567A44009C7121 /* Lociq */,
+				F9A1C0DE2F80C0DE00000002 /* Shared */,
+				F9A1C0DE2F80C0DE00000004 /* LociqWatch */,
+				F9A1C0DE2F80C0DE00000014 /* WatchComplications */,
+				F9A1C0DE2F80C0DE00000013 /* LociqWatchWidgets */,
 				F9F07C112F567A45009C7121 /* LociqTests */,
 				F9F07C1B2F567A45009C7121 /* LociqUITests */,
 				F9F07C002F567A44009C7121 /* Products */,
@@ -106,6 +202,8 @@
 			isa = PBXGroup;
 			children = (
 				F9F07BFF2F567A44009C7121 /* Lociq.app */,
+				F9A1C0DE2F80C0DE00000003 /* LociqWatch.app */,
+				F9A1C0DE2F80C0DE00000012 /* LociqWatchWidgets.appex */,
 				F9F07C0E2F567A45009C7121 /* LociqTests.xctest */,
 				F9F07C182F567A45009C7121 /* LociqUITests.xctest */,
 			);
@@ -115,6 +213,56 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		F9A1C0DE2F80C0DE00000005 /* LociqWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F9A1C0DE2F80C0DE00000009 /* Build configuration list for PBXNativeTarget "LociqWatch" */;
+			buildPhases = (
+				F9A1C0DE2F80C0DE00000011 /* Check Census API key (Release) */,
+				F9A1C0DE2F80C0DE00000006 /* Sources */,
+				F9A1C0DE2F80C0DE00000007 /* Frameworks */,
+				F9A1C0DE2F80C0DE00000008 /* Resources */,
+				F9A1C0DE2F80C0DE0000001C /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F9A1C0DE2F80C0DE0000001F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				F9A1C0DE2F80C0DE00000002 /* Shared */,
+				F9A1C0DE2F80C0DE00000004 /* LociqWatch */,
+				F9A1C0DE2F80C0DE00000014 /* WatchComplications */,
+			);
+			name = LociqWatch;
+			packageProductDependencies = (
+			);
+			productName = LociqWatch;
+			productReference = F9A1C0DE2F80C0DE00000003 /* LociqWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F9A1C0DE2F80C0DE00000015 /* LociqWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F9A1C0DE2F80C0DE00000019 /* Build configuration list for PBXNativeTarget "LociqWatchWidgets" */;
+			buildPhases = (
+				F9A1C0DE2F80C0DE00000016 /* Sources */,
+				F9A1C0DE2F80C0DE00000017 /* Frameworks */,
+				F9A1C0DE2F80C0DE00000018 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				F9A1C0DE2F80C0DE00000013 /* LociqWatchWidgets */,
+				F9A1C0DE2F80C0DE00000014 /* WatchComplications */,
+			);
+			name = LociqWatchWidgets;
+			packageProductDependencies = (
+			);
+			productName = LociqWatchWidgets;
+			productReference = F9A1C0DE2F80C0DE00000012 /* LociqWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		F9F07BFE2F567A44009C7121 /* Lociq */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F9F07C222F567A45009C7121 /* Build configuration list for PBXNativeTarget "Lociq" */;
@@ -123,12 +271,15 @@
 				F9F07BFB2F567A44009C7121 /* Sources */,
 				F9F07BFC2F567A44009C7121 /* Frameworks */,
 				F9F07BFD2F567A44009C7121 /* Resources */,
+				F9A1C0DE2F80C0DE0000000D /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				F9A1C0DE2F80C0DE00000010 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
+				F9A1C0DE2F80C0DE00000002 /* Shared */,
 				F9F07C012F567A44009C7121 /* Lociq */,
 			);
 			name = Lociq;
@@ -194,6 +345,12 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
+					F9A1C0DE2F80C0DE00000005 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					F9A1C0DE2F80C0DE00000015 = {
+						CreatedOnToolsVersion = 26.6;
+					};
 					F9F07BFE2F567A44009C7121 = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -226,11 +383,28 @@
 				F9F07BFE2F567A44009C7121 /* Lociq */,
 				F9F07C0D2F567A45009C7121 /* LociqTests */,
 				F9F07C172F567A45009C7121 /* LociqUITests */,
+				F9A1C0DE2F80C0DE00000005 /* LociqWatch */,
+				F9A1C0DE2F80C0DE00000015 /* LociqWatchWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		F9A1C0DE2F80C0DE00000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F9A1C0DE2F80C0DE0000000C /* lociq.icon in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F9A1C0DE2F80C0DE00000018 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F9F07BFD2F567A44009C7121 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -276,9 +450,43 @@
 			shellScript = "# Fails Release builds that would ship without Census data access.\n# Environment logging stays off so the key never appears in build logs.\nif [ \"${CONFIGURATION}\" = \"Release\" ] && [ -z \"${CENSUS_API_KEY}\" ]; then\n  echo \"error: CENSUS_API_KEY is empty. Set it in Config/Secrets.xcconfig before building Release.\"\n  exit 1\nfi\n";
 			showEnvVarsInLog = 0;
 		};
+		F9A1C0DE2F80C0DE00000011 /* Check Census API key (Release) */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check Census API key (Release)";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Fails Release builds that would ship without Census data access.\n# Environment logging stays off so the key never appears in build logs.\nif [ \"${CONFIGURATION}\" = \"Release\" ] && [ -z \"${CENSUS_API_KEY}\" ]; then\n  echo \"error: CENSUS_API_KEY is empty. Set it in Config/Secrets.xcconfig before building Release.\"\n  exit 1\nfi\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		F9A1C0DE2F80C0DE00000006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F9A1C0DE2F80C0DE00000016 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F9F07BFB2F567A44009C7121 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -303,6 +511,16 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		F9A1C0DE2F80C0DE00000010 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F9A1C0DE2F80C0DE00000005 /* LociqWatch */;
+			targetProxy = F9A1C0DE2F80C0DE0000000F /* PBXContainerItemProxy */;
+		};
+		F9A1C0DE2F80C0DE0000001F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F9A1C0DE2F80C0DE00000015 /* LociqWatchWidgets */;
+			targetProxy = F9A1C0DE2F80C0DE0000001E /* PBXContainerItemProxy */;
+		};
 		F9F07C102F567A45009C7121 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = F9F07BFE2F567A44009C7121 /* Lociq */;
@@ -316,6 +534,136 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		F9A1C0DE2F80C0DE0000000A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F2A1B300A0B14EAA9D700002 /* Debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = lociq;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/LociqWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WU9WPXVS4R;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/WatchAppInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.chrismahlke.lociq.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		F9A1C0DE2F80C0DE0000000B /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F2A1B300A0B14EAA9D700003 /* Release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = lociq;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/LociqWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WU9WPXVS4R;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/WatchAppInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.chrismahlke.lociq.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		F9A1C0DE2F80C0DE0000001A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F2A1B300A0B14EAA9D700002 /* Debug.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Config/LociqWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WU9WPXVS4R;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/WatchWidgetsInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.chrismahlke.lociq.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		F9A1C0DE2F80C0DE0000001B /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F2A1B300A0B14EAA9D700003 /* Release.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Config/LociqWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WU9WPXVS4R;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/WatchWidgetsInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.chrismahlke.lociq.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 		F9F07C202F567A45009C7121 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -446,7 +794,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = lociq;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.4.0;
 				DEVELOPMENT_TEAM = WU9WPXVS4R;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -456,7 +803,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.chrismahlke.lociq;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -478,7 +824,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = lociq;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.4.0;
 				DEVELOPMENT_TEAM = WU9WPXVS4R;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -488,7 +833,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.chrismahlke.lociq;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -522,7 +866,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lociq.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Lociq";
 			};
 			name = Debug;
@@ -546,7 +890,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lociq.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Lociq";
 			};
 			name = Release;
@@ -568,7 +912,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Lociq;
 			};
 			name = Debug;
@@ -590,7 +934,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Lociq;
 			};
 			name = Release;
@@ -598,6 +942,24 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		F9A1C0DE2F80C0DE00000009 /* Build configuration list for PBXNativeTarget "LociqWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F9A1C0DE2F80C0DE0000000A /* Debug */,
+				F9A1C0DE2F80C0DE0000000B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F9A1C0DE2F80C0DE00000019 /* Build configuration list for PBXNativeTarget "LociqWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F9A1C0DE2F80C0DE0000001A /* Debug */,
+				F9A1C0DE2F80C0DE0000001B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F9F07BFA2F567A44009C7121 /* Build configuration list for PBXProject "Lociq" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

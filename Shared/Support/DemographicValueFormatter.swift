@@ -174,6 +174,27 @@ nonisolated enum DemographicValueFormatter {
         return "\(Int(value.rounded())) MIN"
     }
 
+    /// Drops a two-letter state from a display title, for tight spaces such
+    /// as watch complications: `SAN FRANCISCO, CA` becomes `SAN FRANCISCO`.
+    ///
+    /// Titles without a trailing state are returned unchanged.
+    static func titleWithoutState(_ title: String) -> String {
+        guard let comma = title.lastIndex(of: ",") else { return title }
+        let state = title[title.index(after: comma)...].trimmingCharacters(in: .whitespaces)
+        guard state.count == 2, state.allSatisfy(\.isLetter) else { return title }
+        return String(title[..<comma])
+    }
+
+    /// Formats a count in few characters: in full below 10,000, otherwise
+    /// abbreviated, such as `830K` or `1.2M`.
+    static func compactCount(_ value: Int?, locale: Locale = .current) -> String {
+        guard let value, value >= 0 else { return "--" }
+        guard value >= 10_000 else {
+            return value.formatted(.number.locale(locale))
+        }
+        return value.formatted(.number.notation(.compactName).locale(locale))
+    }
+
     /// Removes a trailing Census legal descriptor from a place name.
     ///
     /// Only a descriptor at the end of the place part is removed, so names that

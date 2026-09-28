@@ -1,10 +1,14 @@
 # Lociq
 
-Lociq is a minimal SwiftUI iPhone app that shows a city-level demographic snapshot for the user's current location.
+Lociq is a minimal SwiftUI app for iPhone, iPad, and Apple Watch that shows a city-level demographic snapshot for the user's current location.
 
 ## Screenshots
 
-iPhone 17 Pro Max (iOS 26.5 simulator) with live U.S. Census data, ACS 2020–2024 5-year estimates. Full-size images, at the App Store's 6.9-inch size, are in [`Screenshots/`](Screenshots/).
+Live U.S. Census data, ACS 2020–2024 5-year estimates. Full-size images, at App Store sizes, are in [`Screenshots/`](Screenshots/).
+
+### iPhone
+
+iPhone 17 Pro Max, iOS 26.5 simulator.
 
 <table>
   <tr>
@@ -21,10 +25,34 @@ iPhone 17 Pro Max (iOS 26.5 simulator) with live U.S. Census data, ACS 2020–20
   </tr>
 </table>
 
-The screenshots use simulated locations at public landmarks. To retake them, run a Debug build in the simulator, grant location, and set a location with `xcrun simctl location <device> set <latitude>,<longitude>`; `--lociq-ui-fixture-details` opens the details view at launch.
+### iPad
+
+iPad Pro 13-inch (M5), iPadOS 26.5 simulator. The composition grows with the window; in landscape the details sit beside the summary.
+
+<table>
+  <tr>
+    <td align="center" valign="bottom"><img src="Screenshots/09-ipad-landscape-chicago.png" width="420" alt="Chicago, IL on iPad in landscape: the city outline with its O'Hare corridor and a density of 12,000 per square mile on the left, population 2,711,226 and median household income $77,902 in the middle, and age, housing, and commuting details with the Census source on the right"><br><sub><b>Landscape</b><br>Chicago, IL, details beside the summary</sub></td>
+    <td align="center" valign="bottom"><img src="Screenshots/10-ipad-portrait-denver.png" width="236" alt="Denver, CO on iPad in portrait: the city outline with its airport corridor beside population 718,877, median household income $94,718, 49% owner occupied, and 57% with a bachelor's degree or higher"><br><sub><b>Portrait</b><br>Denver, CO</sub></td>
+  </tr>
+</table>
+
+### Apple Watch
+
+Apple Watch Series 11 (46 mm), watchOS 26.5 simulator. Turn the Digital Crown through the pages.
+
+<table>
+  <tr>
+    <td align="center"><img src="Screenshots/11-watch-place-san-francisco.png" width="170" alt="San Francisco, CA on Apple Watch: the city outline with the location dot and a density of 18,000 per square mile, and a refresh button"><br><sub><b>Place</b></sub></td>
+    <td align="center"><img src="Screenshots/12-watch-people-san-francisco.png" width="170" alt="Apple Watch page with population 830,235, median age 40.0, and median household income $140,970"><br><sub><b>People</b></sub></td>
+    <td align="center"><img src="Screenshots/13-watch-homes-san-francisco.png" width="170" alt="Apple Watch page with 38% owner occupied and 62% renters, and 60% with a bachelor's degree or higher, each with a thin bar"><br><sub><b>Homes and education</b></sub></td>
+  </tr>
+</table>
+
+The screenshots use simulated locations at public landmarks. To retake them, run a Debug build in the simulator, grant location, and set a location with `xcrun simctl location <device> set <latitude>,<longitude>`; `--lociq-ui-fixture-details` opens the details view at launch, and on the watch `--lociq-watch-page <0-3>` opens a page.
 
 ## Current Scope
 
+- Runs on iPhone and iPad, with an independent Apple Watch app and watch face complications.
 - Uses Core Location to resolve the current area.
 - Uses U.S. Census ACS 5-year data for city-level demographics, from the release set by `CensusDataVintage.current`.
 - Uses generalized, shoreline-clipped TIGERweb geometry for the city boundary outline and its land area.
@@ -33,10 +61,10 @@ The screenshots use simulated locations at public landmarks. To retake them, run
 
 ## Architecture
 
-Lociq is intentionally small. The app has one visible product surface and a narrow service pipeline:
+Lociq is intentionally small. The app has one visible product surface and a narrow service pipeline. Everything below the views is shared by the iPhone and iPad app and the Apple Watch app, in `Shared/`:
 
-1. `ContentView` composes the root SwiftUI shell, owns top-level UI state such as summary/details mode, and routes typed actions.
-2. `Lociq/Views` contains the visual building blocks: layout metrics and the Dynamic Type scale, motion timing, bottom identity, demographic content, progress line, palette, debug launch overrides, and boundary drawing.
+1. `ContentView` composes the root SwiftUI shell, owns top-level UI state such as summary/details mode, and routes typed actions. On Apple Watch, `WatchRootView` does the same for the watch pages.
+2. `Lociq/Views` contains the iOS building blocks: layout metrics for iPhone and iPad, the Dynamic Type scale, menu commands, bottom identity, demographic content, and the progress line. `Shared/Views` holds what the watch also draws: the palette, motion timing, the boundary preview and marker, the metric bar, and the debug launch overrides.
 3. `LocationProfileViewModel` owns app state. It decides when to ask for location access, when to request a location, whether a fix needs a load, how refresh locates first, and when stale network responses must be ignored.
 4. `ProfileLoadPlanner` keeps a profile while the user is still in its place and it is from the current data vintage.
 5. `CityProfileCacheStore` persists the last successful city profile as a file in Application Support.
@@ -55,6 +83,8 @@ The UI never talks directly to Census services. It reads a `LocationProfileViewS
 ```mermaid
 flowchart TD
     A[ContentView] --> B[LocationProfileViewModel computed display properties]
+    W[WatchRootView] --> B
+    D -.cached city.-> X[Watch complications]
     B --> C[LocationProfileViewStateMapper]
     B --> P[ProfileLoadPlanner]
     B --> D[CityProfileCacheStore]
@@ -69,6 +99,8 @@ flowchart TD
     A --> M[BoundaryPreview]
     M --> N[GeoJSONBoundaryPathBuilder]
 ```
+
+The watch app (`LociqWatch/`) and its complications (`WatchComplications/`, `LociqWatchWidgets/`) are separate targets embedded in the iOS app. The complications read a small record the watch app leaves in a shared App Group container: the city's name, population, a simplified outline, and when it was true, with no coordinates. They never locate the wearer.
 
 More detail:
 
@@ -121,6 +153,8 @@ The interface should stay sparse:
 - no visible technical labels unless a failure state needs one; the source and Census API notice live in the details footer
 - one primary bottom action that changes meaning based on state, plus refresh and share when a profile is shown
 - text scales with Dynamic Type; large sizes switch to one column
+- on iPad the same composition grows with the window, and wide windows show the details beside the summary instead of a toggle; the menu bar and keyboard offer Summary (⌘1), Details (⌘2), and Refresh (⌘R)
+- on Apple Watch a city is four vertical pages turned with the Digital Crown: the place, people, homes and education, and the details
 - animation should be smooth, low-contrast, brief, and respectful of Reduce Motion
 
 When location access is unavailable, the primary action is the one step that helps: ask for permission on first run, open Settings after a denial, or nothing when access is restricted.
@@ -133,7 +167,11 @@ Add local secrets in `Config/Secrets.xcconfig`:
 CENSUS_API_KEY = YOUR_CENSUS_API_KEY
 ```
 
-`CENSUS_API_KEY` is also read from the process environment for local debugging.
+`CENSUS_API_KEY` is also read from the process environment for local debugging. The watch app reads the same key from the same file.
+
+The Apple Watch app and its complications share the App Group `group.io.chrismahlke.lociq`. With automatic signing, Xcode registers it for your team the first time you build the watch app for a device.
+
+The version and build number live in `Config/Base.xcconfig` and are shared by the iPhone and iPad app, the watch app, and the complications, because App Store Connect rejects an upload whose versions differ.
 
 ## Testing
 
@@ -150,8 +188,20 @@ DESTINATION='platform=iOS Simulator,name=iPhone 17 Pro' ./scripts/test_baseline.
 DERIVED_DATA_PATH=/tmp/lociq-derived-data ./scripts/test_baseline.sh
 ```
 
-CI runs the same baseline script on pushes to `master` and on pull requests, with Xcode 26.6 on a `macos-26` runner.
+CI runs the same baseline script on pushes to `master` and on pull requests, with Xcode 26.6 on a `macos-26` runner. The `Lociq` scheme builds the embedded watch app and complications too.
 
-Debug builds accept `--lociq-ui-fixture <cambridge|longName|offline|outsideCityLimits|slow>` to replace Core Location and the Census services with canned data. The UI tests use it, so they need no network or location permission. `--lociq-ui-fixture-details` opens the details view at launch, with a fixture or with live data.
+The iPad layout tests (`LociqIPadTests`) run on iPad destinations and skip on iPhone:
+
+```bash
+DESTINATION='platform=iOS Simulator,name=iPad Pro 13-inch (M5)' ./scripts/test_baseline.sh
+```
+
+Build and run the watch app on its own with the `LociqWatch` scheme:
+
+```bash
+xcodebuild -project Lociq.xcodeproj -scheme LociqWatch -destination 'platform=watchOS Simulator,name=Apple Watch Series 11 (46mm)' build
+```
+
+Debug builds accept `--lociq-ui-fixture <cambridge|longName|offline|outsideCityLimits|slow>` to replace Core Location and the Census services with canned data, on iPhone, iPad, and Apple Watch. The UI tests use it, so they need no network or location permission. `--lociq-ui-fixture-details` opens the details view at launch, with a fixture or with live data. On the watch, `--lociq-watch-page <0-3>` opens a page and `--lociq-complication-gallery` draws every complication family.
 
 Release builds fail early when `CENSUS_API_KEY` is empty.

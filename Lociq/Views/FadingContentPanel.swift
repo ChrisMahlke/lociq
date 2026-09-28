@@ -73,7 +73,7 @@ private struct MetricContent: View {
 
     /// Renders all summary metrics.
     var body: some View {
-        VStack(alignment: .trailing, spacing: layout.isShortHeight ? 16 : 19) {
+        VStack(alignment: .trailing, spacing: layout.space(layout.isShortHeight ? 16 : 19)) {
             ForEach(metrics) { metric in
                 MetricBlock(metric: metric, layout: layout)
             }
@@ -98,7 +98,7 @@ private struct MetricBlock: View {
 
     /// Renders title, primary value, optional bar, and secondary detail.
     var body: some View {
-        VStack(alignment: .trailing, spacing: 5) {
+        VStack(alignment: .trailing, spacing: layout.space(5)) {
             Text(metric.title)
                 .font(LociqTypeScale.metricLabel(layout))
                 .foregroundStyle(Color.lociq(.metricLabel))
@@ -113,8 +113,8 @@ private struct MetricBlock: View {
 
             if let fraction = metric.barFraction {
                 MetricBar(fraction: fraction, isEmphasized: reduceTransparency)
-                    .frame(width: min(layout.contentWidth, layout.scaled(164, relativeTo: .body)), height: 3)
-                    .padding(.vertical, 2)
+                    .frame(width: min(layout.contentWidth, layout.scaled(164, relativeTo: .body)), height: 3 * layout.graphicScale)
+                    .padding(.vertical, layout.space(2))
             }
 
             if !metric.detail.isEmpty {
@@ -136,27 +136,5 @@ private struct MetricBlock: View {
     /// Population is the main figure and gets one size step more.
     private var isPrimaryMetric: Bool {
         metric.resolvedKind == .population
-    }
-}
-
-/// Thin horizontal bar: a faint full-width track and a quiet fill.
-private struct MetricBar: View {
-    /// Filled share in `0...1`.
-    let fraction: Double
-
-    /// Uses stronger contrast (Reduce Transparency).
-    let isEmphasized: Bool
-
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                Rectangle()
-                    .fill(Color.lociqBarTrack(emphasized: isEmphasized))
-                Rectangle()
-                    .fill(Color.lociqBarFill(emphasized: isEmphasized))
-                    .frame(width: geometry.size.width * fraction)
-            }
-        }
-        .accessibilityHidden(true)
     }
 }

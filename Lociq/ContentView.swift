@@ -15,9 +15,10 @@ import SwiftUI
 
 /// Root SwiftUI surface for LOC IQ.
 ///
-/// The layout is intentionally phone-like on every supported device. On iPad,
-/// `MinimalViewport` constrains the app surface so the design does not expand
-/// into a dashboard or map-style interface.
+/// iPhone, and narrow iPad windows, use the original phone composition. On
+/// larger iPad windows `MinimalLayout` grows the same composition to the
+/// canvas, and wide windows show the details beside the summary. It stays one
+/// quiet, editorial screen on every device, never a dashboard or a map.
 struct ContentView: View {
     /// Scene phase used to resume location refreshes when the app becomes active.
     @Environment(\.scenePhase) private var scenePhase
@@ -30,6 +31,9 @@ struct ContentView: View {
 
     /// Persisted appearance. The app defaults to its original dark appearance.
     @AppStorage("lociq.themePreference") private var themePreferenceRawValue = LociqThemePreference.dark.rawValue
+
+    /// Set once the details have been opened, which retires the "DATA" hint.
+    @AppStorage("lociq.hasDiscoveredDataView") private var hasDiscoveredDataView = false
 
     /// Location and city profile state machine.
     @StateObject private var locationProfile: LocationProfileViewModel
@@ -104,40 +108,41 @@ struct ContentView: View {
         !viewState.isWaitingForInitialData && hasRevealedContent
     }
 
-    /// Composes the background, constrained viewport, content, and bottom identity.
+    /// Composes the background, content, and bottom identity for the window.
     var body: some View {
         GeometryReader { geometry in
-            let viewport = MinimalViewport(geometry: geometry)
             let layout = MinimalLayout(
-                viewportSize: viewport.size,
-                safeAreaInsets: viewport.safeAreaInsets,
+                viewportSize: geometry.size,
+                safeAreaInsets: geometry.safeAreaInsets,
                 dynamicTypeSize: dynamicTypeSize
             )
 
             ZStack {
-                // The outer background fills iPad and phone screens. The inner
-                // surface can be constrained on iPad without exposing a blank
-                // platform-default color.
+                // The ink fills the whole screen, including the safe areas.
                 Color.lociqInk
                     .ignoresSafeArea()
 
                 ZStack(alignment: .topLeading) {
-                    MinimalBackground(ignoresSafeArea: false, isSparse: !viewState.snapshot.hasDemographicData)
+                    MinimalBackground(
+                        ignoresSafeArea: false,
+                        isSparse: !viewState.snapshot.hasDemographicData,
+                        scale: layout.backgroundScale
+                    )
 
                     // The bottom bar sits below the content, not over it, so
                     // content always ends above the controls at any text size.
                     VStack(spacing: 0) {
-                        mainArea(layout: layout, canvasSize: viewport.size)
+                        mainArea(layout: layout, canvasSize: geometry.size)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                         bottomIdentity(layout: layout)
                             .padding(.horizontal, layout.horizontalInset)
-                            .padding(.top, 12)
+                            .padding(.top, layout.space(12))
                             .padding(.bottom, layout.bottomInset)
                     }
                 }
                 .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: viewState.isWaitingForInitialData)
-                .frame(width: viewport.size.width, height: viewport.size.height)
+                .frame(width: geometry.size.width, height: geometry.size.height)
                 .clipped()
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
@@ -146,6 +151,7 @@ struct ContentView: View {
                 // the boundary glyph and the city label.
                 boundaryConnector(anchors: anchors, layout: layout)
             }
+            .focusedSceneValue(\.lociqCommandActions, commandActions(layout: layout))
         }
         .background(Color.lociqInk)
         .preferredColorScheme(themePreference.colorScheme)
@@ -224,8 +230,13 @@ struct ContentView: View {
     }
 
     /// The boundary glyph with its optional density label.
+    ///
+    /// On large canvases the glyph's frame hugs the outline, so the density
+    /// label sits right under it instead of under the empty part of a frame
+    /// sized for any shape.
     private func boundaryStack(glyph: BoundaryGlyph, layout: MinimalLayout) -> some View {
-        VStack(alignment: .center, spacing: 8) {
+        let glyphSize = layout.canvas == .phone ? layout.boundarySize : glyph.fittedSize(within: layout.boundarySize)
+        return VStack(alignment: .center, spacing: layout.space(8)) {
             CityBoundaryPreview(
                 glyph: glyph,
                 coordinate: viewState.coordinate,
@@ -233,12 +244,14 @@ struct ContentView: View {
                 isApproximate: viewState.isApproximate,
                 densityPerSquareMile: viewState.snapshot.densityPerSquareMile,
                 traceToken: locationProfile.traceToken,
-                reduceMotion: reduceMotion
+                reduceMotion: reduceMotion,
+                graphicScale: layout.graphicScale,
+                markerFrameSize: layout.canvas == .phone ? nil : layout.boundarySize
             )
-            .frame(width: layout.boundarySize.width, height: layout.boundarySize.height)
+            .frame(width: glyphSize.width, height: glyphSize.height)
 
             if let density = viewState.snapshot.densityPerSquareMile {
-                VStack(spacing: 2) {
+                VStack(spacing: layout.space(2)) {
                     Text("DENSITY")
                         .foregroundStyle(Color.lociq(.secondary))
                     Text(CityDensityCalculator.formatted(density))
@@ -254,51 +267,61 @@ struct ContentView: View {
                 .accessibilityIdentifier("boundary.density")
             }
         }
+        // Keeps the hugging frame centered in the geography column.
+        .frame(width: layout.canvas != .phone && !layout.usesSingleColumn ? layout.boundarySize.width : nil)
+    }
+
+    /// True when the details are shown beside the summary, on a wide iPad window.
+    private func showsDetailsBeside(_ layout: MinimalLayout) -> Bool {
+        layout.showsDetailsBeside && displaySnapshot.hasDemographicData
     }
 
     /// Renders the right-aligned city header and demographic content area.
     ///
     /// The scroll area ends above the bottom bar. When content is taller than
     /// the area, a short fade and the scroll indicator show that more follows.
+    /// On a spread, the details sit in a quieter column right of the city and
+    /// its summary, from the top, so they fit the window whole and the
+    /// connector never crosses them.
     private func contentScroll(layout: MinimalLayout) -> some View {
-        ScrollView(.vertical, showsIndicators: isContentOverflowing) {
-            VStack(alignment: .trailing, spacing: 34) {
+        let isSpread = showsDetailsBeside(layout)
+        let columnWidth: CGFloat = layout.usesSingleColumn
+            ? .infinity
+            : (isSpread ? layout.contentWidth + layout.columnGap + layout.detailSidebarWidth : layout.contentWidth)
+
+        return ScrollView(.vertical, showsIndicators: isContentOverflowing) {
+            VStack(alignment: .trailing, spacing: layout.space(34)) {
                 if shouldShowLoadedContent {
-                    if layout.usesSingleColumn, viewState.canShowBoundary, let glyph = locationProfile.boundaryGlyph {
-                        boundaryStack(glyph: glyph, layout: layout)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .opacity(viewState.isContentDimmed ? 0.45 : 1)
-                            .accessibilitySortPriority(0)
-                    }
-
-                    if viewState.needsLocationPermissionPrompt {
-                        firstRunDescriptor(layout: layout)
+                    if isSpread {
+                        spread(layout: layout)
                     } else {
-                        HeaderBlock(snapshot: displaySnapshot, layout: layout, titleFocus: $isTitleFocused)
-                            .accessibilitySortPriority(2)
-                    }
+                        if layout.usesSingleColumn, viewState.canShowBoundary, let glyph = locationProfile.boundaryGlyph {
+                            boundaryStack(glyph: glyph, layout: layout)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .opacity(viewState.isContentDimmed ? 0.45 : 1)
+                                .accessibilitySortPriority(0)
+                        }
 
-                    if displaySnapshot.hasDemographicData {
-                        FadingContentPanel(
-                            snapshot: displaySnapshot,
-                            isShowingDetails: isShowingDetails,
-                            layout: layout,
-                            reduceMotion: reduceMotion,
-                            themePreference: themePreference,
-                            onSelectTheme: selectTheme
-                        )
-                        .frame(
-                            maxWidth: isShowingDetails ? layout.detailContentWidth : .infinity,
-                            alignment: .trailing
-                        )
-                        .opacity(viewState.isContentDimmed ? 0.45 : 1)
-                        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: viewState.isContentDimmed)
-                        .accessibilitySortPriority(1)
+                        if viewState.needsLocationPermissionPrompt {
+                            firstRunDescriptor(layout: layout)
+                        } else {
+                            HeaderBlock(snapshot: displaySnapshot, layout: layout, titleFocus: $isTitleFocused)
+                                .accessibilitySortPriority(3)
+                        }
+
+                        if displaySnapshot.hasDemographicData {
+                            summaryPanel(layout: layout, showsDetails: isShowingDetails)
+                                .frame(
+                                    maxWidth: isShowingDetails ? layout.detailContentWidth : .infinity,
+                                    alignment: .trailing
+                                )
+                                .accessibilitySortPriority(2)
+                        }
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.bottom, 24)
+            .padding(.bottom, layout.space(24))
             .background(
                 GeometryReader { proxy in
                     Color.clear.preference(key: ContentHeightPreferenceKey.self, value: proxy.size.height)
@@ -326,11 +349,11 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 Rectangle()
                 LinearGradient(colors: [.black, .black.opacity(isContentOverflowing ? 0 : 1)], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 24)
+                    .frame(height: layout.space(24))
             }
         }
         .frame(
-            maxWidth: layout.usesSingleColumn ? .infinity : layout.contentWidth,
+            maxWidth: columnWidth,
             maxHeight: .infinity,
             alignment: .topTrailing
         )
@@ -344,9 +367,53 @@ struct ContentView: View {
         })
     }
 
+    /// A wide iPad window: the city and its summary, with the details beside them.
+    ///
+    /// VoiceOver reads the city and summary first, then the details.
+    private func spread(layout: MinimalLayout) -> some View {
+        HStack(alignment: .top, spacing: layout.columnGap) {
+            VStack(alignment: .trailing, spacing: layout.space(34)) {
+                HeaderBlock(snapshot: displaySnapshot, layout: layout, titleFocus: $isTitleFocused)
+                    .accessibilitySortPriority(1)
+                summaryPanel(layout: layout, showsDetails: false)
+            }
+            .frame(width: layout.contentWidth, alignment: .trailing)
+            .accessibilityElement(children: .contain)
+            .accessibilitySortPriority(2)
+
+            DetailContent(
+                snapshot: displaySnapshot,
+                layout: layout,
+                themePreference: themePreference,
+                onSelectTheme: selectTheme,
+                isSecondary: true
+            )
+            .frame(width: layout.detailSidebarWidth)
+            .opacity(viewState.isContentDimmed ? 0.45 : 1)
+            .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: viewState.isContentDimmed)
+            .accessibilityElement(children: .contain)
+            .accessibilitySortPriority(1)
+        }
+        .transition(.opacity)
+    }
+
+    /// The summary metrics, or the details when toggled, dimmed while a new place loads.
+    private func summaryPanel(layout: MinimalLayout, showsDetails: Bool) -> some View {
+        FadingContentPanel(
+            snapshot: displaySnapshot,
+            isShowingDetails: showsDetails,
+            layout: layout,
+            reduceMotion: reduceMotion,
+            themePreference: themePreference,
+            onSelectTheme: selectTheme
+        )
+        .opacity(viewState.isContentDimmed ? 0.45 : 1)
+        .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: viewState.isContentDimmed)
+    }
+
     /// One quiet line that says what the app shows, before location is shared.
     private func firstRunDescriptor(layout: MinimalLayout) -> some View {
-        VStack(alignment: .trailing, spacing: 6) {
+        VStack(alignment: .trailing, spacing: layout.space(6)) {
             Text("CITY DEMOGRAPHICS")
                 .font(LociqTypeScale.metricLabel(layout))
                 .foregroundStyle(Color.lociq(.metricLabel))
@@ -374,6 +441,7 @@ struct ContentView: View {
             primaryAction: viewState.primaryAction,
             refreshControl: viewState.refreshControl,
             shareText: viewState.shareText,
+            showsDetailsToggle: !showsDetailsBeside(layout),
             layout: layout,
             themePreference: themePreference,
             reduceMotion: reduceMotion
@@ -408,7 +476,8 @@ struct ContentView: View {
                     ),
                     end: cityConnectorEnd(for: cityRect),
                     traceToken: locationProfile.traceToken,
-                    reduceMotion: reduceMotion
+                    reduceMotion: reduceMotion,
+                    lineScale: layout.graphicScale
                 )
                 .opacity(viewState.isContentDimmed ? 0.45 : 1)
             }
@@ -473,7 +542,7 @@ struct ContentView: View {
         guard !announcementKey.isEmpty, hasMovedFocusToTitle || shouldShowLoadedContent else { return }
         let snapshot = viewState.snapshot
         AccessibilityAnnouncer.announce(
-            [snapshot.market.capitalized, snapshot.statusLine.capitalized]
+            [SpokenText.title(snapshot.market), SpokenText.title(snapshot.statusLine)]
                 .filter { !$0.isEmpty }
                 .joined(separator: ". ")
         )
@@ -535,12 +604,39 @@ struct ContentView: View {
         LociqAppearance.apply(preference, animated: true, reduceMotion: reduceMotion)
     }
 
-    /// Refreshes from the refresh button, the menu, or pull-to-refresh.
+    /// Refreshes from the refresh button, the menus, or pull-to-refresh.
     ///
     /// Pull-to-refresh awaits this, which keeps the system control active until done.
     private func refresh(trigger: LocationProfileViewModel.RefreshTrigger) async {
         Haptics.selectionChanged()
         await locationProfile.refresh(trigger: trigger)
+    }
+
+    /// Shows the details or the summary, from the menu bar or keyboard.
+    private func showDetails(_ show: Bool) {
+        guard show != isShowingDetails else { return }
+        if show { hasDiscoveredDataView = true }
+        cycleContent()
+    }
+
+    /// What the menu bar and keyboard shortcuts can do right now.
+    ///
+    /// The Refresh command takes the pull-to-refresh route, which never
+    /// leaves the app: a command named Refresh should not open Settings.
+    private func commandActions(layout: MinimalLayout) -> LociqCommandActions {
+        let hasProfile = viewState.snapshot.hasDemographicData
+        let canRefresh = !viewState.isBusy && (hasProfile
+            ? viewState.refreshControl == .refresh || viewState.refreshControl == .requestPermissionAndRefresh
+            : viewState.canPullToRefresh)
+        return LociqCommandActions(
+            canRefresh: canRefresh,
+            refresh: { Task { await refresh(trigger: .pull) } },
+            canSwitchView: hasProfile && !showsDetailsBeside(layout) && !isSwappingContent,
+            isShowingDetails: isShowingDetails,
+            showDetails: showDetails,
+            themePreference: themePreference,
+            selectTheme: selectTheme
+        )
     }
 
     /// Briefly confirms a refresh result in the status line and for VoiceOver.

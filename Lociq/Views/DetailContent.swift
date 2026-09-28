@@ -26,11 +26,15 @@ struct DetailContent: View {
     /// Changes the appearance.
     var onSelectTheme: (LociqThemePreference) -> Void = { _ in }
 
+    /// True when the details sit beside the summary, as secondary content,
+    /// with quieter values and tighter spacing so the column fits the window.
+    var isSecondary = false
+
     /// Renders all available detail sections aligned to the right edge.
     var body: some View {
-        VStack(alignment: .trailing, spacing: layout.detailSectionSpacing) {
+        VStack(alignment: .trailing, spacing: layout.detailSectionSpacing * (isSecondary ? 0.7 : 1)) {
             ForEach(snapshot.detailSections) { section in
-                DetailSectionView(section: section, layout: layout)
+                DetailSectionView(section: section, layout: layout, isSecondary: isSecondary)
             }
 
             DetailFooter(
@@ -39,7 +43,7 @@ struct DetailContent: View {
                 themePreference: themePreference,
                 onSelectTheme: onSelectTheme
             )
-            .padding(.top, 6)
+            .padding(.top, layout.space(6))
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
     }
@@ -53,17 +57,20 @@ private struct DetailSectionView: View {
     /// Layout metrics for row spacing and label/value sizing.
     let layout: MinimalLayout
 
+    /// True when the values step down beside the summary.
+    let isSecondary: Bool
+
     /// Renders the section title plus its rows.
     var body: some View {
-        VStack(alignment: .trailing, spacing: 8) {
+        VStack(alignment: .trailing, spacing: layout.space(8)) {
             Text(section.title)
                 .font(LociqTypeScale.detailSectionLabel(layout))
                 .foregroundStyle(Color.lociq(.sectionTitle))
                 .accessibilityAddTraits(.isHeader)
 
-            VStack(alignment: .trailing, spacing: layout.detailRowSpacing) {
+            VStack(alignment: .trailing, spacing: layout.detailRowSpacing * (isSecondary ? 0.75 : 1)) {
                 ForEach(section.rows) { row in
-                    DetailRowView(row: row, layout: layout)
+                    DetailRowView(row: row, layout: layout, isSecondary: isSecondary)
                 }
             }
         }
@@ -78,12 +85,13 @@ private struct DetailSectionView: View {
 private struct DetailRowView: View {
     let row: DemographicDetailRow
     let layout: MinimalLayout
+    let isSecondary: Bool
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
             // Labels align to the leading edge and values to the trailing
             // edge, so natural widths line up without a fixed label column.
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: layout.space(12)) {
                 DetailRowLabel(row: row, layout: layout)
                     .lineLimit(1)
                     .fixedSize()
@@ -91,7 +99,7 @@ private struct DetailRowView: View {
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
 
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: layout.space(2)) {
                 DetailRowLabel(row: row, layout: layout)
                     .multilineTextAlignment(.trailing)
                     .fixedSize(horizontal: false, vertical: true)
@@ -106,7 +114,7 @@ private struct DetailRowView: View {
 
     private var value: some View {
         Text(row.value)
-            .font(LociqTypeScale.detailValue(layout))
+            .font(LociqTypeScale.detailValue(layout, secondary: isSecondary))
             .foregroundStyle(Color.lociq(.detailValue))
             .monospacedDigit()
             .lineLimit(1)
@@ -152,8 +160,8 @@ private struct DetailFooter: View {
     let onSelectTheme: (LociqThemePreference) -> Void
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 10) {
-            VStack(alignment: .trailing, spacing: 4) {
+        VStack(alignment: .trailing, spacing: layout.space(10)) {
+            VStack(alignment: .trailing, spacing: layout.space(4)) {
                 Text("SOURCE · U.S. CENSUS BUREAU")
                     .font(LociqTypeScale.detailLabel(layout))
                     .foregroundStyle(Color.lociq(.detailLabel))
@@ -166,7 +174,7 @@ private struct DetailFooter: View {
                     .font(LociqTypeScale.footnote(layout))
                     .foregroundStyle(Color.lociq(.secondary))
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 2)
+                    .padding(.top, layout.space(2))
             }
             .multilineTextAlignment(.trailing)
             .accessibilityElement(children: .ignore)
@@ -190,6 +198,8 @@ private struct DetailFooter: View {
                 .font(LociqTypeScale.detailLabel(layout))
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
+                .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .hoverEffect(.highlight)
             }
             .accessibilityLabel("Appearance")
             .accessibilityValue(themePreference.label)

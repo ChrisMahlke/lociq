@@ -1,6 +1,6 @@
 # Privacy And Data Flow
 
-Lociq uses the device location only to request a city-level Census profile.
+Lociq uses the device location only to request a city-level Census profile. The iPhone and iPad app and the Apple Watch app each ask for location separately and use it the same way.
 
 ## What Leaves The Device
 
@@ -23,6 +23,8 @@ The app stores the last successful city profile in a file in Application Support
 - cache timestamp, data vintage, and place identifier
 - typed partial-failure metadata when a subrequest failed
 
+On Apple Watch the watch app keeps the same file in its own container. For the watch face complications it also writes a small separate record to the App Group container they share (`group.io.chrismahlke.lociq`): the city's name, population, a simplified city outline, and when the watch app showed it. The record holds no coordinates. The complications only read it: they never request location and never contact the Census services.
+
 Earlier builds kept this profile in `UserDefaults` under `lociq.lastCityProfile.v1`. The first launch of a newer build moves it to the file and removes the key, so no coordinates remain in the defaults plist. `UserDefaults` now holds only the appearance choice and whether the details hint was dismissed.
 
 Diagnostics logs record failure categories and durations, never coordinates.
@@ -35,6 +37,7 @@ The app does not show a search box and never asks for location at launch. On fir
 - If access is restricted, the app says so and offers no action.
 - If a saved city is shown without current access (for example after "Allow Once" expired), it is labeled "LAST LOCATION" or "SAVED CITY · LOCATION OFF", and refresh asks for access first.
 - With "Precise Location" off, the profile is labeled "APPROXIMATE AREA" and the marker shows the size of the uncertainty instead of a precise dot.
+- On Apple Watch the permission prompt appears on the watch. watchOS apps cannot open Settings, so after a denial the watch says where to allow location (Settings, then Privacy & Security, Location Services, LOC IQ).
 
 ## Data Retention
 

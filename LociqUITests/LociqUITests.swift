@@ -95,9 +95,11 @@ final class LociqUITests: XCTestCase {
         let toggle = app.buttons["action.toggleDetails"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
 
+        // Swipe the text column itself: on iPad the outline beside it does not scroll.
         let education = element(app, "metric.education")
+        let content = app.scrollViews.firstMatch
         for _ in 0..<8 where !(education.exists && education.frame.maxY <= toggle.frame.minY - 8) {
-            app.swipeUp()
+            content.swipeUp()
         }
 
         XCTAssertTrue(education.exists)

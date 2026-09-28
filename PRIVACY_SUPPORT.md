@@ -1,8 +1,8 @@
 # Lociq Privacy Policy and Support
 
-Last updated: September 27, 2026
+Last updated: September 28, 2026
 
-Lociq is a minimal iPhone app that shows a city-level demographic snapshot for your current area.
+Lociq is a minimal app for iPhone, iPad, and Apple Watch that shows a city-level demographic snapshot for your current area.
 
 ## Summary
 
@@ -19,6 +19,8 @@ If location access is granted, Lociq requests your current location (precise loc
 
 If location access is not granted, the app shows a minimal location-disabled state with a button that opens Lociq's page in Settings.
 
+The Apple Watch app asks for location separately, on the watch, and uses it the same way. If you don't allow it, the watch app explains where to turn it on.
+
 ## Public Data Services
 
 Lociq uses public government data sources:
@@ -31,7 +33,9 @@ The Census Geocoder receives the rounded lookup coordinate. The ACS and TIGERweb
 
 ## Local Storage
 
-Lociq may store the latest loaded city profile, including a rounded coordinate, in a file on your device so the app can reopen gracefully. The file is excluded from iCloud and computer backups. Deleting the app removes this local storage according to normal iOS app deletion behavior.
+Lociq may store the latest loaded city profile, including a rounded coordinate, in a file on your device so the app can reopen gracefully. The file is excluded from iCloud and computer backups. Deleting the app removes this local storage according to normal iOS and watchOS app deletion behavior.
+
+On Apple Watch, Lociq's watch face complications read a small separate record: the city's name, population, and outline, and when Lociq last showed it as your city. It contains no location coordinates. The complications never access your location or the network.
 
 ## Support
 

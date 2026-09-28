@@ -42,6 +42,16 @@ struct CityBoundaryPreview: View {
     /// Accessibility reduced-motion flag.
     let reduceMotion: Bool
 
+    /// Growth of strokes, the dot texture, and the marker for larger glyphs,
+    /// such as on iPad. 1 on iPhone.
+    var graphicScale: CGFloat = 1
+
+    /// The frame the marker rules are measured in, when this view's frame
+    /// hugs the outline (iPad, Apple Watch). Whether the marker shows, and
+    /// whether a fix just outside the outline is drawn, then match the full
+    /// frame the hugging one replaced. `nil` uses this view's frame.
+    var markerFrameSize: CGSize?
+
     /// Current trim progress for the boundary outline.
     @State private var traceProgress: CGFloat = 0
 
@@ -55,8 +65,9 @@ struct CityBoundaryPreview: View {
     var body: some View {
         GeometryReader { proxy in
             let placement = glyph.placement(in: CGRect(origin: .zero, size: proxy.size))
-            let marker = markerStyle(for: placement)
-            let markerPoint = coordinate.flatMap(placement.point(for:))
+            let markerBounds = markerBounds(in: proxy.size)
+            let marker = markerStyle(for: placement, frameSize: markerBounds.size)
+            let markerPoint = coordinate.flatMap { placement.point(for: $0, within: markerBounds) }
 
             ZStack {
                 // One uniform fill gives the city shape informational weight
@@ -65,7 +76,10 @@ struct CityBoundaryPreview: View {
                 BoundaryGlyphShape(glyph: glyph)
                     .fill(Color.lociqText.opacity(isEmphasized ? 0.16 : 0.075), style: FillStyle(eoFill: true))
 
-                BoundaryDotTexture(spacing: BoundaryDotTexture.spacing(forDensity: densityPerSquareMile))
+                BoundaryDotTexture(
+                    spacing: BoundaryDotTexture.spacing(forDensity: densityPerSquareMile) * graphicScale,
+                    dotSize: 1.1 * graphicScale
+                )
                     .foregroundStyle(Color.lociqText.opacity(isEmphasized ? 0.16 : 0.09))
                     .mask {
                         BoundaryGlyphShape(glyph: glyph)
@@ -78,20 +92,20 @@ struct CityBoundaryPreview: View {
                     .trim(from: 0, to: traceProgress)
                     .stroke(
                         Color.lociqBoundaryHalo,
-                        style: StrokeStyle(lineWidth: 2.7, lineCap: .round, lineJoin: .round)
+                        style: StrokeStyle(lineWidth: 2.7 * graphicScale, lineCap: .round, lineJoin: .round)
                     )
 
                 BoundaryGlyphShape(glyph: glyph)
                     .trim(from: 0, to: traceProgress)
                     .stroke(
                         Color.lociqBoundaryStroke,
-                        style: StrokeStyle(lineWidth: 1.0, lineCap: .round, lineJoin: .round)
+                        style: StrokeStyle(lineWidth: 1.0 * graphicScale, lineCap: .round, lineJoin: .round)
                     )
 
                 if showsLocationDot, marker != .hidden, let markerPoint {
                     // The marker uses the same placement as the outline, so it
                     // stays spatially aligned with it.
-                    PulsingLocationDot(style: marker, reduceMotion: reduceMotion)
+                    PulsingLocationDot(style: marker, reduceMotion: reduceMotion, scale: graphicScale)
                         .position(markerPoint)
                         .transition(.opacity)
                 }
@@ -106,7 +120,7 @@ struct CityBoundaryPreview: View {
         .onAppear {
             traceBoundary()
         }
-        .onChange(of: traceToken) { _ in
+        .onChangeOf(traceToken) { _ in
             traceBoundary()
         }
         .onDisappear {
@@ -120,15 +134,26 @@ struct CityBoundaryPreview: View {
     }
 
     /// Chooses the marker for the current fix and glyph scale.
-    private func markerStyle(for placement: BoundaryGlyphPlacement) -> LocationMarkerStyle {
+    private func markerStyle(for placement: BoundaryGlyphPlacement, frameSize: CGSize) -> LocationMarkerStyle {
         guard let coordinate else { return .hidden }
         return LocationMarkerStyle.make(
             accuracyMeters: horizontalAccuracy,
             isApproximate: isApproximate,
-            glyphSize: placement.rect.size
+            glyphSize: frameSize
         ) { meters in
             placement.points(forMeters: meters, atLatitude: coordinate.latitude)
         }
+    }
+
+    /// The marker frame, centered on this view's frame.
+    private func markerBounds(in size: CGSize) -> CGRect {
+        guard let reference = markerFrameSize else { return CGRect(origin: .zero, size: size) }
+        return CGRect(
+            x: (size.width - reference.width) / 2,
+            y: (size.height - reference.height) / 2,
+            width: reference.width,
+            height: reference.height
+        )
     }
 
     /// Restarts the boundary trace and delays the marker until the shape is established.
@@ -175,6 +200,9 @@ private struct BoundaryDotTexture: View {
     /// Distance between dot centers.
     let spacing: CGFloat
 
+    /// Diameter of each dot.
+    var dotSize: CGFloat = 1.1
+
     /// Dot spacing for a city-wide density: denser places get a finer field.
     ///
     /// The spacing is uniform within a city, so it implies the city's overall
@@ -191,7 +219,7 @@ private struct BoundaryDotTexture: View {
             for y in stride(from: spacing / 2, through: size.height, by: spacing) {
                 for x in stride(from: spacing / 2, through: size.width, by: spacing) {
                     context.fill(
-                        Path(ellipseIn: CGRect(x: x, y: y, width: 1.1, height: 1.1)),
+                        Path(ellipseIn: CGRect(x: x, y: y, width: dotSize, height: dotSize)),
                         with: .foreground
                     )
                 }
