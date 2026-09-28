@@ -83,8 +83,11 @@ enum LociqLaunchFixture: String, CaseIterable {
     }
 
     /// True when `--lociq-ui-fixture-details` asks to open the details view at launch.
+    ///
+    /// Works with or without a fixture, so screenshots of the details view
+    /// can also show live Census data.
     static var showsDetailsOnLaunch: Bool {
-        current != nil && ProcessInfo.processInfo.arguments.contains("--lociq-ui-fixture-details")
+        ProcessInfo.processInfo.arguments.contains("--lociq-ui-fixture-details")
     }
 
     /// Fixture coordinate (a public landmark, not a user location).

@@ -2,6 +2,27 @@
 
 Lociq is a minimal SwiftUI iPhone app that shows a city-level demographic snapshot for the user's current location.
 
+## Screenshots
+
+iPhone 17 Pro Max (iOS 26.5 simulator) with live U.S. Census data, ACS 2020–2024 5-year estimates. Full-size images, at the App Store's 6.9-inch size, are in [`Screenshots/`](Screenshots/).
+
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="Screenshots/01-summary-san-francisco.png" width="200" alt="San Francisco, CA summary: population 830,235, median household income $140,970, 363,970 households, 38% owner occupied, 60% with a bachelor's degree or higher, beside the city outline and a density of 18,000 per square mile"><br><sub><b>Summary</b><br>San Francisco, CA</sub></td>
+    <td align="center" width="25%"><img src="Screenshots/02-details-san-francisco.png" width="200" alt="San Francisco details: age groups, median rent, median home value, vacant units, transit, remote work, and average commute, with the Census source, the Census Data API notice, and the appearance setting"><br><sub><b>Details</b><br>Age, housing, commuting, source</sub></td>
+    <td align="center" width="25%"><img src="Screenshots/03-light-appearance-houston.png" width="200" alt="Houston, TX in the light appearance, with the city outline showing its enclaves as holes"><br><sub><b>Light appearance</b><br>Houston, TX, enclaves as holes</sub></td>
+    <td align="center" width="25%"><img src="Screenshots/04-large-text-seattle.png" width="200" alt="Seattle, WA at a large accessibility text size, in a single column with the outline above the city name"><br><sub><b>Large text</b><br>Seattle, WA at AX3</sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="25%"><img src="Screenshots/05-small-town-marfa.png" width="200" alt="Marfa, TX, population 2,482, labeled small-area estimate"><br><sub><b>Small town</b><br>Marfa, TX, small-area caveat</sub></td>
+    <td align="center" width="25%"><img src="Screenshots/06-outside-city-limits.png" width="200" alt="Outside city limits, Eureka County, NV"><br><sub><b>Outside city limits</b><br>Rural Nevada</sub></td>
+    <td align="center" width="25%"><img src="Screenshots/07-first-run.png" width="200" alt="First run: city demographics for where you are, from the U.S. Census Bureau, with a location required button"><br><sub><b>First run</b><br>Asks for location on tap</sub></td>
+    <td align="center" width="25%"><img src="Screenshots/08-location-off.png" width="200" alt="Location off: allow in Settings, with an Open Settings button"><br><sub><b>Location off</b><br>One tap to Settings</sub></td>
+  </tr>
+</table>
+
+The screenshots use simulated locations at public landmarks. To retake them, run a Debug build in the simulator, grant location, and set a location with `xcrun simctl location <device> set <latitude>,<longitude>`; `--lociq-ui-fixture-details` opens the details view at launch.
+
 ## Current Scope
 
 - Uses Core Location to resolve the current area.
@@ -131,6 +152,6 @@ DERIVED_DATA_PATH=/tmp/lociq-derived-data ./scripts/test_baseline.sh
 
 CI runs the same baseline script on pushes to `master` and on pull requests, with Xcode 26.6 on a `macos-26` runner.
 
-Debug builds accept `--lociq-ui-fixture <cambridge|longName|offline|outsideCityLimits|slow>` to replace Core Location and the Census services with canned data (add `--lociq-ui-fixture-details` to open the details view). The UI tests use it, so they need no network or location permission.
+Debug builds accept `--lociq-ui-fixture <cambridge|longName|offline|outsideCityLimits|slow>` to replace Core Location and the Census services with canned data. The UI tests use it, so they need no network or location permission. `--lociq-ui-fixture-details` opens the details view at launch, with a fixture or with live data.
 
 Release builds fail early when `CENSUS_API_KEY` is empty.
