@@ -24,6 +24,23 @@ struct DemographicMetric: Identifiable, Codable, Sendable {
 
     /// Secondary formatted context line under the primary value.
     let detail: String
+
+    /// Normalized percentage represented by the already-formatted primary value.
+    /// Keeping this derived from the display value prevents visual and textual
+    /// percentages from drifting apart.
+    var progress: Double? {
+        guard primaryValue.hasSuffix("%"),
+              let value = Double(primaryValue.dropLast()),
+              (0...100).contains(value) else { return nil }
+        return value / 100
+    }
+
+    /// A natural-language VoiceOver phrase with the metric's full context.
+    var accessibilitySummary: String {
+        [title.capitalized, primaryValue, detail.lowercased()]
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+    }
 }
 
 /// One grouped section in the details view.

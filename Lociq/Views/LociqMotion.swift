@@ -17,22 +17,22 @@ enum LociqMotion {
     static let quickDuration = 0.18
 
     /// Primary content transition duration.
-    static let contentDuration = 0.58
+    static let contentDuration = 0.32
 
     /// Duration used when settling after a staged interaction.
     static let settleDuration = 0.32
 
     /// Duration for tracing the city boundary.
-    static let boundaryTraceDuration = 2.2
+    static let boundaryTraceDuration = 1.05
 
     /// Delay before boundary tracing starts.
-    static let boundaryTraceDelay = 0.18
+    static let boundaryTraceDelay = 0.05
 
     /// Duration for the boundary-to-city connector line.
-    static let connectorDuration = 1.05
+    static let connectorDuration = 0.48
 
     /// Delay that lets the boundary finish before the connector appears.
-    static let connectorDelay = 2.55
+    static let connectorDelay = 1.12
 
     /// Duration for one approximate-location pulse cycle.
     static let pulseDuration = 1.75
@@ -50,22 +50,22 @@ enum LociqMotion {
     static let loadingSweepPauseNanoseconds: UInt64 = 520_000_000
 
     /// Delay before first loaded content begins revealing.
-    static let firstDataRevealDelay = 0.28
+    static let firstDataRevealDelay = 0.08
 
     /// Duration for first loaded content reveal.
     static let firstDataRevealDuration = 0.44
 
     /// Delay before the approximate-location dot appears.
-    static let locationDotRevealDelay = 1.9
+    static let locationDotRevealDelay = 0.72
 
     /// Duration for approximate-location dot reveal.
     static let locationDotRevealDuration = 0.38
 
     /// Delay between content-cycle phases.
-    static let phaseDelay = 0.22
+    static let phaseDelay = 0.10
 
     /// Total duration during which the content-cycle loading line remains active.
-    static let contentCycleDuration = 1.05
+    static let contentCycleDuration = 0.48
 
     /// Duration for the tiny one-time pull-to-refresh affordance.
     static let pullHintDuration = 0.28

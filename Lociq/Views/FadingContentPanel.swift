@@ -63,7 +63,7 @@ private struct MetricContent: View {
 
     /// Renders all summary metrics.
     var body: some View {
-        VStack(alignment: .trailing, spacing: layout.isShortHeight ? 18 : 22) {
+        VStack(alignment: .trailing, spacing: layout.isShortHeight ? 16 : 19) {
             ForEach(metrics) { metric in
                 MetricBlock(metric: metric, layout: layout)
             }
@@ -74,6 +74,8 @@ private struct MetricContent: View {
 
 /// One summary metric block.
 private struct MetricBlock: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     /// Display-ready metric.
     let metric: DemographicMetric
 
@@ -91,17 +93,51 @@ private struct MetricBlock: View {
                 .font(LociqTypeScale.metricValue(layout))
                 .foregroundStyle(Color.lociqText)
                 .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
+                .lineLimit(layout.usesAccessibilityLayout ? 2 : 1)
+                .minimumScaleFactor(layout.usesAccessibilityLayout ? 1 : 0.78)
                 .allowsTightening(true)
 
-            Text(metric.detail)
-                .font(LociqTypeScale.metricDetail(layout))
-                .foregroundStyle(Color.lociqText.opacity(0.54))
-                .lineLimit(2)
-                .minimumScaleFactor(0.82)
-                .multilineTextAlignment(.trailing)
+            if !metric.detail.isEmpty {
+                Text(metric.detail)
+                    .font(LociqTypeScale.metricDetail(layout))
+                    .foregroundStyle(Color.lociqText.opacity(0.54))
+                    .lineLimit(layout.usesAccessibilityLayout ? nil : 2)
+                    .minimumScaleFactor(layout.usesAccessibilityLayout ? 1 : 0.82)
+                    .multilineTextAlignment(.trailing)
+            }
+
+            if let progress = barProgress {
+                metricBar(progress: progress)
+                    .frame(width: min(layout.contentWidth, 164), height: 3)
+                    .padding(.top, 2)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(metric.title == "OWNER OCCUPIED" ? "Housing tenure" : "Education attainment")
+                    .accessibilityValue(metric.accessibilitySummary)
+            }
         }
-        .accessibilityElement(children: .combine)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(metric.accessibilitySummary)
+    }
+
+    /// Both bars represent their visible primary percentage.
+    private var barProgress: Double? {
+        metric.progress
+    }
+
+    @ViewBuilder
+    private func metricBar(progress: Double) -> some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            if metric.title == "OWNER OCCUPIED" || metric.title == "EDUCATION" {
+                ZStack(alignment: .leading) {
+                    Rectangle().fill(Color.lociqText.opacity(reduceTransparency ? 0.26 : 0.13))
+                    Rectangle()
+                        .fill(Color.lociqText.opacity(reduceTransparency ? 0.72 : 0.48))
+                        .frame(width: width * progress)
+                }
+                .accessibilityHidden(true)
+            }
+        }
     }
 }

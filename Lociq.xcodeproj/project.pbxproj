@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F9092BB52F74891300230E66 /* launchscreen3.png in Resources */ = {isa = PBXBuildFile; fileRef = F9092BB42F74891300230E66 /* launchscreen3.png */; };
 		F96708A02F758CFC006D11C2 /* lociq.icon in Resources */ = {isa = PBXBuildFile; fileRef = F967089F2F758CFC006D11C2 /* lociq.icon */; };
 /* End PBXBuildFile section */
 
@@ -32,7 +31,6 @@
 		F2A1B300A0B14EAA9D700001 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		F2A1B300A0B14EAA9D700002 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		F2A1B300A0B14EAA9D700003 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
-		F9092BB42F74891300230E66 /* launchscreen3.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = launchscreen3.png; sourceTree = "<group>"; };
 		F967089F2F758CFC006D11C2 /* lociq.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = lociq.icon; sourceTree = "<group>"; };
 		F9F07BFF2F567A44009C7121 /* Lociq.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lociq.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9F07C0E2F567A45009C7121 /* LociqTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LociqTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -96,7 +94,6 @@
 			isa = PBXGroup;
 			children = (
 				F967089F2F758CFC006D11C2 /* lociq.icon */,
-				F9092BB42F74891300230E66 /* launchscreen3.png */,
 				F2A1B300A0B14EAA9D700010 /* Config */,
 				F9F07C012F567A44009C7121 /* Lociq */,
 				F9F07C112F567A45009C7121 /* LociqTests */,
@@ -238,7 +235,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				F96708A02F758CFC006D11C2 /* lociq.icon in Resources */,
-				F9092BB52F74891300230E66 /* launchscreen3.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -426,7 +422,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = lociq;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.3.0;
+				CURRENT_PROJECT_VERSION = 1.4.0;
 				DEVELOPMENT_TEAM = WU9WPXVS4R;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -438,7 +434,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.chrismahlke.lociq;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -460,7 +456,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = lociq;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.3.0;
+				CURRENT_PROJECT_VERSION = 1.4.0;
 				DEVELOPMENT_TEAM = WU9WPXVS4R;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -472,7 +468,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.chrismahlke.lociq;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;

@@ -18,6 +18,8 @@ import SwiftUI
 /// and publishes anchor data so `ContentView` can draw the connector to the
 /// city label.
 struct CityBoundaryPreview: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     /// GeoJSON city or CDP boundary to draw.
     let boundary: GeoJSONFeatureCollection
 
@@ -32,6 +34,9 @@ struct CityBoundaryPreview: View {
 
     /// Accessibility reduced-motion flag.
     let reduceMotion: Bool
+
+    /// Optional real city-wide density used only for the accessibility description.
+    var densityLabel: String?
 
     /// Current trim progress for the boundary outline.
     @State private var traceProgress: CGFloat = 0
@@ -49,6 +54,15 @@ struct CityBoundaryPreview: View {
 
             if let projection = GeoJSONBoundaryPathBuilder.projection(for: boundary, in: rect) {
                 ZStack {
+                    // One uniform fill gives the city shape informational weight
+                    // without suggesting unsupported sub-city variation.
+                    BoundaryPreviewShape(projection: projection)
+                        .fill(Color.lociqText.opacity(reduceTransparency ? 0.16 : 0.075))
+
+                    BoundaryDotTexture()
+                        .foregroundStyle(Color.lociqText.opacity(reduceTransparency ? 0.16 : 0.09))
+                        .mask(BoundaryPreviewShape(projection: projection))
+
                     // The path is trimmed from zero to one so the outline feels
                     // drawn rather than abruptly appearing.
                     BoundaryPreviewShape(projection: projection)
@@ -93,7 +107,8 @@ struct CityBoundaryPreview: View {
         .onDisappear {
             locationDotTask?.cancel()
         }
-        .accessibilityHidden(true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityDescription)
     }
 
     /// Restarts the boundary trace and delays the approximate-location dot until the shape is established.
@@ -122,6 +137,31 @@ struct CityBoundaryPreview: View {
                 showsLocationDot = true
             }
         }
+    }
+
+    private var accessibilityDescription: String {
+        let location = coordinate == nil ? "" : ", with approximate location marked"
+        let density = densityLabel.map { ", density \($0)" } ?? ""
+        return "City boundary\(location)\(density)"
+    }
+}
+
+/// A faint, even micro-dot field. Uniform spacing communicates city-wide
+/// density without resembling a neighborhood choropleth.
+private struct BoundaryDotTexture: View {
+    var body: some View {
+        Canvas { context, size in
+            let spacing: CGFloat = 9
+            for y in stride(from: spacing / 2, through: size.height, by: spacing) {
+                for x in stride(from: spacing / 2, through: size.width, by: spacing) {
+                    context.fill(
+                        Path(ellipseIn: CGRect(x: x, y: y, width: 1.1, height: 1.1)),
+                        with: .foreground
+                    )
+                }
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 

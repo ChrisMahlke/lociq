@@ -213,8 +213,9 @@ struct DemographicSnapshot: Codable, Sendable {
     /// actions.
     var shareText: String? {
         guard hasDemographicData else { return nil }
-        let metricLines = metrics.map { "\($0.title): \($0.primaryValue)" }
-        return (["LOC IQ", market] + metricLines).joined(separator: "\n")
+        let metricLines = metrics.map { "\($0.title): \($0.primaryValue) — \($0.detail)" }
+        return (["LOC IQ · CITY SNAPSHOT", market, "2024 U.S. Census ACS 5-year estimates"] + metricLines)
+            .joined(separator: "\n")
     }
 }
 
@@ -226,8 +227,6 @@ extension DemographicSnapshot {
     /// grouped into age, housing, and mobility sections.
     init(profile: ResolvedCityProfile, demographics: Demographics) {
         let households = DemographicValueFormatter.households(from: demographics)
-        let ownerPct = DemographicValueFormatter.percent(demographics.housing.ownerOccupiedPct)
-
         self.init(
             market: DemographicValueFormatter.title(from: profile, demographics: demographics).uppercased(),
             dateLabel: "",
@@ -242,19 +241,19 @@ extension DemographicSnapshot {
                     detail: "MEDIAN AGE \(DemographicValueFormatter.decimal(demographics.age.median))"
                 ),
                 DemographicMetric(
-                    title: "HOUSEHOLDS",
-                    primaryValue: DemographicValueFormatter.number(households),
-                    detail: "OCCUPIED HOMES"
-                ),
-                DemographicMetric(
                     title: "INCOME",
                     primaryValue: DemographicValueFormatter.currency(demographics.income.medianHousehold),
                     detail: "MEDIAN HOUSEHOLD"
                 ),
                 DemographicMetric(
-                    title: "RENTERS",
-                    primaryValue: DemographicValueFormatter.percent(demographics.housing.renterOccupiedPct),
-                    detail: "\(ownerPct) OWNER OCCUPIED"
+                    title: "HOUSEHOLDS",
+                    primaryValue: DemographicValueFormatter.number(households),
+                    detail: "OCCUPIED HOMES"
+                ),
+                DemographicMetric(
+                    title: "OWNER OCCUPIED",
+                    primaryValue: DemographicValueFormatter.percent(demographics.housing.ownerOccupiedPct),
+                    detail: ""
                 ),
                 DemographicMetric(
                     title: "EDUCATION",

@@ -20,7 +20,7 @@ enum LociqTypeScale {
     ///
     /// The city label is the dominant text element.
     static func city(_ layout: MinimalLayout) -> Font {
-        .system(size: layout.isCompactWidth ? 24 : 28, weight: .light, design: .rounded)
+        .system(size: layout.isCompactWidth ? 24 : 28, weight: .light, design: .rounded).leading(.tight)
     }
 
     /// Returns the quieter bottom brand font for the current viewport.

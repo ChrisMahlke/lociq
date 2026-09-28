@@ -14,10 +14,10 @@ enum DemographicContentStyle {
     static let detailPanelOpacity = 0.88
 
     /// Detail section title opacity.
-    static let detailSectionTitleOpacity = 0.38
+    static let detailSectionTitleOpacity = 0.58
 
     /// Detail row label opacity.
-    static let detailLabelOpacity = 0.52
+    static let detailLabelOpacity = 0.66
 
     /// Detail row value opacity.
     static let detailValueOpacity = 0.88

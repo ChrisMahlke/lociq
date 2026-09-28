@@ -50,8 +50,8 @@ private struct DetailSectionView: View {
                     VStack(alignment: .trailing, spacing: 5) {
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
                             DetailRowLabel(label: row.label, layout: layout)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.72)
+                                .lineLimit(layout.usesAccessibilityLayout ? 2 : 1)
+                                .minimumScaleFactor(layout.usesAccessibilityLayout ? 1 : 0.72)
                                 .allowsTightening(true)
                                 .frame(width: layout.detailLabelColumnWidth, alignment: .leading)
                                 .layoutPriority(1)
@@ -63,7 +63,7 @@ private struct DetailSectionView: View {
                                 .foregroundStyle(Color.lociqText.opacity(DemographicContentStyle.detailValueOpacity))
                                 .multilineTextAlignment(.trailing)
                                 .lineLimit(2)
-                                .minimumScaleFactor(0.82)
+                                .minimumScaleFactor(layout.usesAccessibilityLayout ? 1 : 0.82)
                                 .allowsTightening(true)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .layoutPriority(1)

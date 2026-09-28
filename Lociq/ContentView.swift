@@ -25,6 +25,10 @@ struct ContentView: View {
     /// Accessibility reduced-motion setting used by all motion helpers.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     /// Persisted explicit app theme. The app defaults to its original dark appearance.
     @AppStorage("lociq.themePreference") private var themePreferenceRawValue = LociqThemePreference.dark.rawValue
 
@@ -38,7 +42,7 @@ struct ContentView: View {
     @State private var isLoadingContent = false
 
     /// Briefly confirms a completed manual refresh in the existing header status line.
-    @State private var isShowingRefreshConfirmation = false
+    @State private var refreshStatusOverride: String?
 
     /// Drives a one-time, very small pull hint after the first loaded content appears.
     @State private var contentPullHintOffset: CGFloat = 0
@@ -76,10 +80,10 @@ struct ContentView: View {
 
     /// Snapshot currently projected by the view model.
     private var displaySnapshot: DemographicSnapshot {
-        guard isShowingRefreshConfirmation, locationProfile.snapshot.hasDemographicData, !locationProfile.isLoading else {
+        guard let refreshStatusOverride, locationProfile.snapshot.hasDemographicData, !locationProfile.isLoading else {
             return locationProfile.snapshot
         }
-        return locationProfile.snapshot.replacingDateLabel("UPDATED NOW")
+        return locationProfile.snapshot.replacingDateLabel(refreshStatusOverride)
     }
 
     /// True while the app should show only the initial spinner.
@@ -103,7 +107,8 @@ struct ContentView: View {
             let viewport = MinimalViewport(geometry: geometry)
             let layout = MinimalLayout(
                 viewportSize: viewport.size,
-                safeAreaInsets: viewport.safeAreaInsets
+                safeAreaInsets: viewport.safeAreaInsets,
+                usesAccessibilityLayout: dynamicTypeSize.isAccessibilitySize
             )
 
             ZStack {
@@ -171,18 +176,33 @@ struct ContentView: View {
     @ViewBuilder
     private func boundaryLayer(layout: MinimalLayout) -> some View {
         if shouldShowBoundary, locationProfile.canShowBoundary, let boundary = locationProfile.boundary {
-            CityBoundaryPreview(
-                boundary: boundary,
-                coordinate: activeCoordinate,
-                horizontalAccuracy: locationProfile.horizontalAccuracy,
-                traceToken: locationProfile.traceToken,
-                reduceMotion: reduceMotion
-            )
-            .frame(width: layout.boundarySize.width, height: layout.boundarySize.height)
+            let density = cityDensity(boundary: boundary)
+            VStack(alignment: .center, spacing: 8) {
+                CityBoundaryPreview(
+                    boundary: boundary,
+                    coordinate: activeCoordinate,
+                    horizontalAccuracy: locationProfile.horizontalAccuracy,
+                    traceToken: locationProfile.traceToken,
+                    reduceMotion: reduceMotion,
+                    densityLabel: density.map(CityDensityCalculator.formatted)
+                )
+                .frame(width: layout.boundarySize.width, height: layout.boundarySize.height)
+
+                if let density {
+                    VStack(spacing: 2) {
+                        Text("DENSITY")
+                            .foregroundStyle(Color.lociqText.opacity(reduceTransparency ? 0.7 : 0.54))
+                        Text(CityDensityCalculator.formatted(density))
+                            .foregroundStyle(Color.lociqText.opacity(reduceTransparency ? 0.88 : 0.72))
+                            .monospacedDigit()
+                    }
+                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                    .accessibilityElement(children: .combine)
+                }
+            }
             .padding(.top, layout.boundaryTop)
             .padding(.leading, layout.boundaryLeading)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .accessibilityLabel("City boundary")
         }
     }
 
@@ -213,13 +233,16 @@ struct ContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
+                // Stable identity prevents refresh-only snapshot updates from
+                // resetting the user's vertical reading position.
+                .id("profile-scroll-content")
             }
             .frame(
                 maxWidth: layout.contentWidth,
                 maxHeight: layout.detailHeight,
                 alignment: .topTrailing
             )
-            .padding(.top, layout.topInset)
+            .padding(.top, layout.contentTopInset)
             .padding(.trailing, layout.trailingInset)
             .offset(y: contentPullHintOffset)
             .refreshable {
@@ -290,7 +313,10 @@ struct ContentView: View {
     /// from the visual center of the polygon rather than from the app center.
     private func boundaryConnector(anchors: BoundaryCityConnectionAnchors) -> some View {
         GeometryReader { proxy in
-            if let boundaryAnchor = anchors.boundary, let cityAnchor = anchors.city {
+            if !dynamicTypeSize.isAccessibilitySize,
+               proxy.size.width >= 350,
+               let boundaryAnchor = anchors.boundary,
+               let cityAnchor = anchors.city {
                 let boundaryRect = proxy[boundaryAnchor]
                 let cityRect = proxy[cityAnchor]
                 let boundaryPathCenter = anchors.boundaryCenter
@@ -369,16 +395,28 @@ struct ContentView: View {
     private func showRefreshConfirmationIfNeeded() {
         guard locationProfile.snapshot.hasDemographicData, !locationProfile.isLoading else { return }
         refreshConfirmationTask?.cancel()
+        let status = locationProfile.snapshot.dateLabel == "STALE DATA"
+            ? "UNABLE TO REFRESH · SAVED DATA"
+            : "UPDATED NOW"
         withAnimation(LociqMotion.quick(reduceMotion: reduceMotion)) {
-            isShowingRefreshConfirmation = true
+            refreshStatusOverride = status
         }
+        if status == "UPDATED NOW" { Haptics.softImpact() }
         refreshConfirmationTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_800_000_000)
             guard !Task.isCancelled else { return }
             withAnimation(LociqMotion.quick(reduceMotion: reduceMotion)) {
-                isShowingRefreshConfirmation = false
+                refreshStatusOverride = nil
             }
         }
+    }
+
+    private func cityDensity(boundary: GeoJSONFeatureCollection) -> Double? {
+        guard let population = displaySnapshot.metrics.first(where: { $0.title == "POPULATION" }) else { return nil }
+        return CityDensityCalculator.peoplePerSquareMile(
+            populationText: population.primaryValue,
+            boundary: boundary
+        )
     }
 
     /// Runs a restrained one-time hint that the content can be pulled down to refresh.

@@ -17,6 +17,7 @@ import SwiftUI
 /// It changes between location, retry, details, and home based on the view
 /// state supplied by `LocationProfileViewModel`.
 struct BottomIdentity: View {
+    @AppStorage("lociq.hasDiscoveredDataView") private var hasDiscoveredDataView = false
     /// Static strings and SF Symbols used by the bottom surface.
     private enum Constants {
         static let brandLeading = "LOC"
@@ -35,6 +36,7 @@ struct BottomIdentity: View {
         static let showDataLabel = "Show data view"
         static let refreshLabel = "Refresh data"
         static let shareLabel = "Share city snapshot"
+        static let themeLabel = "Appearance"
     }
 
     /// Current demographic display snapshot.
@@ -128,15 +130,6 @@ struct BottomIdentity: View {
                     Spacer(minLength: 28)
 
                     HStack(alignment: .center, spacing: 0) {
-                        Button(action: onToggleTheme) {
-                            Image(systemName: themePreference.toggleIconName)
-                                .font(.system(size: 16, weight: .regular))
-                                .foregroundStyle(Color.lociqText.opacity(0.58))
-                                .frame(width: 44, height: 44)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(themePreference.toggleAccessibilityLabel)
-
                         if !isWaitingForInitialData && (snapshot.hasDemographicData || canRetry) {
                             if canRefresh {
                                 Button(action: onRefresh) {
@@ -145,9 +138,10 @@ struct BottomIdentity: View {
                                         .foregroundStyle(Color.lociqText.opacity(0.58))
                                         .frame(width: 44, height: 44)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(QuietIconButtonStyle())
                                 .disabled(isLoading)
                                 .accessibilityLabel(Constants.refreshLabel)
+                                .accessibilityHint("Reloads Census data for the current city")
                             }
 
                             if let shareText {
@@ -157,8 +151,17 @@ struct BottomIdentity: View {
                                         .foregroundStyle(Color.lociqText.opacity(0.58))
                                         .frame(width: 44, height: 44)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(QuietIconButtonStyle())
                                 .accessibilityLabel(Constants.shareLabel)
+                                .accessibilityHint("Opens the share sheet with this city snapshot")
+                            }
+
+                            if snapshot.hasDemographicData && !hasDiscoveredDataView && !isShowingDetails {
+                                Text("DATA")
+                                    .font(LociqTypeScale.metricDetail(layout))
+                                    .foregroundStyle(Color.lociqText.opacity(0.58))
+                                    .transition(.opacity)
+                                    .accessibilityHidden(true)
                             }
 
                             primaryActionButton
@@ -167,11 +170,11 @@ struct BottomIdentity: View {
 
                     if !isWaitingForInitialData && shouldEmphasizeLocationPermission {
                         VStack(alignment: .trailing, spacing: 3) {
-                            Text(snapshot.market)
+                            Text(needsLocationPermission ? "LOCATION REQUIRED" : snapshot.market)
                                 .font(LociqTypeScale.metricLabel(layout))
                                 .foregroundStyle(Color.lociqText.opacity(0.82))
 
-                            Text(snapshot.dateLabel)
+                            Text(needsLocationPermission ? "ENABLE TO VIEW YOUR CITY" : snapshot.dateLabel)
                                 .font(LociqTypeScale.metricDetail(layout))
                                 .foregroundStyle(Color.lociqText.opacity(0.62))
                         }
@@ -201,7 +204,10 @@ struct BottomIdentity: View {
 
     /// Primary mode, retry, or permission button.
     private var primaryActionButton: some View {
-        Button(action: onShowDetails) {
+        Button {
+            if snapshot.hasDemographicData { hasDiscoveredDataView = true }
+            onShowDetails()
+        } label: {
             ZStack {
                 if shouldEmphasizeLocationPermission {
                     Circle()
@@ -229,10 +235,18 @@ struct BottomIdentity: View {
             }
             .frame(width: 44, height: 44)
             .opacity(isLoading ? 0.42 : 1)
+            .overlay(alignment: .bottom) {
+                if snapshot.hasDemographicData && isShowingDetails {
+                    Rectangle()
+                        .fill(Color.lociqText.opacity(0.52))
+                        .frame(width: 16, height: 1)
+                }
+            }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(QuietIconButtonStyle())
         .disabled(isLoading)
         .accessibilityLabel(actionLabel)
+        .accessibilityHint(actionHint)
         .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: iconName)
         .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: isLoading)
         .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: shouldEmphasizeLocationPermission)
@@ -245,10 +259,17 @@ struct BottomIdentity: View {
                     Label("Share", systemImage: Constants.shareIcon)
                 }
             }
+            Button(themePreference.toggleAccessibilityLabel, systemImage: themePreference.toggleIconName, action: onToggleTheme)
         }
         .task(id: shouldEmphasizeLocationPermission) {
             await runLocationPermissionPulse()
         }
+    }
+
+    private var actionHint: String {
+        if needsLocationPermission { return "Requests location access to identify your city" }
+        if !snapshot.hasDemographicData { return "Attempts to load the city profile again" }
+        return isShowingDetails ? "Returns to the summary statistics" : "Shows detailed demographic statistics"
     }
 
     /// Runs a restrained pulse while location permission is the primary action.
@@ -272,5 +293,19 @@ struct BottomIdentity: View {
             try? await Task.sleep(nanoseconds: UInt64(LociqMotion.permissionPulseDuration * 1_000_000_000))
             try? await Task.sleep(nanoseconds: LociqMotion.permissionPulsePauseNanoseconds)
         }
+    }
+}
+
+/// Immediate one-pixel feedback for the otherwise chromeless icon controls.
+private struct QuietIconButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.48 : 1)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(Color.lociqText.opacity(configuration.isPressed ? 0.5 : 0))
+                    .frame(width: 18, height: 1)
+            }
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
     }
 }
