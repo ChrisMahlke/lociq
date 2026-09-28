@@ -46,6 +46,18 @@ final class LociqIPadTests: XCTestCase {
         XCTAssertLessThan(population.frame.maxX, source.frame.minX)
         XCTAssertLessThan(title.frame.maxY, population.frame.minY)
 
+        // The city heads the summary, sharing its right edge. Below it the
+        // summary and the details share their first baseline (their labels
+        // differ in size, so their tops differ by a few points), and the
+        // outline, lifted by its drawing inset, starts level with them.
+        let firstSection = element(app, "details.section.age")
+        let outline = element(app, "boundary.glyph")
+        XCTAssertTrue(outline.waitForExistence(timeout: 5))
+        XCTAssertEqual(title.frame.maxX, population.frame.maxX, accuracy: 1)
+        XCTAssertEqual(firstSection.frame.minY, population.frame.minY, accuracy: 4)
+        XCTAssertLessThanOrEqual(outline.frame.minY, population.frame.minY + 8)
+        XCTAssertGreaterThanOrEqual(outline.frame.minY, population.frame.minY - outline.frame.height * 0.12 - 2)
+
         attachScreenshot(named: "iPad landscape spread")
     }
 

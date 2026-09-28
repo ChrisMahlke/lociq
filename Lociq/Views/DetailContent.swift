@@ -67,6 +67,7 @@ private struct DetailSectionView: View {
                 .font(LociqTypeScale.detailSectionLabel(layout))
                 .foregroundStyle(Color.lociq(.sectionTitle))
                 .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("details.section.\(section.title.lowercased())")
 
             VStack(alignment: .trailing, spacing: layout.detailRowSpacing * (isSecondary ? 0.75 : 1)) {
                 ForEach(section.rows) { row in

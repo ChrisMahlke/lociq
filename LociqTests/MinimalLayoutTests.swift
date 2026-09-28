@@ -91,6 +91,12 @@ struct MinimalLayoutTests {
             let textColumnsStart = size.width - layout.trailingInset - layout.detailSidebarWidth - layout.columnGap - layout.contentWidth
             #expect(layout.boundaryLeading >= layout.horizontalInset)
             #expect(layout.boundaryLeading + layout.boundarySize.width < textColumnsStart)
+
+            // One row: the outline's zone, the summary, and the details fill the width exactly.
+            let row = layout.horizontalInset + layout.geographyWidth + layout.boundaryGap
+                + layout.contentWidth + layout.columnGap + layout.detailSidebarWidth + layout.trailingInset
+            #expect(abs(row - size.width) < 0.001)
+            #expect(layout.boundarySize.width <= layout.geographyWidth)
         }
     }
 

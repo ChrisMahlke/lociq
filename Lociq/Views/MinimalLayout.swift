@@ -85,6 +85,13 @@ struct MinimalLayout {
     /// Space between the summary column and the details beside it.
     let columnGap: CGFloat
 
+    /// Width of the zone left of the text that holds the outline, centered;
+    /// zero on phones.
+    let geographyWidth: CGFloat
+
+    /// Space between the outline's zone and the text; zero on phones.
+    let boundaryGap: CGFloat
+
     /// Right inset for the content stack.
     let trailingInset: CGFloat
 
@@ -162,6 +169,8 @@ struct MinimalLayout {
                 : min(width * (isCompactWidth ? 0.55 : 0.50), isCompactWidth ? 214 : 246)
             detailSidebarWidth = 0
             columnGap = 0
+            geographyWidth = 0
+            boundaryGap = 0
             boundarySize = CGSize(
                 width: min(max(width * (isCompactWidth ? 0.25 : 0.28), isCompactWidth ? 82 : 96), isCompactWidth ? 118 : 142),
                 height: min(max(height * (isShortHeight ? 0.16 : 0.19), isShortHeight ? 92 : 112), isShortHeight ? 132 : 158)
@@ -181,14 +190,13 @@ struct MinimalLayout {
         let bodyScale = Self.canvasMultiplier(for: .body, canvasScale: scale)
         let smallScale = Self.canvasMultiplier(for: .caption, canvasScale: scale)
         let margin = min(max(40, width * 0.055), 80)
-        let boundaryGap = 48 * bodyScale
+        let outlineGap = 48 * bodyScale
         canvasScale = scale
         // Vertical rhythm follows the window's height as well as the type, so
         // the composition fills a tall iPad about as much as it fills a phone.
         spacingScale = max(bodyScale, (bodyScale + min(height / 874, 1.6)) / 2)
         isCompactWidth = false
         usesSingleColumn = dynamicTypeSize >= .accessibility1 && width < 1000
-        topInset = max(56, height * 0.1)
         bottomInset = max(40, height * 0.05)
         trailingInset = margin
         horizontalInset = margin
@@ -200,13 +208,16 @@ struct MinimalLayout {
         let summaryWidth = 320 * bodyScale
         let sidebarWidth = 280 * smallScale
         let sidebarGap = 72 * bodyScale
-        let spreadGeographyWidth = width - 2 * margin - boundaryGap - summaryWidth - sidebarGap - sidebarWidth
+        let spreadGeographyWidth = width - 2 * margin - outlineGap - summaryWidth - sidebarGap - sidebarWidth
         let isSpread = !usesSingleColumn
             && dynamicTypeSize < .accessibility1
             && height >= 720
             && spreadGeographyWidth >= 200 * bodyScale
 
-        let geographyWidth: CGFloat
+        // A spread starts its columns below the city, so it keeps the top
+        // inset shorter to show the details whole.
+        topInset = isSpread ? max(48, height * 0.07) : max(56, height * 0.1)
+        boundaryGap = outlineGap
         if isSpread {
             canvas = .spread
             contentWidth = summaryWidth
@@ -224,7 +235,7 @@ struct MinimalLayout {
             detailContentWidth = usesSingleColumn
                 ? contentWidth
                 : min(contentWidth, max(width * 0.36, 300 * smallScale))
-            geographyWidth = usesSingleColumn ? width - 2 * margin : width - 2 * margin - boundaryGap - contentWidth
+            geographyWidth = usesSingleColumn ? width - 2 * margin : width - 2 * margin - outlineGap - contentWidth
         }
 
         // The outline is the anchor of the left side: centered in its zone,

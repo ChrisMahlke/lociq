@@ -68,7 +68,7 @@ The watch app runs the same flow with the watch's own location and its own cache
 
 - **Phone**, for windows narrower than 600 pt or shorter than 500 pt: every iPhone, Slide Over, and narrow Split View. The original composition, unchanged.
 - **Large**, for other iPad windows: the same composition, grown to the window by `canvasScale` (1 to 1.45, from the window's size relative to 700 x 820 pt). Display type grows fully, body text by 80%, captions by 60%, and spacing follows the window's height. The growth fades out as the user's text size grows, so the accessibility sizes match iPhone and text never gets smaller when text size grows.
-- **Spread**, for wide windows (13-inch and 11-inch iPads in landscape) at least 720 pt tall, at standard text sizes: the details sit in a quieter column beside the city and its summary, so the summary/details toggle is not needed.
+- **Spread**, for wide windows (13-inch and 11-inch iPads in landscape) at least 720 pt tall, at standard text sizes: the city heads the summary and shares its right edge. Below it the outline, the summary, and the details, in a quieter column, start on one line: the text columns share their first baseline, and the outline, lifted by its drawing inset, meets the top of the first capitals. The details column replaces the summary/details toggle.
 
 Two columns stay until the accessibility sizes on large canvases, and at every size on windows 1,000 pt or wider. The menu bar and keyboard offer Summary (⌘1), Details (⌘2), Refresh (⌘R), and Appearance, and the bottom controls highlight under the pointer.
 

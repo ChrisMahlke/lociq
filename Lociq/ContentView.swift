@@ -205,7 +205,8 @@ struct ContentView: View {
             .transition(.opacity)
         } else {
             ZStack(alignment: .topLeading) {
-                if !layout.usesSingleColumn {
+                // A spread places the outline in its row, level with the text.
+                if !layout.usesSingleColumn, !showsDetailsBeside(layout) {
                     boundaryColumn(layout: layout)
                 }
                 contentScroll(layout: layout)
@@ -280,14 +281,10 @@ struct ContentView: View {
     ///
     /// The scroll area ends above the bottom bar. When content is taller than
     /// the area, a short fade and the scroll indicator show that more follows.
-    /// On a spread, the details sit in a quieter column right of the city and
-    /// its summary, from the top, so they fit the window whole and the
-    /// connector never crosses them.
+    /// A spread fills the width: see `spread(layout:)`.
     private func contentScroll(layout: MinimalLayout) -> some View {
         let isSpread = showsDetailsBeside(layout)
-        let columnWidth: CGFloat = layout.usesSingleColumn
-            ? .infinity
-            : (isSpread ? layout.contentWidth + layout.columnGap + layout.detailSidebarWidth : layout.contentWidth)
+        let columnWidth: CGFloat = layout.usesSingleColumn || isSpread ? .infinity : layout.contentWidth
 
         return ScrollView(.vertical, showsIndicators: isContentOverflowing) {
             VStack(alignment: .trailing, spacing: layout.space(34)) {
@@ -359,7 +356,7 @@ struct ContentView: View {
         )
         .padding(.top, layout.topInset)
         .padding(.trailing, layout.trailingInset)
-        .padding(.leading, layout.usesSingleColumn ? layout.horizontalInset : 0)
+        .padding(.leading, layout.usesSingleColumn || isSpread ? layout.horizontalInset : 0)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         .offset(y: contentPullHintOffset)
         .modifier(PullToRefresh(isEnabled: viewState.canPullToRefresh) {
@@ -367,32 +364,63 @@ struct ContentView: View {
         })
     }
 
-    /// A wide iPad window: the city and its summary, with the details beside them.
+    /// A wide iPad window: the city above one row of the outline, the
+    /// summary, and the details.
     ///
-    /// VoiceOver reads the city and summary first, then the details.
+    /// The city heads the summary and shares its right edge. Below it the
+    /// row lines up what the eye sees, whatever the height of the title: the
+    /// summary and the details share their first baseline, and the outline's
+    /// top edge sits level with the top of the first capitals. The connector
+    /// runs from the outline to the city through the empty side of the
+    /// right-aligned summary. VoiceOver reads the city, the summary, the
+    /// details, then the outline.
     private func spread(layout: MinimalLayout) -> some View {
-        HStack(alignment: .top, spacing: layout.columnGap) {
-            VStack(alignment: .trailing, spacing: layout.space(34)) {
-                HeaderBlock(snapshot: displaySnapshot, layout: layout, titleFocus: $isTitleFocused)
-                    .accessibilitySortPriority(1)
-                summaryPanel(layout: layout, showsDetails: false)
-            }
-            .frame(width: layout.contentWidth, alignment: .trailing)
-            .accessibilityElement(children: .contain)
-            .accessibilitySortPriority(2)
+        let capHeight = LociqTypeScale.metricLabelCapHeight(layout)
+        return VStack(alignment: .trailing, spacing: layout.space(34)) {
+            HeaderBlock(snapshot: displaySnapshot, layout: layout, titleFocus: $isTitleFocused)
+                .frame(width: layout.contentWidth, alignment: .trailing)
+                .padding(.trailing, layout.columnGap + layout.detailSidebarWidth)
+                .accessibilitySortPriority(3)
 
-            DetailContent(
-                snapshot: displaySnapshot,
-                layout: layout,
-                themePreference: themePreference,
-                onSelectTheme: selectTheme,
-                isSecondary: true
-            )
-            .frame(width: layout.detailSidebarWidth)
-            .opacity(viewState.isContentDimmed ? 0.45 : 1)
-            .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: viewState.isContentDimmed)
-            .accessibilityElement(children: .contain)
-            .accessibilitySortPriority(1)
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                ZStack(alignment: .top) {
+                    // Holds the zone's width until the outline is built.
+                    Color.clear
+                        .frame(width: layout.geographyWidth, height: 0)
+                    if viewState.canShowBoundary, let glyph = locationProfile.boundaryGlyph {
+                        let glyphHeight = glyph.fittedSize(within: layout.boundarySize).height
+                        boundaryStack(glyph: glyph, layout: layout)
+                            // The outline is drawn inset in its frame; lift it by
+                            // that inset so the outline itself meets the line.
+                            .offset(y: -glyphHeight * (1 - glyph.drawingScale) / 2)
+                            .opacity(viewState.isContentDimmed ? 0.45 : 1)
+                            .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: viewState.isContentDimmed)
+                    }
+                }
+                // The zone's top meets the top of the first capitals.
+                .alignmentGuide(.firstTextBaseline) { dimensions in dimensions[.top] + capHeight }
+                .accessibilitySortPriority(0)
+
+                summaryPanel(layout: layout, showsDetails: false)
+                    .frame(width: layout.contentWidth)
+                    .padding(.leading, layout.boundaryGap)
+                    .accessibilityElement(children: .contain)
+                    .accessibilitySortPriority(2)
+
+                DetailContent(
+                    snapshot: displaySnapshot,
+                    layout: layout,
+                    themePreference: themePreference,
+                    onSelectTheme: selectTheme,
+                    isSecondary: true
+                )
+                .frame(width: layout.detailSidebarWidth)
+                .padding(.leading, layout.columnGap)
+                .opacity(viewState.isContentDimmed ? 0.45 : 1)
+                .animation(LociqMotion.quick(reduceMotion: reduceMotion), value: viewState.isContentDimmed)
+                .accessibilityElement(children: .contain)
+                .accessibilitySortPriority(1)
+            }
         }
         .transition(.opacity)
     }

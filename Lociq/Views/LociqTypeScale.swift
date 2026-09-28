@@ -10,6 +10,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// Central typography scale for the app UI.
 ///
@@ -46,7 +47,21 @@ enum LociqTypeScale {
 
     /// Returns the summary metric label font.
     static func metricLabel(_ layout: MinimalLayout) -> Font {
-        .system(size: layout.scaled(layout.isCompactWidth ? 13 : 14, relativeTo: .subheadline), weight: .regular, design: .rounded)
+        .system(size: metricLabelSize(layout), weight: .regular, design: .rounded)
+    }
+
+    /// Point size of the summary metric label.
+    static func metricLabelSize(_ layout: MinimalLayout) -> CGFloat {
+        layout.scaled(layout.isCompactWidth ? 13 : 14, relativeTo: .subheadline)
+    }
+
+    /// Cap height of the summary metric label, for aligning shapes with the
+    /// top of its capitals.
+    static func metricLabelCapHeight(_ layout: MinimalLayout) -> CGFloat {
+        let size = metricLabelSize(layout)
+        let font = UIFont.systemFont(ofSize: size, weight: .regular)
+        let rounded = font.fontDescriptor.withDesign(.rounded).map { UIFont(descriptor: $0, size: size) } ?? font
+        return rounded.capHeight
     }
 
     /// Returns the summary metric value font.
