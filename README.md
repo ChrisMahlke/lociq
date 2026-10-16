@@ -80,7 +80,7 @@ Complications show the last city the watch app found. Open LOC IQ on your watch 
 
 ## Privacy
 
-LOC IQ has no account, no ads, and no tracking. Your location is used only to find the city you're in and is never sent anywhere except to look up Census figures. The full policy is at [chrismahlke.github.io/lociq/privacy](https://chrismahlke.github.io/lociq/privacy/).
+LOC IQ has no accounts, no ads, no analytics, and no tracking, and nothing about you reaches the developer. To find your city, it sends your location, rounded to about 11 meters, to the U.S. Census Bureau. Everything else stays on your device. The full policy is at [chrismahlke.github.io/lociq/privacy](https://chrismahlke.github.io/lociq/privacy/).
 
 ---
 
