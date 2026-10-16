@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#111113">
+  <title>LOC IQ</title>
+  <meta name="description" content="City demographics for where you are, from the U.S. Census Bureau, for iPhone, iPad, and Apple Watch.">
+  <meta property="og:title" content="LOC IQ">
+  <meta property="og:description" content="City demographics for where you are, from the U.S. Census Bureau, for iPhone, iPad, and Apple Watch.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <script src="theme.js"></script>
+  <script src="gallery.js" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..900&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="icon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+</head>
+<body class="selection:bg-white/20 antialiased">
+<div class="min-h-screen bg-[var(--canvas)] text-[var(--body)] flex flex-col relative selection:bg-[var(--accent)] selection:text-black">
+  <div class="absolute inset-0 architectural-grid opacity-70 pointer-events-none" aria-hidden="true"></div>
+
+  <header class="border-b border-[var(--rule)] bg-[var(--canvas)]/90 backdrop-blur-md sticky top-0 z-40 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-0 sm:h-20 flex flex-wrap sm:flex-nowrap items-center justify-between gap-y-3">
+      <a href="./" class="mr-auto flex items-center gap-3 text-[var(--text)] font-[300] text-xl tracking-[0.08em] hover:opacity-90 hover:text-[var(--text)] transition-opacity no-underline">
+        <img src="icon.png" alt="" class="w-7 h-7 rounded-[22%] border border-[var(--rule)]">
+        <span class="font-medium tracking-tight">LOC <span class="text-[var(--accent)] font-light">IQ</span></span>
+      </a>
+
+      <nav aria-label="Pages" class="order-last sm:order-none w-full sm:w-auto flex items-center justify-between sm:justify-start gap-5 sm:gap-7 pt-3 sm:pt-0 border-t sm:border-t-0 border-[var(--rule)] text-[11px] tracking-[0.2em] font-normal">
+        <a href="./" aria-current="page" class="no-underline transition-colors text-[var(--accent)] hover:text-[var(--accent)]">About</a>
+        <a href="support/" class="no-underline transition-colors text-[var(--muted)] hover:text-[var(--text)]">Support</a>
+        <a href="privacy/" class="no-underline transition-colors text-[var(--muted)] hover:text-[var(--text)]">Privacy</a>
+        <a href="license/" class="no-underline transition-colors text-[var(--muted)] hover:text-[var(--text)]">License</a>
+      </nav>
+
+      <a href="https://apps.apple.com/us/app/loc-iq-city-census-data/id6761205178" target="_blank" rel="noopener noreferrer" class="hidden sm:inline-flex sm:ml-8 items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--accent)] text-[#111113] hover:text-[#111113] hover:bg-[var(--accent-hover)] transition-colors text-[10px] font-semibold tracking-[0.14em] uppercase no-underline shadow-sm">
+        <span>App Store</span>
+        <span class="text-[11px]" aria-hidden="true">↗</span>
+      </a>
+
+      <button type="button" hidden class="theme-toggle ml-6 sm:ml-8 w-8 h-8 flex items-center justify-center p-0 border-0 bg-transparent text-[var(--muted)] hover:text-[var(--text)] cursor-pointer transition-colors"></button>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10">
+
+    <!-- HERO BANNER -->
+    <section class="relative rounded-2xl sm:rounded-3xl border border-[var(--rule)] bg-gradient-to-b from-[var(--panel)] via-[var(--card)] to-[var(--canvas)] p-6 sm:p-10 lg:p-12 mb-16 overflow-hidden shadow-2xl">
+      <div class="absolute -top-32 -right-32 w-[480px] h-[480px] bg-[var(--accent)]/10 blur-[120px] rounded-full pointer-events-none" aria-hidden="true"></div>
+      <div class="absolute -bottom-32 -left-32 w-[480px] h-[480px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" aria-hidden="true"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center relative z-10">
+
+        <div class="lg:col-span-7 space-y-6">
+          <div class="flex items-center gap-4">
+            <img src="icon.png" alt="LOC IQ icon" class="w-16 h-16 sm:w-20 sm:h-20 rounded-[22%] border border-[var(--rule)] shadow-xl">
+            <div>
+              <div class="text-[10px] font-mono uppercase tracking-[0.22em] text-[var(--accent)] font-medium">City Demographics · U.S. Census Bureau</div>
+              <h1 class="text-2xl sm:text-4xl font-[300] tracking-[0.04em] uppercase text-[var(--text)]">LOC IQ</h1>
+            </div>
+          </div>
+
+          <h2 class="text-3xl sm:text-5xl lg:text-6xl font-[200] tracking-[0.04em] uppercase text-[var(--text)] leading-[1.08] [text-wrap:balance]">
+            Know the city <br>
+            <span class="text-[var(--accent)] font-[400]">you're in.</span>
+          </h2>
+
+          <p class="text-base sm:text-lg text-[var(--body)] font-[300] leading-relaxed max-w-xl">
+            City demographics for where you are, from the U.S. Census Bureau, for iPhone, iPad, and Apple Watch.
+          </p>
+
+          <p class="text-sm text-[var(--status)] font-[300] leading-relaxed max-w-xl">
+            Open the app and your city is there: its population, income, households, home ownership, and education beside its outline, with the cities next door a swipe away.
+          </p>
+
+          <div class="pt-2 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <a href="https://apps.apple.com/us/app/loc-iq-city-census-data/id6761205178" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-3.5 px-6 py-3.5 rounded-2xl bg-[#09090b] text-white hover:text-white hover:bg-black border border-white/20 hover:border-[var(--accent)] transition-all shadow-xl hover:shadow-2xl no-underline cursor-pointer group">
+              <svg class="w-7 h-7 fill-current text-white shrink-0 transition-transform group-hover:scale-105" viewBox="0 0 170 170" aria-hidden="true"><path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.74 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.6-7.79-11.72-14.25-5.99-9.37-10.74-20.08-14.25-32.12-3.5-12.04-5.26-23.23-5.26-33.56 0-14.47 3.5-26.4 10.51-35.8 7.01-9.4 15.77-14.18 26.29-14.35 4.36 0 9.24 1.15 14.65 3.44 5.4 2.29 9.38 3.51 11.93 3.67 2.14-.16 6.31-1.45 12.51-3.87 6.2-2.42 11.28-3.53 15.24-3.34 11.72.64 21.07 5.09 28.05 13.36-10.25 6.22-15.26 14.93-15.02 26.13.24 8.85 3.63 16.27 10.18 22.25 6.54 5.98 14.34 9.4 23.38 10.27-2.18 6.42-4.8 12.55-7.86 18.39zM119.22 33.06c0-7.39 2.65-14.4 7.95-21.03 5.3-6.63 11.83-10.98 19.58-13.03.62 1.25.93 2.64.93 4.17 0 7.42-2.73 14.54-8.19 21.36-5.46 6.82-12.06 11.14-19.8 12.95-.21-1.46-.47-2.93-.47-4.42z"/></svg>
+              <div class="text-left font-sans leading-tight">
+                <div class="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Download on the</div>
+                <div class="text-lg font-semibold text-white tracking-tight">App Store</div>
+              </div>
+            </a>
+
+            <div class="text-xs font-mono text-[var(--status)] space-y-0.5">
+              <div class="text-[var(--text)] font-medium">iPhone · iPad · Apple Watch</div>
+              <div class="text-[11px] text-[var(--muted)]">iOS &amp; iPadOS 16+ · watchOS 10+ · Zero ads or tracking</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 flex justify-center">
+          <div class="relative w-full max-w-[340px]">
+            <div class="absolute inset-4 bg-[var(--accent)]/15 blur-2xl rounded-[40px] pointer-events-none" aria-hidden="true"></div>
+
+            <div class="relative rounded-[40px] p-3.5 bg-gradient-to-b from-neutral-600 via-neutral-800 to-neutral-900 border border-white/20 shadow-2xl ring-1 ring-black/80">
+              <div class="relative rounded-[30px] overflow-hidden bg-black aspect-[480/1043] border border-black shadow-inner">
+                <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-20 flex items-center justify-end pr-1.5" aria-hidden="true">
+                  <div class="w-1.5 h-1.5 rounded-full bg-neutral-900 ring-1 ring-neutral-800"></div>
+                </div>
+
+                <img src="screenshots/iphone/summary-large.webp" width="1080" height="2347" fetchpriority="high" alt="LOC IQ on iPhone showing San Francisco, CA: population 830,235, median household income $140,970, and 363,970 households, beside the city's outline and a density of 18,000 per square mile" class="w-full h-full object-cover select-none">
+
+                <div class="absolute top-10 left-3 right-3 bg-black/80 backdrop-blur-md border border-white/15 rounded-xl p-2.5 text-white flex items-center justify-between text-xs z-10 shadow-lg" aria-hidden="true">
+                  <div>
+                    <div class="text-[9px] uppercase tracking-wider text-neutral-400 font-mono">Population</div>
+                    <div class="text-sm font-semibold font-mono text-[var(--accent)]">830,235</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[9px] uppercase tracking-wider text-neutral-400 font-mono">Where you are</div>
+                    <div class="text-xs text-white font-medium">San Francisco, CA</div>
+                  </div>
+                </div>
+
+                <div class="absolute bottom-4 left-3 right-3 bg-black/80 backdrop-blur-md border border-white/15 rounded-xl p-2 text-white flex items-center justify-between text-[11px] font-mono z-10" aria-hidden="true">
+                  <span class="text-neutral-400">Median income</span>
+                  <span class="text-emerald-400 font-semibold">$140,970</span>
+                </div>
+              </div>
+
+              <div class="absolute inset-x-8 top-0 h-[2px] bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 02 ABOUT -->
+    <section class="py-16 border-b border-[var(--rule)]">
+      <div class="text-[11px] uppercase tracking-[0.25em] font-mono text-[var(--accent)] mb-8 flex items-center gap-3">
+        <span>02 // About LOC IQ</span>
+        <span class="h-[1px] w-12 bg-[var(--accent)]/40"></span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
+
+        <div class="md:col-span-4 space-y-4">
+          <h2 class="text-xl sm:text-2xl font-[300] tracking-[0.04em] text-[var(--text)] leading-snug">
+            Your city, <br>
+            <span class="text-[var(--accent)]">on one quiet screen.</span>
+          </h2>
+          <p class="text-sm text-[var(--body)] leading-relaxed">
+            LOC IQ shows the U.S. Census profile of the city, town, or census-designated place you're in. No searching, no maps, no clutter: open the app and your city is there.
+          </p>
+          <p class="text-xs text-[var(--status)] leading-relaxed pt-2">
+            Built on the Census Bureau's American Community Survey 5-year estimates for 2020–2024, with city outlines from its boundary service.
+          </p>
+        </div>
+
+        <div class="md:col-span-5 space-y-4 border-t md:border-t-0 md:border-l border-[var(--rule)] pt-6 md:pt-0 md:pl-8">
+          <h3 class="text-[11px] font-[400] tracking-[0.2em] uppercase text-[var(--accent)] mb-4">What it shows:</h3>
+          <div class="space-y-3">
+            <div class="flex items-start gap-3 text-xs sm:text-[13px] text-[var(--body)] leading-relaxed"><span class="text-[10px] font-mono text-[var(--accent)] pt-0.5 select-none shrink-0 font-semibold">01</span><span>The city you're in, with its outline and a dot where you are</span></div>
+            <div class="flex items-start gap-3 text-xs sm:text-[13px] text-[var(--body)] leading-relaxed"><span class="text-[10px] font-mono text-[var(--accent)] pt-0.5 select-none shrink-0 font-semibold">02</span><span>Population, median age, and density</span></div>
+            <div class="flex items-start gap-3 text-xs sm:text-[13px] text-[var(--body)] leading-relaxed"><span class="text-[10px] font-mono text-[var(--accent)] pt-0.5 select-none shrink-0 font-semibold">03</span><span>Median household income, and households</span></div>
+            <div class="flex items-start gap-3 text-xs sm:text-[13px] text-[var(--body)] leading-relaxed"><span class="text-[10px] font-mono text-[var(--accent)] pt-0.5 select-none shrink-0 font-semibold">04</span><span>Homes owned or rented as ten houses, and education as a ring</span></div>
+            <div class="flex items-start gap-3 text-xs sm:text-[13px] text-[var(--body)] leading-relaxed"><span class="text-[10px] font-mono text-[var(--accent)] pt-0.5 select-none shrink-0 font-semibold">05</span><span>Age groups, rent and home values, vacant homes, and commuting, a tap away</span></div>
+            <div class="flex items-start gap-3 text-xs sm:text-[13px] text-[var(--body)] leading-relaxed"><span class="text-[10px] font-mono text-[var(--accent)] pt-0.5 select-none shrink-0 font-semibold">06</span><span>The cities that border yours, a swipe away, each figure beside your own</span></div>
+            <div class="flex items-start gap-3 text-xs sm:text-[13px] text-[var(--body)] leading-relaxed"><span class="text-[10px] font-mono text-[var(--accent)] pt-0.5 select-none shrink-0 font-semibold">07</span><span>Small towns too, labeled when their estimates are less certain</span></div>
+            <div class="flex items-start gap-3 text-xs sm:text-[13px] text-[var(--body)] leading-relaxed"><span class="text-[10px] font-mono text-[var(--accent)] pt-0.5 select-none shrink-0 font-semibold">08</span><span>Dark or light, larger text, VoiceOver, and Increase Contrast, in 12 languages</span></div>
+          </div>
+        </div>
+
+        <div class="md:col-span-3 border-t md:border-t-0 md:border-l border-[var(--rule)] pt-6 md:pt-0 md:pl-8 flex flex-col justify-between">
+          <div>
+            <h3 class="text-[11px] font-[400] tracking-[0.2em] uppercase text-[var(--label)] mb-3">Details:</h3>
+            <div class="rounded-xl overflow-hidden border border-[var(--rule)] bg-[var(--card)] p-1 mb-3">
+              <img src="screenshots/iphone/details.webp" width="540" height="1173" loading="lazy" alt="San Francisco details: residents by age group as columns, median rent and median home value, vacant homes as a grid of squares, and commuting" class="w-full h-auto rounded-lg object-cover">
+            </div>
+            <div class="text-[11px] font-mono text-[var(--status)]">San Francisco: ages, rent, home values, vacant homes, and commuting.</div>
+          </div>
+          <div class="pt-4 text-[10px] font-mono text-[var(--muted)] uppercase tracking-wider">ACS 5-Year · 2020–2024</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 03 SCREENSHOTS: a 4×4 grid of iPhone, iPad, and Apple Watch -->
+    <section id="screenshots" class="py-20 border-b border-[var(--rule)] scroll-mt-20">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-[var(--rule)]">
+        <div>
+          <div class="text-[11px] uppercase tracking-[0.25em] font-mono text-[var(--accent)] mb-2 flex items-center gap-3">
+            <span>03 // Screenshots</span>
+            <span class="h-[1px] w-12 bg-[var(--accent)]/40"></span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-[200] tracking-[0.06em] uppercase text-[var(--text)]">iPhone, iPad &amp; Apple Watch</h2>
+        </div>
+        <p class="text-xs font-mono text-[var(--status)] mt-2 sm:mt-0">Click any thumbnail to inspect at actual size.</p>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">01</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">San Francisco, CA</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[480/1043]" href="screenshots/iphone/summary-large.webp" data-width="1080" data-height="2347">
+            <img src="screenshots/iphone/summary.webp" width="540" height="1173" alt="San Francisco, CA: population 830,235, median household income $140,970, 363,970 households, 38% of homes owned, and 60% of adults with a bachelor's degree, beside the city's outline and a density of 18,000 per square mile" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Your city</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">iPhone · Population 830,235</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">02</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">Alameda, CA</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[480/1043]" href="screenshots/iphone/next-door-large.webp" data-width="1080" data-height="2347">
+            <img src="screenshots/iphone/next-door.webp" width="540" height="1173" alt="Alameda, CA, east of San Francisco: each figure drawn as a pair of bars, Alameda's beside San Francisco's in gold" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">The city next door</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">iPhone · Each figure beside your own</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">03</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">San Francisco, CA</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[480/1043]" href="screenshots/iphone/details-large.webp" data-width="1080" data-height="2347">
+            <img src="screenshots/iphone/details.webp" width="540" height="1173" alt="San Francisco details: residents by age group as columns, median rent and median home value, vacant homes as a grid of squares, and commuting" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Details</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">iPhone · Age, housing, and commuting</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">04</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">Los Angeles, CA</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[480/1043]" href="screenshots/iphone/spanish-large.webp" data-width="1080" data-height="2347">
+            <img src="screenshots/iphone/spanish.webp" width="540" height="1173" alt="Los Angeles, CA in Spanish: POBLACIÓN 3,857,263, INGRESOS $81,939, HOGARES 1,439,097, VIVIENDA PROPIA, and EDUCACIÓN" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate" lang="es">En español</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">iPhone · One of 12 languages</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">05</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">Settings</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[480/1043]" href="screenshots/iphone/languages-large.webp" data-width="1080" data-height="2347">
+            <img src="screenshots/iphone/languages.webp" width="540" height="1173" loading="lazy" alt="The Language menu open over San Francisco, listing each language in its own words: Português, Русский, 한국어, Tagalog, Tiếng Việt, 日本語, 繁體中文 (廣東話), 简体中文 (普通话), Deutsch, and Français" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Your language</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">iPhone · Or follow your device</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">06</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">Houston, TX</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[480/1043]" href="screenshots/iphone/light-large.webp" data-width="1080" data-height="2347">
+            <img src="screenshots/iphone/light.webp" width="540" height="1173" loading="lazy" alt="Houston, TX in the light appearance: population 2,328,253, median household income $64,813, 930,404 households, 42% of homes owned, and 37% of adults with a bachelor's degree" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Light appearance</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">iPhone · Dark, light, or match system</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">07</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">Seattle, WA</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[480/1043]" href="screenshots/iphone/large-text-large.webp" data-width="1080" data-height="2347">
+            <img src="screenshots/iphone/large-text.webp" width="540" height="1173" loading="lazy" alt="Seattle, WA at the largest text size: a density of 9,000 per square mile, and a population of 754,195 with a median age of 35.6, in large type" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Larger text</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">iPhone · Up to the largest sizes</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">08</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">Marfa, TX</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[480/1043]" href="screenshots/iphone/small-town-large.webp" data-width="1080" data-height="2347">
+            <img src="screenshots/iphone/small-town.webp" width="540" height="1173" loading="lazy" alt="Marfa, TX, labeled SMALL-AREA ESTIMATE: population 2,482, median household income $44,306, 1,165 households, 75% of homes owned, and 38% of adults with a bachelor's degree" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Small towns too</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">iPhone · Small-area estimate</span></figcaption>
+        </figure>
+
+        <figure class="shot col-span-2 m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">09</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">Chicago, IL</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[4/3]" href="screenshots/ipad/landscape.webp" data-width="1376" data-height="1032">
+            <img src="screenshots/ipad/landscape.webp" width="1376" height="1032" loading="lazy" alt="Chicago, IL on iPad in landscape: the city's outline, its population, income, households, home ownership, and education, and beside them its ages, housing, and commuting" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Everything on one screen</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">iPad · Landscape, the details beside the summary</span></figcaption>
+        </figure>
+
+        <figure class="shot col-span-2 m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">10</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">Denver, CO</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[4/3]" href="screenshots/ipad/portrait.webp" data-width="1032" data-height="1376">
+            <img src="screenshots/ipad/portrait.webp" width="1032" height="1376" loading="lazy" alt="Denver, CO on iPad in portrait: the city's outline among its neighbors, above its population, income, households, home ownership, and education" class="block w-full h-full object-contain select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Room to explore</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">iPad · Portrait, the outline at full size</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">11</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">San Francisco, CA</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[416/496]" href="screenshots/watch/place.webp" data-width="416" data-height="496">
+            <img src="screenshots/watch/place.webp" width="416" height="496" loading="lazy" alt="San Francisco, CA on Apple Watch: the city's outline with a dot where you are, and its density of 18,000 per square mile" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Where you are</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">Apple Watch · The outline</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">12</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">San Francisco, CA</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[416/496]" href="screenshots/watch/people.webp" data-width="416" data-height="496">
+            <img src="screenshots/watch/people.webp" width="416" height="496" loading="lazy" alt="San Francisco on Apple Watch: population 830,235, median age 40.0, and median household income $140,970" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">People</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">Apple Watch · Population and income</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">13</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">San Francisco, CA</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[416/496]" href="screenshots/watch/homes.webp" data-width="416" data-height="496">
+            <img src="screenshots/watch/homes.webp" width="416" height="496" loading="lazy" alt="San Francisco on Apple Watch: 38% of homes owned shown as ten houses, and 60% of adults with a bachelor's degree shown as a ring" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Homes</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">Apple Watch · Owned, rented, education</span></figcaption>
+        </figure>
+
+        <figure class="shot m-0 text-left flex flex-col group cursor-pointer border border-[var(--rule)] bg-[var(--panel)] p-2.5 rounded-xl transition-all duration-200 hover:border-[var(--accent)]/60 hover:bg-[var(--card)]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[var(--rule)] text-[10px] font-mono text-[var(--status)]"><span class="text-[var(--accent)] font-semibold">14</span><span class="truncate ml-1.5 uppercase tracking-wider text-[9px] text-[var(--muted)]">San Francisco, CA</span></div>
+          <a class="shot-frame block rounded-lg overflow-hidden border border-[var(--rule)] bg-black/40 relative aspect-[416/496]" href="screenshots/watch/details.webp" data-width="416" data-height="496">
+            <img src="screenshots/watch/details.webp" width="416" height="496" loading="lazy" alt="San Francisco details on Apple Watch: residents by age group as columns, then a median rent of $2,476 and a median home value of $1,394,500" class="block w-full h-full object-cover select-none transition-transform duration-200 group-hover:scale-[1.04]">
+            <span class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center pointer-events-none" aria-hidden="true"><span class="text-[9px] uppercase tracking-[0.14em] font-mono bg-[var(--accent)]/90 text-[#111113] font-semibold px-2 py-0.5 rounded-full shadow-md">Actual Size ↗</span></span>
+          </a>
+          <figcaption class="mt-2.5"><span class="cap block text-[11px] font-[400] text-[var(--label)] group-hover:text-[var(--text)] transition-colors truncate">Details</span><span class="sub block text-[10px] text-[var(--muted)] font-mono truncate">Apple Watch · Ages, rent, home values</span></figcaption>
+        </figure>
+
+      </div>
+    </section>
+
+    <!-- ACTUAL SIZE VIEWER -->
+    <dialog class="lightbox m-0 p-4 sm:p-6 w-screen h-screen max-w-none max-h-none bg-transparent border-0 backdrop:bg-black/90 backdrop:backdrop-blur-md open:flex items-center justify-center cursor-zoom-out" aria-labelledby="lb-title">
+      <div class="lb-panel relative flex flex-col items-center w-full max-w-[500px] max-h-[96vh] cursor-default bg-[#151518] border border-white/15 p-5 rounded-2xl shadow-2xl">
+        <div class="w-full flex items-center justify-between gap-3 pb-3 border-b border-white/10 text-xs text-white/45">
+          <div class="min-w-0 truncate">
+            <span id="lb-title" class="lb-title uppercase tracking-[0.16em] text-[var(--accent)] font-medium font-mono text-[11px]"></span>
+            <span class="lb-count text-white/50 ml-2 font-mono text-[10px]"></span>
+          </div>
+          <button type="button" aria-label="Close actual size view" class="lb-close shrink-0 text-white/45 hover:text-white transition-colors cursor-pointer text-xs font-mono px-2 py-1 rounded border border-white/15 hover:border-white/30">Close ✕</button>
+        </div>
+        <div class="lb-frame relative rounded-xl overflow-hidden border border-white/15 shadow-2xl bg-black my-4 flex items-center justify-center touch-pan-y"></div>
+        <div class="w-full flex items-center justify-between pt-2 border-t border-white/10 text-xs text-white/50 font-mono">
+          <button type="button" class="lb-prev shrink-0 hover:text-[var(--accent)] transition-colors cursor-pointer py-1 pr-3">← Prev</button>
+          <span class="lb-sub text-center truncate px-2 text-white/80 text-[11px]"></span>
+          <button type="button" class="lb-next shrink-0 hover:text-[var(--accent)] transition-colors cursor-pointer py-1 pl-3">Next →</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- 04 PLATFORMS & LOCALIZATION -->
+    <section class="py-20">
+      <div class="text-[11px] uppercase tracking-[0.25em] font-mono text-[var(--accent)] mb-8 flex items-center gap-3">
+        <span>04 // Platforms &amp; Localization</span>
+        <span class="h-[1px] w-12 bg-[var(--accent)]/40"></span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16">
+
+        <div class="space-y-4">
+          <h3 class="text-sm font-[400] tracking-[0.18em] uppercase text-[var(--label)] border-b border-[var(--rule)] pb-3">Supported Platforms</h3>
+          <ul class="list-none pl-0 space-y-3.5 text-sm text-[var(--body)]">
+            <li class="flex items-center gap-3 p-3 rounded-lg bg-[var(--panel)] border border-[var(--rule)]">
+              <span class="text-base select-none" aria-hidden="true">📱</span>
+              <div><strong class="block text-[var(--text)] font-medium">iPhone</strong><span class="text-xs text-[var(--status)]">iOS 16 or later</span></div>
+            </li>
+            <li class="flex items-center gap-3 p-3 rounded-lg bg-[var(--panel)] border border-[var(--rule)]">
+              <span class="text-base select-none" aria-hidden="true">📱</span>
+              <div><strong class="block text-[var(--text)] font-medium">iPad</strong><span class="text-xs text-[var(--status)]">iPadOS 16 or later, with the details beside the summary in landscape</span></div>
+            </li>
+            <li class="flex items-center gap-3 p-3 rounded-lg bg-[var(--panel)] border border-[var(--rule)]">
+              <span class="text-base select-none" aria-hidden="true">⌚</span>
+              <div><strong class="block text-[var(--text)] font-medium">Apple Watch</strong><span class="text-xs text-[var(--status)]">watchOS 10 or later, on its own and on your watch face</span></div>
+            </li>
+            <li class="flex items-center gap-3 p-3 rounded-lg bg-[var(--panel)] border border-[var(--rule)]">
+              <span class="text-base select-none" aria-hidden="true">🔒</span>
+              <div><strong class="block text-[var(--text)] font-medium">Zero Tracking</strong><span class="text-xs text-[var(--status)]">No account, no ads, no analytics. Your location is used only to find your city.</span></div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="space-y-4 border-t md:border-t-0 md:border-l border-[var(--rule)] pt-8 md:pt-0 md:pl-10">
+          <h3 class="text-sm font-[400] tracking-[0.18em] uppercase text-[var(--label)] border-b border-[var(--rule)] pb-3">Available Languages (12)</h3>
+          <ul class="list-none pl-0 grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm text-[var(--body)]">
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇺🇸</span><span class="text-xs sm:text-sm font-[300] text-[var(--label)]">English</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇲🇽</span><span lang="es" class="text-xs sm:text-sm font-[300] text-[var(--label)]">Español</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇫🇷</span><span lang="fr" class="text-xs sm:text-sm font-[300] text-[var(--label)]">Français</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇩🇪</span><span lang="de" class="text-xs sm:text-sm font-[300] text-[var(--label)]">Deutsch</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇨🇳</span><span lang="zh-Hans" class="text-xs sm:text-sm font-[300] text-[var(--label)]">简体中文</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇭🇰</span><span lang="zh-Hant" class="text-xs sm:text-sm font-[300] text-[var(--label)]">繁體中文</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇯🇵</span><span lang="ja" class="text-xs sm:text-sm font-[300] text-[var(--label)]">日本語</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇻🇳</span><span lang="vi" class="text-xs sm:text-sm font-[300] text-[var(--label)]">Tiếng Việt</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇵🇭</span><span lang="fil" class="text-xs sm:text-sm font-[300] text-[var(--label)]">Tagalog</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇰🇷</span><span lang="ko" class="text-xs sm:text-sm font-[300] text-[var(--label)]">한국어</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇷🇺</span><span lang="ru" class="text-xs sm:text-sm font-[300] text-[var(--label)]">Русский</span></li>
+            <li class="flex items-center gap-2.5 py-1"><span class="text-lg leading-none select-none" aria-hidden="true">🇧🇷</span><span lang="pt-BR" class="text-xs sm:text-sm font-[300] text-[var(--label)]">Português</span></li>
+          </ul>
+          <div class="pt-4 border-t border-[var(--rule)] text-xs text-[var(--status)] leading-relaxed">
+            LOC IQ follows your device's language automatically, or you can pick one with the settings button (the gear) at the bottom of the app. City and county names stay as the Census Bureau writes them. The Apple Watch app is in English.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer class="mt-20 pt-8 border-t border-[var(--rule)] text-xs text-[var(--muted)] font-mono">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="text-[var(--text)] font-medium">LOC <span class="text-[var(--accent)] font-light">IQ</span></span>
+          <span aria-hidden="true">·</span>
+          <span>© 2026 M10 LLC</span>
+        </div>
+        <nav aria-label="Footer" class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 tracking-wider text-[10px]">
+          <a href="./" class="no-underline text-[var(--muted)] hover:text-[var(--text)] transition-colors">About</a>
+          <a href="support/" class="no-underline text-[var(--muted)] hover:text-[var(--text)] transition-colors">Support</a>
+          <a href="privacy/" class="no-underline text-[var(--muted)] hover:text-[var(--text)] transition-colors">Privacy</a>
+          <a href="license/" class="no-underline text-[var(--muted)] hover:text-[var(--text)] transition-colors">License</a>
+          <a href="https://apps.apple.com/us/app/loc-iq-city-census-data/id6761205178" target="_blank" rel="noopener noreferrer" class="uppercase text-[var(--accent)] hover:text-[var(--accent)] hover:underline no-underline">App Store ↗</a>
+        </nav>
+      </div>
+      <p class="mt-6 text-[10px] text-center sm:text-left">This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau.</p>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

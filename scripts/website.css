@@ -1,0 +1,95 @@
+/*!
+  LOC IQ website styles. scripts/build_website.sh generates style.css
+  from this file and the Tailwind classes in the HTML pages in this repository; edit
+  those, not style.css.
+*/
+
+@import "tailwindcss" source(none);
+@source "../**/*.html";
+@source "../*.js";
+
+:root {
+  --canvas: #111113;
+  --panel: #161619;
+  --card: #1c1c20;
+  --text: #ffffff;
+  --body: rgba(255, 255, 255, 0.78);
+  --label: rgba(255, 255, 255, 0.88);
+  --status: rgba(255, 255, 255, 0.52);
+  --muted: rgba(255, 255, 255, 0.42);
+  --rule: rgba(255, 255, 255, 0.08);
+  --accent: #c5a880;
+  --accent-hover: #d8be99;
+  --accent-muted: rgba(197, 168, 128, 0.15);
+  --sans: "Google Sans Flex", "Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --canvas: #f6f6f7;
+  --panel: #eeeeef;
+  --card: #ffffff;
+  --text: #121214;
+  --body: rgba(18, 18, 20, 0.82);
+  --label: rgba(18, 18, 20, 0.92);
+  --status: rgba(18, 18, 20, 0.62);
+  --muted: rgba(18, 18, 20, 0.45);
+  --rule: rgba(0, 0, 0, 0.08);
+  --accent: #9e7d56;
+  --accent-hover: #886742;
+  --accent-muted: rgba(158, 125, 86, 0.12);
+  color-scheme: light;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    background-color: var(--canvas);
+    color: var(--body);
+    font-family: var(--sans);
+    font-weight: 300;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  a {
+    color: var(--text);
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    transition: all 0.15s ease;
+  }
+
+  a:hover {
+    text-decoration-color: var(--accent);
+    color: var(--accent);
+  }
+
+  strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  html:has(dialog[open]) {
+    overflow: hidden;
+  }
+}
+
+/* Vertical architectural guidelines */
+.architectural-grid {
+  background-image: linear-gradient(to right, var(--rule) 1px, transparent 1px);
+  background-size: 25% 100%;
+}
+
+@media (max-width: 768px) {
+  .architectural-grid {
+    background-size: 50% 100%;
+  }
+}

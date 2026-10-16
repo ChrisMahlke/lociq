@@ -9,7 +9,7 @@
   <a href="https://apps.apple.com/us/app/loc-iq-city-census-data/id6761205178">App Store</a> ·
   <a href="https://chrismahlke.github.io/lociq/">Website</a> ·
   <a href="https://chrismahlke.github.io/lociq/privacy/">Privacy</a> ·
-  <a href="https://github.com/ChrisMahlke/lociq-support/issues">Report a problem</a>
+  <a href="https://github.com/ChrisMahlke/lociq/issues">Report a problem</a>
 </p>
 
 ---
@@ -20,7 +20,7 @@ This repository is the support channel for the app.
 
 ## Getting help
 
-To report a problem or suggest something, [open an issue](https://github.com/ChrisMahlke/lociq-support/issues/new). You'll need a free GitHub account. Every issue is read.
+To report a problem or suggest something, [open an issue](https://github.com/ChrisMahlke/lociq/issues/new). You'll need a free GitHub account. Every issue is read.
 
 It helps to include:
 
